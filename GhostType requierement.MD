@@ -1,0 +1,634 @@
+LLM AutoCorrect Service — Full Project Specification v2.0
+
+Project Name
+
+LLM AutoCorrect (working title: GhostType)
+
+Overview
+
+A cross-platform background service written in Go that intercepts keyboard input in any target application (primarily Firestorm Second Life viewer), detects the language being typed, and provides three AI-powered modes: grammar/spelling correction, automatic translation, and creative rewriting via configurable LLM prompts. The service displays results through a lightweight overlay window and allows the user to accept or dismiss corrections via hotkeys. It supports multiple LLM providers configured through a JSON file.
+
+
+
+Market Context — Existing Tools and Why This Is Different
+
+What Exists Today
+
+OS-Level Autocorrect: Windows built-in autocorrect works only in UWP/Office apps, limited to predefined word replacements, no AI. macOS built-in autocorrect is system-wide with a clean inline bubble UX and multi-language support — the gold standard for unobtrusive correction. Linux has IBus/Fcitx input method frameworks primarily for CJK, inconsistent across desktop environments.
+
+AI Correction Tools: Grammarly is the market leader with a floating widget, color-coded underlines, and correction cards — works on Windows and Mac but not Linux at OS level. LanguageTool is open source, supports 30+ languages with auto-detection, has a local server mode and API. ProWritingAid and Ginger Software are desktop apps focused on long-form writing. WhiteSmoke includes grammar, style, and translation.
+
+Text Expansion Tools: Espanso is open source, cross-platform, written in Rust, runs as a background service with trigger-based text replacement — the closest architecture to this project. AutoHotkey is Windows-only but extremely powerful for hotkeys and automation. TextExpander, PhraseExpress, and aText are commercial text expansion tools.
+
+AI Writing Assistants: Raycast AI (Mac only) offers hotkey-triggered rewrite, translate, and fix grammar from any app — very close to this concept. WritingTools by Jesai is an open source project replicating Apple Intelligence writing tools on Windows using Gemini or local LLM.
+
+What Makes GhostType Different
+
+
+
+Multi-mode: correct, translate, and creative rewrite in one tool
+
+Multi-provider: swap between Claude, GPT, Gemini, Grok, or local Ollama via config
+
+Multi-language: automatic detection and correction for French and English (expandable)
+
+Runs as a background service with overlay — no browser extension required
+
+Cross-platform from a single codebase (Windows first, then Mac and Linux)
+
+Open config with custom prompt templates — users define their own rewrite styles
+
+Designed specifically for virtual world chat (Firestorm) but works anywhere
+
+
+
+
+
+Three Operating Modes
+
+Mode 1 — Correct (F3)
+
+Detects the language of the typed text (French or English). Fixes all spelling, grammar, and syntax errors. Preserves the original meaning and language. Returns only the corrected text. This is the core use case.
+
+Mode 2 — Translate (F4)
+
+Translates the typed text to the configured target language. Auto-detects source language. User configures default target language in config.json. Useful for switching between French and English chat in Firestorm.
+
+Mode 3 — Rewrite (Ctrl+F3)
+
+Sends the typed text to the LLM with a creative prompt template. User cycles through available templates with Ctrl+F4. Templates are fully configurable in config.json. Examples: funny reply, formal tone, sarcastic, flirty, poetic, ELI5, pirate speak, or any custom prompt the user defines.
+
+
+
+Hotkey Workflow
+
+Full Hotkey Map
+
+
+
+F3: Capture text and send for correction (Mode 1)
+
+F4: Capture text and send for translation (Mode 2)
+
+Ctrl+F3: Capture text and send for rewrite using active template (Mode 3)
+
+Ctrl+F4: Cycle through rewrite templates (overlay shows current template name)
+
+F5: Accept and replace original text with result
+
+Escape: Dismiss overlay and cancel pending operation
+
+
+
+Detailed Flow
+
+
+
+User types text in target application chat input field.
+
+User presses the hotkey for the desired mode (F3, F4, or Ctrl+F3).
+
+Service selects all text in chat input (Ctrl+A), copies to clipboard (Ctrl+C), reads clipboard.
+
+Service sends text to configured LLM API with the appropriate prompt for the selected mode.
+
+Service receives the result from the LLM.
+
+Overlay window appears near the chat input showing the result. For correction mode, changed words are highlighted. For translation mode, the full translation is shown. For rewrite mode, the rewritten text is shown with the template name.
+
+User presses F5 to accept: service selects all text in chat input (Ctrl+A), pastes the result from memory, dismisses overlay.
+
+User presses Escape to dismiss: clears stored result, hides overlay, no changes made.
+
+
+
+
+
+Architecture
+
+High-Level Flow
+
+
+
+Service starts on boot or manually, reads config.json.
+
+Service runs in background, monitoring for hotkey presses when target window is active.
+
+On hotkey press, service captures text, determines mode, sends to LLM API.
+
+LLM returns result, service displays in overlay.
+
+User accepts or dismisses via hotkey.
+
+
+
+Components
+
+Input Hook Module — Platform-specific keyboard hooking. Windows: Win32 SetWindowsHookEx low-level keyboard hook. Linux: X11/XCB input event capture (Wayland as stretch goal). macOS: Quartz Event Services (CGEventTap).
+
+Window Detection Module — Detects if the target application is the active/focused window. Windows: GetForegroundWindow + window title matching. Linux: X11 \_NET\_ACTIVE\_WINDOW. macOS: NSWorkspace active application detection. Target window name is configurable (default: "Firestorm").
+
+Text Capture Module — Grabs current chat input text via clipboard. Selects all text in the active input field (Ctrl+A / Cmd+A), copies to clipboard, reads clipboard content. Saves and restores original clipboard content to avoid disrupting user workflow.
+
+Mode Router — Determines which prompt to use based on the hotkey pressed. Routes to correction, translation, or rewrite prompt. Manages the active rewrite template selection.
+
+LLM API Client Module — Sends requests to configured provider. Supports: OpenAI, Anthropic (Claude), Google Gemini, xAI (Grok), Ollama (local). Handles authentication, request formatting, response parsing per provider. Implements timeout and retry logic. Provider-agnostic interface so adding new providers is straightforward.
+
+Overlay Module — Displays results in a transparent, always-on-top, borderless overlay window. Positioned near the target application's chat input area or near the cursor. Shows original vs corrected text with highlighted differences (correction mode). Shows translated text with source/target language labels (translation mode). Shows rewritten text with active template name (rewrite mode). Shows a small mode indicator icon. Auto-dismisses after configurable timeout. Built with Fyne toolkit for cross-platform rendering.
+
+Text Replacement Module — Inserts result back into target application chat input. Selects all text, pastes result from memory. Restores original clipboard content after replacement.
+
+Configuration Manager — Reads and validates config.json on startup. Watches config file for changes and hot-reloads without restart. Generates default config.json if none exists.
+
+System Tray Module — System tray icon showing service status. Menu with: current mode display, enable/disable toggle, open config file, view log, quit. Status indicator: green (idle/ready), yellow (processing), red (error).
+
+
+
+Configuration File (config.json)
+
+{
+
+&nbsp; "llm\_provider": "anthropic",
+
+&nbsp; "api\_key": "sk-ant-xxxxx",
+
+&nbsp; "model": "claude-sonnet-4-5-20250929",
+
+&nbsp; "api\_endpoint": "",
+
+&nbsp; "languages": \["fr", "en"],
+
+&nbsp; "default\_translate\_target": "en",
+
+&nbsp; "hotkeys": {
+
+&nbsp;   "correct": "F3",
+
+&nbsp;   "translate": "F4",
+
+&nbsp;   "rewrite": "Ctrl+F3",
+
+&nbsp;   "cycle\_template": "Ctrl+F4",
+
+&nbsp;   "apply": "F5",
+
+&nbsp;   "cancel": "Escape"
+
+&nbsp; },
+
+&nbsp; "target\_window": "Firestorm",
+
+&nbsp; "prompts": {
+
+&nbsp;   "correct": "Detect the language of the following text (French or English). Fix all spelling and grammar errors while preserving the original meaning and language. Return ONLY the corrected text with no explanation.",
+
+&nbsp;   "translate": "Translate the following text to {target\_language}. Preserve the tone and intent. Return ONLY the translation with no explanation.",
+
+&nbsp;   "rewrite\_templates": \[
+
+&nbsp;     {
+
+&nbsp;       "name": "funny",
+
+&nbsp;       "prompt": "Rewrite this as a funny, witty reply. Keep it short and punchy. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "formal",
+
+&nbsp;       "prompt": "Rewrite this in a formal, professional tone. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "sarcastic",
+
+&nbsp;       "prompt": "Rewrite this with heavy sarcasm. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "flirty",
+
+&nbsp;       "prompt": "Rewrite this in a playful, flirty tone. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "poetic",
+
+&nbsp;       "prompt": "Rewrite this as if you were a romantic poet. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "eli5",
+
+&nbsp;       "prompt": "Rewrite this so a 5-year-old could understand it. Return ONLY the rewritten text."
+
+&nbsp;     },
+
+&nbsp;     {
+
+&nbsp;       "name": "pirate",
+
+&nbsp;       "prompt": "Rewrite this as a pirate would say it. Return ONLY the rewritten text."
+
+&nbsp;     }
+
+&nbsp;   ]
+
+&nbsp; },
+
+&nbsp; "overlay": {
+
+&nbsp;   "enabled": true,
+
+&nbsp;   "position": "above\_chat",
+
+&nbsp;   "opacity": 0.85,
+
+&nbsp;   "auto\_dismiss\_seconds": 10,
+
+&nbsp;   "show\_mode\_indicator": true,
+
+&nbsp;   "highlight\_changes": true,
+
+&nbsp;   "font\_size": 14
+
+&nbsp; },
+
+&nbsp; "max\_tokens": 256,
+
+&nbsp; "timeout\_ms": 5000,
+
+&nbsp; "preserve\_clipboard": true,
+
+&nbsp; "log\_level": "info",
+
+&nbsp; "log\_file": "autocorrect.log"
+
+}
+
+Supported LLM Providers
+
+OpenAI — llm\_provider: "openai" — default endpoint: https://api.openai.com/v1/chat/completions
+
+Anthropic — llm\_provider: "anthropic" — default endpoint: https://api.anthropic.com/v1/messages
+
+Google Gemini — llm\_provider: "gemini" — default endpoint: https://generativelanguage.googleapis.com/v1/models
+
+xAI (Grok) — llm\_provider: "xai" — default endpoint: https://api.x.ai/v1/chat/completions
+
+Ollama (local) — llm\_provider: "ollama" — default endpoint: http://localhost:11434/api/generate
+
+If api\_endpoint is provided in config, it overrides the default endpoint for the selected provider. This allows pointing to custom proxies, local instances, or alternative API-compatible services.
+
+
+
+Release Plan
+
+v0.1 — MVP (Windows Only, Simple App)
+
+This is a simple Windows desktop application, NOT a service. It runs as a visible window with a system tray icon. No overlay — results are shown in the app window itself.
+
+Scope:
+
+
+
+Windows desktop application with a minimal GUI window
+
+System tray icon for quick access
+
+JSON config file for LLM provider, API key, model, hotkeys
+
+F3 hotkey for correction mode only
+
+F5 hotkey to replace text
+
+Escape to cancel
+
+Support for 2 LLM providers: Anthropic (Claude) and OpenAI
+
+Automatic French/English language detection via LLM prompt
+
+Target window detection (only active when Firestorm is focused)
+
+Results displayed in the app window (no overlay yet)
+
+Logging to file
+
+Basic error handling (API timeout, invalid key, no network)
+
+
+
+v0.2 — Translation and Overlay
+
+
+
+Add translation mode (F4)
+
+Transparent overlay window replaces the app window for showing results
+
+Overlay positioned near target application chat input
+
+Diff highlighting for correction mode
+
+Add Ollama local LLM support
+
+Linux support (X11)
+
+
+
+v0.3 — Rewrite Mode and Polish
+
+
+
+Add rewrite mode (Ctrl+F3) with configurable templates
+
+Template cycling (Ctrl+F4)
+
+Config hot-reload without restart
+
+Clipboard preservation (save/restore original clipboard)
+
+Correction history and undo stack
+
+macOS support
+
+
+
+v0.4 — Advanced Features
+
+
+
+Add Gemini and xAI provider support
+
+GUI configuration panel (edit config without touching JSON)
+
+Support for additional languages beyond French/English
+
+Wayland support on Linux
+
+Auto-update mechanism
+
+
+
+v0.5 — Power User Features
+
+
+
+Real-time auto-correction mode (no hotkey, Grammarly-style)
+
+Inline underline overlay if target app supports it
+
+Custom provider plugin system
+
+Usage statistics and cost tracking per provider
+
+
+
+
+
+Technical Requirements
+
+Build and Deployment
+
+
+
+Language: Go 1.22+
+
+Build target: Single static binary for Windows (MVP)
+
+GUI toolkit: Fyne (pure Go, cross-platform) for the app window and future overlay
+
+No CGO dependencies if possible
+
+Build commands: go build -o ghosttype.exe (Windows), go build -o ghosttype (Linux/Mac)
+
+Installer: simple zip distribution for MVP, MSI/NSIS installer for v0.3+
+
+
+
+Dependencies (Go modules)
+
+
+
+fyne.io/fyne/v2 — Cross-platform GUI and overlay rendering
+
+github.com/moutend/go-hook or golang.org/x/sys/windows — Windows keyboard hooks
+
+golang.design/x/clipboard — Cross-platform clipboard access
+
+net/http (stdlib) — HTTP client for LLM API calls
+
+encoding/json (stdlib) — JSON config parsing
+
+github.com/getlantern/systray — System tray icon
+
+log/slog (stdlib) — Structured logging
+
+github.com/fsnotify/fsnotify — Config file watching for hot-reload (v0.3)
+
+
+
+Performance Targets
+
+
+
+Hotkey response time: < 50ms from keypress to API call initiated
+
+Total correction cycle (F3 to result ready): < 3 seconds (network dependent)
+
+Overlay render time: < 100ms
+
+Memory usage: < 50MB RSS
+
+CPU usage at idle: < 1%
+
+
+
+
+
+Error Handling
+
+
+
+Invalid API key: Log error, show notification in app window/tray, continue running
+
+API timeout: Retry once after 2 seconds, then show "Correction timed out" message
+
+No network: Show notification, allow retry when network returns
+
+Target app not running: Service idles with minimal CPU, resumes when target app starts
+
+Config file missing: Generate default config.json template and show setup instructions
+
+Config file invalid: Log specific validation error, show message, use last valid config
+
+Empty text captured: Show "Nothing to correct" message, no API call made
+
+LLM returns empty or error: Show error in app window, log details
+
+
+
+
+
+Logging
+
+
+
+Log file: configurable path in config.json, default ghosttype.log
+
+Log levels: debug, info, warn, error
+
+Log format: \[TIMESTAMP] \[LEVEL] \[MODULE] message
+
+Log rotation: not required for MVP
+
+Debug mode logs full API requests and responses (with API key redacted)
+
+
+
+
+
+Testing Plan
+
+
+
+Unit tests for JSON config parsing and validation
+
+Unit tests for LLM API request/response formatting per provider (Anthropic, OpenAI)
+
+Unit tests for mode routing logic
+
+Integration test: mock LLM API, verify full F3 to F5 cycle
+
+Integration test: mock LLM API, verify F4 translation cycle
+
+Manual testing in Firestorm on Windows
+
+Manual testing with each supported LLM provider
+
+Performance test: measure hotkey-to-result latency
+
+
+
+
+
+File Structure
+
+ghosttype/
+
+&nbsp; main.go                  — Entry point, app initialization
+
+&nbsp; config/
+
+&nbsp;   config.go              — JSON config loading, validation, defaults
+
+&nbsp;   config\_test.go         — Config unit tests
+
+&nbsp; hooks/
+
+&nbsp;   hooks.go               — Interface for input hooks
+
+&nbsp;   hooks\_windows.go       — Windows keyboard hooks (MVP)
+
+&nbsp;   hooks\_linux.go         — Linux X11 hooks (v0.2)
+
+&nbsp;   hooks\_darwin.go        — macOS hooks (v0.3)
+
+&nbsp; window/
+
+&nbsp;   window.go              — Interface for window detection
+
+&nbsp;   window\_windows.go      — Windows implementation (MVP)
+
+&nbsp;   window\_linux.go        — Linux implementation (v0.2)
+
+&nbsp;   window\_darwin.go       — macOS implementation (v0.3)
+
+&nbsp; clipboard/
+
+&nbsp;   clipboard.go           — Clipboard read/write with preservation
+
+&nbsp; mode/
+
+&nbsp;   router.go              — Mode selection based on hotkey
+
+&nbsp;   correct.go             — Correction mode logic
+
+&nbsp;   translate.go           — Translation mode logic
+
+&nbsp;   rewrite.go             — Rewrite mode logic and template cycling
+
+&nbsp; llm/
+
+&nbsp;   client.go              — LLM client interface
+
+&nbsp;   anthropic.go           — Anthropic Claude API implementation
+
+&nbsp;   anthropic\_test.go      — Anthropic unit tests
+
+&nbsp;   openai.go              — OpenAI API implementation
+
+&nbsp;   openai\_test.go         — OpenAI unit tests
+
+&nbsp;   gemini.go              — Google Gemini implementation (v0.4)
+
+&nbsp;   xai.go                 — xAI Grok implementation (v0.4)
+
+&nbsp;   ollama.go              — Ollama local implementation (v0.2)
+
+&nbsp; overlay/
+
+&nbsp;   overlay.go             — Overlay window rendering (v0.2)
+
+&nbsp;   diff.go                — Text diff highlighting logic (v0.2)
+
+&nbsp; ui/
+
+&nbsp;   app.go                 — Main app window (MVP)
+
+&nbsp;   tray.go                — System tray icon and menu
+
+&nbsp; assets/
+
+&nbsp;   icon.png               — App icon
+
+&nbsp;   icon.ico               — Windows icon
+
+&nbsp; config.json              — Default configuration file
+
+&nbsp; go.mod
+
+&nbsp; go.sum
+
+&nbsp; README.md
+
+&nbsp; LICENSE
+
+
+
+How to Use This Spec with Claude Code
+
+Open Claude Code in your project directory and paste this prompt:
+
+"Read the specification document GhostType\_Spec.md and build the MVP (v0.1). This is a Windows desktop application in Go. Start with the project structure and go.mod, then implement each module in this order: (1) config loading and validation with tests, (2) LLM client interface with Anthropic and OpenAI implementations and tests, (3) clipboard read/write, (4) Windows window detection for Firestorm, (5) Windows keyboard hooks for F3, F5, and Escape, (6) main app window UI showing results, (7) system tray icon, (8) main.go wiring everything together. Only implement correction mode (F3) for the MVP. Target Windows only. Use Fyne for the GUI."
+
+
+
+License
+
+MIT
+
+Author
+
+Chris
+
