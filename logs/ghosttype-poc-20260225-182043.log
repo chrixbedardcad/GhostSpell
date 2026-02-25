@@ -1,0 +1,14 @@
+2026/02/25 18:20:43.530084 ==============================================
+2026/02/25 18:20:43.530084   GhostType POC v0.1.2 — F7 Clipboard Workflow
+2026/02/25 18:20:43.530084   (No LLM — uses test message)
+2026/02/25 18:20:43.530084   Log file: logs\ghosttype-poc-20260225-182043.log
+2026/02/25 18:20:43.530084 ==============================================
+2026/02/25 18:20:43.530084 INFO  Creating clipboard, keyboard, hotkey managers
+2026/02/25 18:20:43.530084 INFO  Registering F7 hotkey...
+2026/02/25 18:20:43.531489 INFO  F7 hotkey registered OK
+2026/02/25 18:20:43.531489 INFO  Registering Escape hotkey...
+2026/02/25 18:20:43.531489 INFO  Escape hotkey registered OK
+2026/02/25 18:20:43.531489 INFO  F7 registered! Press F7 in any text field to test.
+2026/02/25 18:20:43.532163 INFO  Text will be uppercased with [CORRECTED] prefix.
+2026/02/25 18:20:43.532163 INFO  Press Escape to exit.
+2026/02/25 18:21:06.549864 INFO  Escape pressed — exiting cleanly.
