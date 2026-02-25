@@ -25,6 +25,8 @@ const (
 	modShift = 0x0004
 
 	vkEscape = 0x1B
+	vkB      = 0x42
+	vkG      = 0x47
 	vkF7     = 0x76
 	vkF8     = 0x77
 	vkF9     = 0x78
@@ -89,6 +91,8 @@ func parseKey(key string) (uint32, uint32, error) {
 }
 
 var keyMap = map[string]uint32{
+	"b":      vkB,
+	"g":      vkG,
 	"f7":     vkF7,
 	"f8":     vkF8,
 	"f9":     vkF9,

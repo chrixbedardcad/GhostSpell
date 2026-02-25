@@ -27,7 +27,7 @@ func runLive() {
 	RunWindowsLive()
 }
 
-// RunWindowsLive registers Ctrl+F7 as a global hotkey and runs the clipboard
+// RunWindowsLive registers Ctrl+G as a global hotkey and runs the clipboard
 // workflow with a simple test message (no LLM).
 func RunWindowsLive() {
 	logInfo("Creating clipboard, keyboard, hotkey managers")
@@ -35,10 +35,10 @@ func RunWindowsLive() {
 	kb := keyboard.NewWindowsSimulator()
 	hk := hotkey.NewWindowsManager()
 
-	logInfo("Registering Ctrl+F7 hotkey...")
-	err := hk.Register("correct", "Ctrl+F7", func() {
+	logInfo("Registering Ctrl+G hotkey...")
+	err := hk.Register("correct", "Ctrl+G", func() {
 		logInfo("---- Correction triggered! ----")
-		winBeep(800, 100) // Short beep to confirm F7 press
+		winBeep(800, 100) // Short beep to confirm hotkey press
 
 		// Step 1: Save original clipboard
 		logDebug("Step 1: Saving original clipboard...")
@@ -125,21 +125,21 @@ func RunWindowsLive() {
 		logInfo("---- Correction complete! ----")
 	})
 	if err != nil {
-		logError("Failed to register Ctrl+F7: %v", err)
+		logError("Failed to register Ctrl+G: %v", err)
 		return
 	}
-	logInfo("Ctrl+F7 hotkey registered OK")
+	logInfo("Ctrl+G hotkey registered OK")
 
-	logInfo("Registering Ctrl+F8 diagnostic ping hotkey...")
-	err = hk.Register("ping", "Ctrl+F8", func() {
-		logInfo("Ctrl+F8 ping — hotkey delivery confirmed")
+	logInfo("Registering Ctrl+B diagnostic ping hotkey...")
+	err = hk.Register("ping", "Ctrl+B", func() {
+		logInfo("Ctrl+B ping — hotkey delivery confirmed")
 		winBeep(600, 200)
 	})
 	if err != nil {
-		logError("Failed to register Ctrl+F8: %v", err)
+		logError("Failed to register Ctrl+B: %v", err)
 		return
 	}
-	logInfo("Ctrl+F8 hotkey registered OK")
+	logInfo("Ctrl+B hotkey registered OK")
 
 	logInfo("Registering Escape hotkey...")
 	err = hk.Register("quit", "Escape", func() {
@@ -155,9 +155,9 @@ func RunWindowsLive() {
 	}
 	logInfo("Escape hotkey registered OK")
 
-	logInfo("Ctrl+F7 registered! Press Ctrl+F7 in any text field to test.")
+	logInfo("Ctrl+G registered! Press Ctrl+G in any text field to test.")
 	logInfo("Text will be uppercased with [CORRECTED] prefix.")
-	logInfo("Press Ctrl+F8 to test hotkey delivery (ping)")
+	logInfo("Press Ctrl+B to test hotkey delivery (ping)")
 	logInfo("Press Escape to exit.")
 
 	hk.Listen()
