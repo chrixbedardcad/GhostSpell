@@ -3,6 +3,7 @@
 package keyboard
 
 import (
+	"fmt"
 	"syscall"
 	"time"
 	"unsafe"
@@ -47,7 +48,7 @@ func NewWindowsSimulator() *WindowsSimulator {
 	return &WindowsSimulator{}
 }
 
-func sendKey(vk uint16, down bool) {
+func sendKey(vk uint16, down bool) error {
 	var flags uint32
 	if !down {
 		flags = keyEventUp
@@ -55,32 +56,46 @@ func sendKey(vk uint16, down bool) {
 	inp := input{
 		inputType: inputKeyboard,
 		ki: keybdInput{
-			wVk:   vk,
+			wVk:     vk,
 			dwFlags: flags,
 		},
 	}
-	procSendInput.Call(1, uintptr(unsafe.Pointer(&inp)), unsafe.Sizeof(inp))
+	ret, _, _ := procSendInput.Call(1, uintptr(unsafe.Pointer(&inp)), unsafe.Sizeof(inp))
+	if ret == 0 {
+		action := "keydown"
+		if !down {
+			action = "keyup"
+		}
+		return fmt.Errorf("SendInput failed for vk=0x%02X %s", vk, action)
+	}
+	return nil
 }
 
-func sendKeyCombo(modifier, key uint16) {
-	sendKey(modifier, true)
-	sendKey(key, true)
+func sendKeyCombo(modifier, key uint16) error {
+	if err := sendKey(modifier, true); err != nil {
+		return err
+	}
+	if err := sendKey(key, true); err != nil {
+		return err
+	}
 	time.Sleep(10 * time.Millisecond)
-	sendKey(key, false)
-	sendKey(modifier, false)
+	if err := sendKey(key, false); err != nil {
+		return err
+	}
+	if err := sendKey(modifier, false); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *WindowsSimulator) SelectAll() error {
-	sendKeyCombo(vkControl, vkA)
-	return nil
+	return sendKeyCombo(vkControl, vkA)
 }
 
 func (s *WindowsSimulator) Copy() error {
-	sendKeyCombo(vkControl, vkC)
-	return nil
+	return sendKeyCombo(vkControl, vkC)
 }
 
 func (s *WindowsSimulator) Paste() error {
-	sendKeyCombo(vkControl, vkV)
-	return nil
+	return sendKeyCombo(vkControl, vkV)
 }

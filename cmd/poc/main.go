@@ -20,20 +20,35 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strings"
 )
 
-var testMode = flag.Bool("test", false, "Run in test mode with simulated clipboard (no Windows APIs needed)")
+var (
+	testMode = flag.Bool("test", false, "Run in test mode with simulated clipboard (no Windows APIs needed)")
+	logFile  = flag.String("log", "ghosttype-poc.log", "Path to debug log file")
+)
 
 func main() {
 	flag.Parse()
 
-	fmt.Println("==============================================")
-	fmt.Println("  GhostType POC v0.1.0 — F7 Clipboard Workflow")
-	fmt.Println("  (No LLM — uses test message)")
-	fmt.Println("==============================================")
-	fmt.Println()
+	// Set up logging to both stdout and log file
+	f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open log file %s: %v\n", *logFile, err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	log.SetOutput(io.MultiWriter(os.Stdout, f))
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+
+	log.Println("==============================================")
+	log.Println("  GhostType POC v0.1.0 — F7 Clipboard Workflow")
+	log.Println("  (No LLM — uses test message)")
+	log.Printf("  Log file: %s", *logFile)
+	log.Println("==============================================")
 
 	if *testMode {
 		runTestMode()
