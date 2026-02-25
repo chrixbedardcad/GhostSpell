@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 	"time"
 
@@ -97,9 +98,20 @@ func RunWindowsLive() {
 		return
 	}
 
+	err = hk.Register("quit", "Escape", func() {
+		fmt.Println("Escape pressed — exiting cleanly.")
+		hk.Unregister("correct")
+		hk.Unregister("quit")
+		os.Exit(0)
+	})
+	if err != nil {
+		fmt.Printf("Failed to register Escape: %v\n", err)
+		return
+	}
+
 	fmt.Println("F6 registered! Press F6 in any text field to test.")
 	fmt.Println("Text will be uppercased with [CORRECTED] prefix.")
-	fmt.Println("Press Ctrl+C in this console to exit.")
+	fmt.Println("Press Escape to exit.")
 
 	hk.Listen()
 }
