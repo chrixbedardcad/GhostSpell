@@ -1,0 +1,143 @@
+GhostType
+AI-powered multilingual auto-correction, translation, and creative rewriting for virtual world chat.
+GhostType is a lightweight background service that hooks into your chat application (primarily Firestorm Second Life viewer) and provides real-time spelling correction, language translation, and creative text rewriting powered by your choice of LLM provider.
+Type in French, hit F3, get it corrected. Switch to English, hit F3, corrected too. Need to translate? F4. Want a funny reply? Ctrl+F3. Accept with F5 or dismiss with Escape. That simple.
+
+Features
+
+Correct — Auto-detects French or English and fixes spelling, grammar, and syntax errors
+Translate — Instantly translates between French and English (or any configured language pair)
+Rewrite — Rewrites your text using customizable prompt templates (funny, formal, sarcastic, flirty, poetic, and more)
+Multi-Provider — Works with Anthropic Claude, OpenAI GPT, Google Gemini, xAI Grok, or local Ollama models
+Hotkey Driven — F3 to correct, F4 to translate, Ctrl+F3 to rewrite, F5 to accept, Escape to cancel
+Configurable — JSON config file for API keys, providers, hotkeys, prompts, overlay settings, and custom rewrite templates
+Lightweight — Single binary, runs in the background, under 50MB memory, near-zero CPU at idle
+Cross-Platform — Windows first, Linux and macOS coming in future releases
+
+
+Quick Start
+1. Download
+Download the latest release for your platform from the Releases page.
+2. Configure
+On first run, GhostType creates a default config.json in the same directory. Open it and add your API key:
+json{
+  "llm_provider": "anthropic",
+  "api_key": "YOUR_API_KEY_HERE",
+  "model": "claude-sonnet-4-5-20250929"
+}
+```
+
+### 3. Run
+```
+ghosttype.exe
+GhostType starts minimized in your system tray. Open Firestorm, type something in chat, and press F3.
+
+Hotkeys
+HotkeyActionF3Correct spelling and grammarF4Translate to target languageCtrl+F3Rewrite using active templateCtrl+F4Cycle through rewrite templatesF5Accept and replace textEscapeDismiss and cancel
+All hotkeys are configurable in config.json.
+
+Configuration
+GhostType is configured entirely through config.json. Here is a full example:
+json{
+  "llm_provider": "anthropic",
+  "api_key": "sk-ant-xxxxx",
+  "model": "claude-sonnet-4-5-20250929",
+  "api_endpoint": "",
+  "languages": ["fr", "en"],
+  "default_translate_target": "en",
+  "hotkeys": {
+    "correct": "F3",
+    "translate": "F4",
+    "rewrite": "Ctrl+F3",
+    "cycle_template": "Ctrl+F4",
+    "apply": "F5",
+    "cancel": "Escape"
+  },
+  "target_window": "Firestorm",
+  "prompts": {
+    "correct": "Detect the language. Fix spelling and grammar. Return ONLY corrected text.",
+    "translate": "Translate to {target_language}. Return ONLY the translation.",
+    "rewrite_templates": [
+      {"name": "funny", "prompt": "Rewrite as a funny, witty reply. Return ONLY the text."},
+      {"name": "formal", "prompt": "Rewrite in a formal tone. Return ONLY the text."},
+      {"name": "sarcastic", "prompt": "Rewrite with heavy sarcasm. Return ONLY the text."},
+      {"name": "flirty", "prompt": "Rewrite in a playful, flirty tone. Return ONLY the text."},
+      {"name": "poetic", "prompt": "Rewrite as a romantic poet. Return ONLY the text."}
+    ]
+  },
+  "overlay": {
+    "enabled": true,
+    "opacity": 0.85,
+    "auto_dismiss_seconds": 10,
+    "highlight_changes": true,
+    "font_size": 14
+  },
+  "max_tokens": 256,
+  "timeout_ms": 5000,
+  "preserve_clipboard": true,
+  "log_level": "info",
+  "log_file": "ghosttype.log"
+}
+Supported Providers
+ProviderConfig ValueNotesAnthropic ClaudeanthropicRecommended. Excellent multilingual support.OpenAI GPTopenaiGPT-4o or GPT-4 Turbo recommended.Google GeminigeminiGood for multilingual tasks.xAI GrokxaiFast inference.Ollama (local)ollamaFree, private, no API key needed. Requires Ollama running locally.
+Set api_endpoint to override the default endpoint for any provider, useful for proxies or custom deployments.
+
+Adding Custom Rewrite Templates
+You can add your own rewrite styles by editing the rewrite_templates array in config.json:
+json{
+  "name": "pirate",
+  "prompt": "Rewrite this as a pirate would say it. Return ONLY the rewritten text."
+}
+Cycle through templates in real-time with Ctrl+F4. The overlay shows which template is currently active.
+
+Building from Source
+Requirements
+
+Go 1.22 or later
+Windows 10/11 (MVP target)
+
+Build
+bashgit clone https://github.com/yourusername/ghosttype.git
+cd ghosttype
+go mod download
+go build -o ghosttype.exe
+Run Tests
+bashgo test ./...
+
+How It Works
+
+GhostType runs in the background and watches for hotkey presses.
+It only activates when the configured target window (default: Firestorm) is focused.
+When you press a hotkey, it selects all text in the active chat input, copies it to clipboard, and reads it.
+The text is sent to your configured LLM provider with the appropriate prompt.
+The corrected/translated/rewritten result appears in an overlay near the chat input.
+Press F5 to accept (replaces your original text) or Escape to dismiss.
+Your original clipboard content is preserved and restored.
+
+
+Roadmap
+v0.1 — MVP (current)
+Windows desktop app. Correction mode only. Anthropic and OpenAI support. Results shown in app window.
+v0.2 — Translation and Overlay
+Translation mode. Transparent overlay window. Ollama support. Linux support.
+v0.3 — Rewrite Mode
+Creative rewrite mode with templates. Config hot-reload. Correction history. macOS support.
+v0.4 — More Providers
+Gemini and xAI support. GUI config panel. Additional languages.
+v0.5 — Power Features
+Real-time Grammarly-style correction. Usage stats. Custom provider plugins.
+
+Troubleshooting
+GhostType doesn't respond to hotkeys: Make sure the target window (Firestorm) is focused and the window title matches the target_window value in config.json.
+API errors: Check your API key in config.json. Check ghosttype.log for detailed error messages. Verify your provider account has available credits.
+Slow corrections: LLM response time depends on your provider and network. Try a faster model or switch to a local Ollama instance for instant responses.
+Hotkey conflicts: If F3/F5 conflict with other applications, change the hotkeys in config.json.
+
+License
+MIT
+
+Author
+Chris
+
+Acknowledgments
+Inspired by the UX patterns of Grammarly, LanguageTool, Espanso, Raycast AI, and macOS inline autocorrect. Built for the Second Life community.
