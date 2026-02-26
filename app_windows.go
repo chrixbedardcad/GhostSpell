@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"os"
@@ -20,6 +21,9 @@ import (
 	"github.com/chrixbedardcad/GhostType/mode"
 	"github.com/chrixbedardcad/GhostType/tray"
 )
+
+//go:embed GhostType_icon_512.png
+var appIconPNG []byte
 
 var (
 	kernel32Win = syscall.NewLazyDLL("kernel32.dll")
@@ -235,6 +239,7 @@ func runApp(cfg *config.Config, router *mode.Router) {
 	var stopTrayFn func()
 
 	trayCfg := tray.Config{
+		IconPNG: appIconPNG,
 		OnModeChange: func(modeName string) {
 			setActiveMode(modeName)
 		},

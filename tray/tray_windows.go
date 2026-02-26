@@ -3,7 +3,11 @@
 package tray
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/draw"
+	"image/png"
 	"log/slog"
 	"runtime"
 	"sync"
@@ -91,6 +95,28 @@ type notifyIconData struct {
 	balloonIcon      uintptr
 }
 
+type bitmapInfoHeader struct {
+	size          uint32
+	width         int32
+	height        int32
+	planes        uint16
+	bitCount      uint16
+	compression   uint32
+	sizeImage     uint32
+	xPelsPerMeter int32
+	yPelsPerMeter int32
+	clrUsed       uint32
+	clrImportant  uint32
+}
+
+type iconInfo struct {
+	icon     uint32  // BOOL: 1 = icon, 0 = cursor
+	xHotspot uint32
+	yHotspot uint32
+	maskBM   uintptr // HBITMAP
+	colorBM  uintptr // HBITMAP
+}
+
 type point struct {
 	x, y int32
 }
@@ -128,13 +154,27 @@ var (
 	procLoadIconW           = user32.NewProc("LoadIconW")
 	procPostQuitMessage     = user32.NewProc("PostQuitMessage")
 
+	procGetDC               = user32.NewProc("GetDC")
+	procReleaseDC           = user32.NewProc("ReleaseDC")
+	procCreateIconIndirect  = user32.NewProc("CreateIconIndirect")
+	procDestroyIcon         = user32.NewProc("DestroyIcon")
+
 	procShellNotifyIconW = shell32.NewProc("Shell_NotifyIconW")
 
 	procGetModuleHandleW = kernel32.NewProc("GetModuleHandleW")
+
+	gdi32              = syscall.NewLazyDLL("gdi32.dll")
+	procCreateDIBSection = gdi32.NewProc("CreateDIBSection")
+	procCreateBitmap     = gdi32.NewProc("CreateBitmap")
+	procDeleteObject     = gdi32.NewProc("DeleteObject")
 )
 
 // Config holds tray configuration and callbacks.
 type Config struct {
+	// IconPNG is the raw PNG bytes for the tray icon.
+	// If nil, falls back to the default Windows application icon.
+	IconPNG []byte
+
 	// Callbacks — called on the tray's OS thread.
 	OnModeChange  func(modeName string) // "correct", "translate", "rewrite"
 	OnLangSelect  func(idx int)
@@ -154,11 +194,12 @@ type Config struct {
 
 // trayState holds the runtime state of the tray icon.
 type trayState struct {
-	cfg    Config
-	hwnd   uintptr
-	nid    notifyIconData
-	wg     sync.WaitGroup
-	stopCh chan struct{}
+	cfg        Config
+	hwnd       uintptr
+	nid        notifyIconData
+	customIcon uintptr // HICON created from PNG; destroyed on cleanup
+	wg         sync.WaitGroup
+	stopCh     chan struct{}
 }
 
 // global state — only one tray per process.
@@ -203,8 +244,21 @@ func (ts *trayState) run() {
 
 	hInstance, _, _ := procGetModuleHandleW.Call(0)
 
-	// Load default application icon.
-	hIcon, _, _ := procLoadIconW.Call(0, uintptr(idiApplication))
+	// Load icon — try custom PNG first, fall back to default.
+	var hIcon uintptr
+	if len(ts.cfg.IconPNG) > 0 {
+		var err error
+		hIcon, err = loadIconFromPNG(ts.cfg.IconPNG)
+		if err != nil {
+			slog.Error("Failed to load custom icon, using default", "error", err)
+			hIcon = 0
+		} else {
+			ts.customIcon = hIcon
+		}
+	}
+	if hIcon == 0 {
+		hIcon, _, _ = procLoadIconW.Call(0, uintptr(idiApplication))
+	}
 
 	// Register window class.
 	className := utf16Ptr("GhostTypeTray")
@@ -273,6 +327,9 @@ func (ts *trayState) run() {
 	// Cleanup.
 	procShellNotifyIconW.Call(nimDelete, uintptr(unsafe.Pointer(&ts.nid)))
 	procDestroyWindow.Call(ts.hwnd)
+	if ts.customIcon != 0 {
+		procDestroyIcon.Call(ts.customIcon)
+	}
 	close(ts.stopCh)
 }
 
@@ -441,6 +498,100 @@ func wndProcCallback() uintptr {
 		ret, _, _ := procDefWindowProcW.Call(hwnd, umsg, wParam, lParam)
 		return ret
 	})
+}
+
+// loadIconFromPNG decodes a PNG from raw bytes and creates a Win32 HICON.
+// The caller owns the returned HICON and must call DestroyIcon when done.
+func loadIconFromPNG(data []byte) (uintptr, error) {
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return 0, fmt.Errorf("decode PNG: %w", err)
+	}
+
+	// Convert to RGBA regardless of source format.
+	bounds := img.Bounds()
+	rgba := image.NewRGBA(bounds)
+	draw.Draw(rgba, bounds, img, bounds.Min, draw.Src)
+
+	w := bounds.Dx()
+	h := bounds.Dy()
+
+	// Create a 32-bit top-down DIB section (BGRA with pre-multiplied alpha).
+	bi := bitmapInfoHeader{
+		size:     40, // sizeof(BITMAPINFOHEADER)
+		width:    int32(w),
+		height:   -int32(h), // negative = top-down
+		planes:   1,
+		bitCount: 32,
+	}
+
+	hdc, _, _ := procGetDC.Call(0)
+	var bits uintptr
+	hBitmap, _, _ := procCreateDIBSection.Call(
+		hdc,
+		uintptr(unsafe.Pointer(&bi)),
+		0, // DIB_RGB_COLORS
+		uintptr(unsafe.Pointer(&bits)),
+		0, 0,
+	)
+	procReleaseDC.Call(0, hdc)
+
+	if hBitmap == 0 {
+		return 0, fmt.Errorf("CreateDIBSection failed")
+	}
+
+	// Copy RGBA pixels to pre-multiplied BGRA.
+	pixelCount := w * h
+	src := rgba.Pix
+	dst := unsafe.Slice((*byte)(unsafe.Pointer(bits)), pixelCount*4)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			si := y*rgba.Stride + x*4
+			di := (y*w + x) * 4
+			a := uint16(src[si+3])
+			if a == 0 {
+				dst[di+0] = 0
+				dst[di+1] = 0
+				dst[di+2] = 0
+				dst[di+3] = 0
+			} else if a == 255 {
+				dst[di+0] = src[si+2] // B
+				dst[di+1] = src[si+1] // G
+				dst[di+2] = src[si+0] // R
+				dst[di+3] = 255
+			} else {
+				dst[di+0] = byte(uint16(src[si+2]) * a / 255) // B
+				dst[di+1] = byte(uint16(src[si+1]) * a / 255) // G
+				dst[di+2] = byte(uint16(src[si+0]) * a / 255) // R
+				dst[di+3] = byte(a)
+			}
+		}
+	}
+
+	// Create monochrome mask bitmap (all zeros = fully opaque; alpha handles transparency).
+	hMask, _, _ := procCreateBitmap.Call(uintptr(w), uintptr(h), 1, 1, 0)
+	if hMask == 0 {
+		procDeleteObject.Call(hBitmap)
+		return 0, fmt.Errorf("CreateBitmap (mask) failed")
+	}
+
+	// Combine into HICON.
+	ii := iconInfo{
+		icon:    1, // TRUE = icon
+		maskBM:  hMask,
+		colorBM: hBitmap,
+	}
+	hIcon, _, _ := procCreateIconIndirect.Call(uintptr(unsafe.Pointer(&ii)))
+
+	// Clean up intermediate bitmaps (CreateIconIndirect copies them).
+	procDeleteObject.Call(hBitmap)
+	procDeleteObject.Call(hMask)
+
+	if hIcon == 0 {
+		return 0, fmt.Errorf("CreateIconIndirect failed")
+	}
+
+	return hIcon, nil
 }
 
 // utf16Ptr converts a Go string to a null-terminated UTF-16 pointer.
