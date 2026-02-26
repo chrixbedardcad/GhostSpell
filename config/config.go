@@ -52,6 +52,7 @@ type Config struct {
 	Languages              []string          `json:"languages"`
 	LanguageNames          map[string]string `json:"language_names"`
 	DefaultTranslateTarget string            `json:"default_translate_target"`
+	ActiveMode             string            `json:"active_mode"`
 	Hotkeys                Hotkeys           `json:"hotkeys"`
 	Prompts                Prompts           `json:"prompts"`
 	Overlay                Overlay           `json:"overlay"`
@@ -75,12 +76,13 @@ func DefaultConfig() Config {
 			"fr": "French",
 		},
 		DefaultTranslateTarget: "en",
+		ActiveMode:             "correct",
 		Hotkeys: Hotkeys{
 			Correct:        "Ctrl+G",
-			Translate:      "Ctrl+J",
-			ToggleLanguage: "Ctrl+F8",
-			Rewrite:        "F9",
-			CycleTemplate:  "Ctrl+F9",
+			Translate:      "",
+			ToggleLanguage: "",
+			Rewrite:        "",
+			CycleTemplate:  "",
 			Cancel:         "Escape",
 		},
 		Prompts: Prompts{
@@ -168,21 +170,14 @@ func applyDefaults(cfg *Config) {
 	if cfg.LogLevel != "" && cfg.LogFile == "" {
 		cfg.LogFile = "ghosttype.log"
 	}
+	if cfg.ActiveMode == "" {
+		cfg.ActiveMode = "correct"
+	}
 	if cfg.Hotkeys.Correct == "" {
 		cfg.Hotkeys.Correct = "Ctrl+G"
 	}
-	if cfg.Hotkeys.Translate == "" {
-		cfg.Hotkeys.Translate = "Ctrl+J"
-	}
-	if cfg.Hotkeys.ToggleLanguage == "" {
-		cfg.Hotkeys.ToggleLanguage = "Ctrl+F8"
-	}
-	if cfg.Hotkeys.Rewrite == "" {
-		cfg.Hotkeys.Rewrite = "F9"
-	}
-	if cfg.Hotkeys.CycleTemplate == "" {
-		cfg.Hotkeys.CycleTemplate = "Ctrl+F9"
-	}
+	// Translate, ToggleLanguage, Rewrite, CycleTemplate default to empty
+	// (not registered). Users can add dedicated hotkeys in config if desired.
 	if cfg.Hotkeys.Cancel == "" {
 		cfg.Hotkeys.Cancel = "Escape"
 	}
@@ -222,6 +217,15 @@ func validate(cfg *Config) error {
 
 	if cfg.Prompts.Correct == "" {
 		return fmt.Errorf("prompts.correct is required")
+	}
+
+	validModes := map[string]bool{
+		"correct":   true,
+		"translate": true,
+		"rewrite":   true,
+	}
+	if !validModes[cfg.ActiveMode] {
+		return fmt.Errorf("unsupported active_mode: %q (valid: correct, translate, rewrite)", cfg.ActiveMode)
 	}
 
 	// Validate log_level if set.
