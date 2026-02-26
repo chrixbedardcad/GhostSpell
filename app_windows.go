@@ -176,6 +176,18 @@ func processMode(
 	fmt.Printf("[%s] Result: %q\n", modeName, result)
 }
 
+// modeFromString converts a mode name string to a mode.Mode value.
+func modeFromString(name string) (mode.Mode, string) {
+	switch name {
+	case "translate":
+		return mode.ModeTranslate, "Translation"
+	case "rewrite":
+		return mode.ModeRewrite, "Rewrite"
+	default:
+		return mode.ModeCorrect, "Correction"
+	}
+}
+
 func runApp(cfg *config.Config, router *mode.Router) {
 	// Windows RegisterHotKey and GetMessageW must run on the same OS thread.
 	runtime.LockOSThread()
@@ -188,60 +200,86 @@ func runApp(cfg *config.Config, router *mode.Router) {
 	var mu sync.Mutex
 	var cancelLLM context.CancelFunc
 
-	// Register correction hotkey.
-	err := hk.Register("correct", cfg.Hotkeys.Correct, func() {
-		processMode("Correction", mode.ModeCorrect, cfg, router, cb, kb, &mu, &cancelLLM)
+	// Active mode state — determines what the action hotkey (Ctrl+G) does.
+	// Protected by mu. Can be changed at runtime (e.g., from tray menu).
+	activeMode := cfg.ActiveMode
+
+	// SetActiveMode changes the active mode at runtime.
+	// Exported for future use by tray menu (#56).
+	setActiveMode := func(modeName string) {
+		mu.Lock()
+		activeMode = modeName
+		mu.Unlock()
+		slog.Info("Active mode changed", "mode", modeName)
+		fmt.Printf("Active mode: %s\n", modeName)
+		winBeep(600, 80)
+	}
+	_ = setActiveMode // will be used by tray menu in #56
+
+	// Register main action hotkey — dispatches based on active mode.
+	err := hk.Register("action", cfg.Hotkeys.Correct, func() {
+		mu.Lock()
+		currentMode := activeMode
+		mu.Unlock()
+
+		m, displayName := modeFromString(currentMode)
+		processMode(displayName, m, cfg, router, cb, kb, &mu, &cancelLLM)
 	})
 	if err != nil {
-		slog.Error("Failed to register correction hotkey", "key", cfg.Hotkeys.Correct, "error", err)
+		slog.Error("Failed to register action hotkey", "key", cfg.Hotkeys.Correct, "error", err)
 		fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Correct, err)
 		return
 	}
 
-	// Register translation hotkey.
-	err = hk.Register("translate", cfg.Hotkeys.Translate, func() {
-		processMode("Translation", mode.ModeTranslate, cfg, router, cb, kb, &mu, &cancelLLM)
-	})
-	if err != nil {
-		slog.Error("Failed to register translate hotkey", "key", cfg.Hotkeys.Translate, "error", err)
-		fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Translate, err)
-		return
+	// Register optional dedicated hotkeys (only if configured).
+	if cfg.Hotkeys.Translate != "" {
+		err = hk.Register("translate", cfg.Hotkeys.Translate, func() {
+			processMode("Translation", mode.ModeTranslate, cfg, router, cb, kb, &mu, &cancelLLM)
+		})
+		if err != nil {
+			slog.Error("Failed to register translate hotkey", "key", cfg.Hotkeys.Translate, "error", err)
+			fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Translate, err)
+			return
+		}
 	}
 
-	// Register toggle-language hotkey — cycles translation target, no LLM call.
-	err = hk.Register("toggle_language", cfg.Hotkeys.ToggleLanguage, func() {
-		name := router.ToggleTranslateTarget()
-		slog.Info("Translation target toggled", "target", name)
-		fmt.Printf("Translation target: %s\n", name)
-		winBeep(600, 80)
-	})
-	if err != nil {
-		slog.Error("Failed to register toggle-language hotkey", "key", cfg.Hotkeys.ToggleLanguage, "error", err)
-		fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.ToggleLanguage, err)
-		return
+	if cfg.Hotkeys.ToggleLanguage != "" {
+		err = hk.Register("toggle_language", cfg.Hotkeys.ToggleLanguage, func() {
+			name := router.ToggleTranslateTarget()
+			slog.Info("Translation target toggled", "target", name)
+			fmt.Printf("Translation target: %s\n", name)
+			winBeep(600, 80)
+		})
+		if err != nil {
+			slog.Error("Failed to register toggle-language hotkey", "key", cfg.Hotkeys.ToggleLanguage, "error", err)
+			fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.ToggleLanguage, err)
+			return
+		}
 	}
 
-	// Register rewrite hotkey.
-	err = hk.Register("rewrite", cfg.Hotkeys.Rewrite, func() {
-		processMode("Rewrite", mode.ModeRewrite, cfg, router, cb, kb, &mu, &cancelLLM)
-	})
-	if err != nil {
-		slog.Error("Failed to register rewrite hotkey", "key", cfg.Hotkeys.Rewrite, "error", err)
-		fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Rewrite, err)
-		return
+	if cfg.Hotkeys.Rewrite != "" {
+		err = hk.Register("rewrite", cfg.Hotkeys.Rewrite, func() {
+			processMode("Rewrite", mode.ModeRewrite, cfg, router, cb, kb, &mu, &cancelLLM)
+		})
+		if err != nil {
+			slog.Error("Failed to register rewrite hotkey", "key", cfg.Hotkeys.Rewrite, "error", err)
+			fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Rewrite, err)
+			return
+		}
 	}
 
-	// Register cycle-template hotkey — cycles rewrite template, no LLM call.
-	err = hk.Register("cycle_template", cfg.Hotkeys.CycleTemplate, func() {
-		name := router.CycleTemplate()
-		slog.Info("Rewrite template cycled", "template", name)
-		fmt.Printf("Rewrite template: %s\n", name)
-		winBeep(600, 80)
-	})
-	if err != nil {
-		slog.Error("Failed to register cycle-template hotkey", "key", cfg.Hotkeys.CycleTemplate, "error", err)
-		fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.CycleTemplate, err)
-		return
+	if cfg.Hotkeys.CycleTemplate != "" {
+		err = hk.Register("cycle_template", cfg.Hotkeys.CycleTemplate, func() {
+			name := router.CycleTemplate()
+			slog.Info("Rewrite template cycled", "template", name)
+			fmt.Printf("Rewrite template: %s\n", name)
+			winBeep(600, 80)
+		})
+		if err != nil {
+			slog.Error("Failed to register cycle-template hotkey", "key", cfg.Hotkeys.CycleTemplate, "error", err)
+			fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.CycleTemplate, err)
+			return
+		}
 	}
 
 	// Register cancel hotkey — cancels in-progress LLM call, does NOT exit.

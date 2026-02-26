@@ -22,14 +22,20 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.TimeoutMs != 5000 {
 		t.Errorf("expected default timeout_ms 5000, got %d", cfg.TimeoutMs)
 	}
+	if cfg.ActiveMode != "correct" {
+		t.Errorf("expected default active_mode 'correct', got '%s'", cfg.ActiveMode)
+	}
 	if cfg.Hotkeys.Correct != "Ctrl+G" {
 		t.Errorf("expected default correct hotkey 'Ctrl+G', got '%s'", cfg.Hotkeys.Correct)
 	}
-	if cfg.Hotkeys.Translate != "Ctrl+J" {
-		t.Errorf("expected default translate hotkey 'Ctrl+J', got '%s'", cfg.Hotkeys.Translate)
+	if cfg.Hotkeys.Translate != "" {
+		t.Errorf("expected default translate hotkey empty, got '%s'", cfg.Hotkeys.Translate)
 	}
-	if cfg.Hotkeys.Rewrite != "F9" {
-		t.Errorf("expected default rewrite hotkey 'F9', got '%s'", cfg.Hotkeys.Rewrite)
+	if cfg.Hotkeys.Rewrite != "" {
+		t.Errorf("expected default rewrite hotkey empty, got '%s'", cfg.Hotkeys.Rewrite)
+	}
+	if cfg.Hotkeys.Cancel != "Escape" {
+		t.Errorf("expected default cancel hotkey 'Escape', got '%s'", cfg.Hotkeys.Cancel)
 	}
 	if len(cfg.Languages) != 2 {
 		t.Errorf("expected 2 default languages, got %d", len(cfg.Languages))
@@ -300,6 +306,113 @@ func TestLoadInvalidLogLevel(t *testing.T) {
 	_, err := Load(path)
 	if err == nil {
 		t.Fatal("expected validation error for invalid log_level")
+	}
+}
+
+func TestLoadActiveModeDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	cfg := map[string]interface{}{
+		"llm_provider": "openai",
+		"api_key":      "sk-test",
+		"model":        "gpt-4o",
+		"prompts":      map[string]interface{}{"correct": "Fix errors."},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(path, data, 0644)
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if loaded.ActiveMode != "correct" {
+		t.Errorf("expected default active_mode 'correct', got '%s'", loaded.ActiveMode)
+	}
+}
+
+func TestLoadActiveModeCustom(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	cfg := map[string]interface{}{
+		"llm_provider": "openai",
+		"api_key":      "sk-test",
+		"model":        "gpt-4o",
+		"active_mode":  "translate",
+		"prompts":      map[string]interface{}{"correct": "Fix errors."},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(path, data, 0644)
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if loaded.ActiveMode != "translate" {
+		t.Errorf("expected active_mode 'translate', got '%s'", loaded.ActiveMode)
+	}
+}
+
+func TestLoadActiveModeInvalid(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	cfg := map[string]interface{}{
+		"llm_provider": "openai",
+		"api_key":      "sk-test",
+		"model":        "gpt-4o",
+		"active_mode":  "invalid",
+		"prompts":      map[string]interface{}{"correct": "Fix errors."},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(path, data, 0644)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected validation error for invalid active_mode")
+	}
+}
+
+func TestLoadOptionalHotkeysEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	cfg := map[string]interface{}{
+		"llm_provider": "openai",
+		"api_key":      "sk-test",
+		"model":        "gpt-4o",
+		"prompts":      map[string]interface{}{"correct": "Fix errors."},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(path, data, 0644)
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Only action (correct) and cancel should have defaults
+	if loaded.Hotkeys.Correct != "Ctrl+G" {
+		t.Errorf("expected action hotkey 'Ctrl+G', got '%s'", loaded.Hotkeys.Correct)
+	}
+	if loaded.Hotkeys.Cancel != "Escape" {
+		t.Errorf("expected cancel hotkey 'Escape', got '%s'", loaded.Hotkeys.Cancel)
+	}
+	// Optional hotkeys should remain empty
+	if loaded.Hotkeys.Translate != "" {
+		t.Errorf("expected translate hotkey empty, got '%s'", loaded.Hotkeys.Translate)
+	}
+	if loaded.Hotkeys.Rewrite != "" {
+		t.Errorf("expected rewrite hotkey empty, got '%s'", loaded.Hotkeys.Rewrite)
+	}
+	if loaded.Hotkeys.ToggleLanguage != "" {
+		t.Errorf("expected toggle_language hotkey empty, got '%s'", loaded.Hotkeys.ToggleLanguage)
+	}
+	if loaded.Hotkeys.CycleTemplate != "" {
+		t.Errorf("expected cycle_template hotkey empty, got '%s'", loaded.Hotkeys.CycleTemplate)
 	}
 }
 

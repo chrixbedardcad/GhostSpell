@@ -114,22 +114,30 @@ func main() {
 	router := mode.NewRouter(cfg, client)
 
 	fmt.Println("")
-	fmt.Printf("Current translate target: %s\n", router.CurrentTranslateTarget())
-	fmt.Printf("Current rewrite template: %s\n", router.CurrentTemplateName())
+	fmt.Printf("Active mode: %s\n", cfg.ActiveMode)
+	fmt.Printf("Translate target: %s\n", router.CurrentTranslateTarget())
+	fmt.Printf("Rewrite template: %s\n", router.CurrentTemplateName())
 	fmt.Println("")
 	fmt.Println("Hotkeys:")
-	fmt.Printf("  %s - Correct spelling/grammar\n", cfg.Hotkeys.Correct)
-	fmt.Printf("  %s - Toggle translation language\n", cfg.Hotkeys.ToggleLanguage)
-	fmt.Printf("  %s - Translate\n", cfg.Hotkeys.Translate)
-	fmt.Printf("  %s - Cycle rewrite template\n", cfg.Hotkeys.CycleTemplate)
-	fmt.Printf("  %s - Rewrite\n", cfg.Hotkeys.Rewrite)
+	fmt.Printf("  %s - Action (%s)\n", cfg.Hotkeys.Correct, cfg.ActiveMode)
+	if cfg.Hotkeys.Translate != "" {
+		fmt.Printf("  %s - Translate\n", cfg.Hotkeys.Translate)
+	}
+	if cfg.Hotkeys.ToggleLanguage != "" {
+		fmt.Printf("  %s - Toggle translation language\n", cfg.Hotkeys.ToggleLanguage)
+	}
+	if cfg.Hotkeys.Rewrite != "" {
+		fmt.Printf("  %s - Rewrite\n", cfg.Hotkeys.Rewrite)
+	}
+	if cfg.Hotkeys.CycleTemplate != "" {
+		fmt.Printf("  %s - Cycle rewrite template\n", cfg.Hotkeys.CycleTemplate)
+	}
 	fmt.Printf("  %s - Cancel\n", cfg.Hotkeys.Cancel)
 	fmt.Println("")
 
 	slog.Info("GhostType ready",
-		"hotkey_correct", cfg.Hotkeys.Correct,
-		"hotkey_translate", cfg.Hotkeys.Translate,
-		"hotkey_rewrite", cfg.Hotkeys.Rewrite,
+		"active_mode", cfg.ActiveMode,
+		"hotkey_action", cfg.Hotkeys.Correct,
 	)
 
 	runApp(cfg, router)
