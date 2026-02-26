@@ -35,6 +35,8 @@ Type in French, hit **Ctrl+G**, get it corrected. Switch to English, hit **Ctrl+
 - **Rewrite** — Rewrites your text using customizable prompt templates (funny, formal, sarcastic, flirty, poetic, and more)
 - **Multi-Provider** — Works with Anthropic Claude, OpenAI GPT, Google Gemini, xAI Grok, or local Ollama models
 - **Hotkey Driven** — One hotkey to learn: Ctrl+G performs the active mode (correct, translate, or rewrite). Escape to cancel. Optional dedicated hotkeys for power users
+- **System Tray** — Switch modes, languages, templates, and toggle sound from the tray icon
+- **Sound Effects** — Audio feedback with random WAV variants for each event (start, working, success, error, toggle). Disable via tray or config
 - **Configurable** — JSON config file for API keys, providers, hotkeys, prompts, overlay settings, and custom rewrite templates
 - **Lightweight** — Single binary, runs in the background, under 50 MB memory, near-zero CPU at idle
 - **Cross-Platform** — Windows first, Linux and macOS coming in future releases
@@ -65,7 +67,7 @@ On first run, GhostType creates a default `config.json` in the same directory. O
 ghosttype.exe
 ```
 
-GhostType starts minimized in your system tray. Open Firestorm, type something in chat, and press **F6**.
+GhostType starts minimized in your system tray. Open Firestorm, type something in chat, and press **Ctrl+G**.
 
 ---
 
@@ -83,14 +85,22 @@ GhostType starts minimized in your system tray. Open Firestorm, type something i
 
 Power users can add dedicated hotkeys for specific modes:
 
-| Config Key | Example | Action |
-|------------|---------|--------|
+| Config Key | Recommended | Action |
+|------------|-------------|--------|
 | `hotkeys.translate` | `"Ctrl+J"` | Translate directly |
-| `hotkeys.toggle_language` | `"Ctrl+F8"` | Cycle translation target language |
-| `hotkeys.rewrite` | `"F9"` | Rewrite directly |
-| `hotkeys.cycle_template` | `"Ctrl+F9"` | Cycle rewrite template |
+| `hotkeys.toggle_language` | `"Ctrl+Shift+J"` | Cycle translation target language |
+| `hotkeys.rewrite` | `"Ctrl+Y"` | Rewrite directly |
+| `hotkeys.cycle_template` | `"Ctrl+Shift+R"` | Cycle rewrite template |
 
 All hotkeys are configurable in `config.json`. Set `active_mode` to `"correct"`, `"translate"`, or `"rewrite"` to choose what **Ctrl+G** does.
+
+### Why These Keys?
+
+- **Ctrl+G** — G for Grammar
+- **Ctrl+J** — J is adjacent to G on the keyboard, easy to reach
+- **Ctrl+Y** — Y for Yes/Yeet/rewrite, mostly unused in apps
+- **Ctrl+Shift+J** — Shift modifier on translate key for toggle
+- **Ctrl+Shift+R** — R for Rewrite template cycling
 
 ---
 
@@ -109,7 +119,7 @@ GhostType is configured entirely through `config.json`. Here is a full example:
     "en": "English",
     "fr": "French"
   },
-  "default_translate_target": "en",
+  "translate_targets": ["en|fr"],
   "active_mode": "correct",
   "hotkeys": {
     "correct": "Ctrl+G",
@@ -140,6 +150,7 @@ GhostType is configured entirely through `config.json`. Here is a full example:
   "max_tokens": 256,
   "timeout_ms": 5000,
   "preserve_clipboard": true,
+  "sound_enabled": true,
   "log_level": "info",
   "log_file": "ghosttype.log"
 }
@@ -172,7 +183,7 @@ You can add your own rewrite styles by editing the `rewrite_templates` array in 
 }
 ```
 
-Cycle through templates in real-time with **Ctrl+F8**. A brief floating label appears near your cursor showing the newly selected template name (e.g., "Funny", "Professional"). Similarly, toggle the translation target language with **Ctrl+F7** — a label appears showing "To French", "To English", etc.
+Switch between templates from the system tray menu, or assign a dedicated hotkey (e.g., `"cycle_template": "Ctrl+Shift+R"`) to cycle through them in real-time. Similarly, switch translation targets from the tray or via a toggle hotkey.
 
 ---
 
@@ -204,7 +215,7 @@ go test ./...
 
 1. GhostType runs in the background and watches for hotkey presses.
 2. It works globally — hotkeys fire regardless of which window is focused.
-3. Choose your active mode: **correct**, **translate**, or **rewrite** (via `active_mode` in config, or system tray in a future update).
+3. Choose your active mode: **correct**, **translate**, or **rewrite** from the system tray icon (or via `active_mode` in config).
 4. When you press **Ctrl+G**, GhostType detects any selected text. If you have a selection, only that text is processed. If nothing is selected, it selects all text in the active input.
 5. The text is sent to your configured LLM provider with the appropriate prompt for the active mode.
 6. The result replaces the original text. Press **Escape** to cancel, or **Ctrl+Z** to undo.
@@ -216,10 +227,10 @@ go test ./...
 
 | Version | Focus | Highlights |
 |---------|-------|------------|
-| **v0.1** | MVP (current) | Windows desktop app. Correction mode. Anthropic and OpenAI support. |
-| **v0.2** | Translation & Overlay | Translation mode. Ctrl+F7 toggle language with cursor notification. Transparent overlay. Ollama support. Linux. |
-| **v0.3** | Rewrite Mode | Creative rewrite templates. Ctrl+F8 toggle template with cursor notification. Config hot-reload. macOS. |
-| **v0.4** | More Providers | Gemini and xAI support. GUI config panel. Additional languages. |
+| **v0.1** | MVP (current) | Windows desktop app. Correct, translate, and rewrite modes. Anthropic and OpenAI support. System tray with mode/language/template switching. Sound effects. |
+| **v0.2** | Platform & Providers | Ollama local LLM support. Linux support. Gemini and xAI providers. |
+| **v0.3** | Polish | Cursor animation during processing. macOS support. Config hot-reload. |
+| **v0.4** | GUI & Overlay | GUI config panel. Transparent overlay with diff view. |
 | **v0.5** | Power Features | Real-time Grammarly-style correction. Usage stats. Custom plugins. |
 
 ---
@@ -231,7 +242,7 @@ go test ./...
 | GhostType doesn't respond to hotkeys | Verify GhostType is running. Check `ghosttype.log` for registration errors. If hotkeys conflict with other apps, change them in `config.json`. |
 | API errors | Check your API key in `config.json`. Check `ghosttype.log` for details. Verify your provider account has credits. |
 | Slow corrections | Response time depends on provider and network. Try a faster model or switch to a local Ollama instance. |
-| Hotkey conflicts | If F6/F7/F8 conflict with other apps, change the hotkeys in `config.json`. |
+| Hotkey conflicts | If Ctrl+G conflicts with another app, change it via `hotkeys.correct` in `config.json`. |
 
 ---
 
