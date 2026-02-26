@@ -1,11 +1,12 @@
 package cursor
 
-import "time"
-
-// Notifier displays brief floating labels near the cursor position.
-// Used for Ctrl+F7 (language toggle) and Ctrl+F8 (template toggle) notifications.
-type Notifier interface {
-	// Show displays a brief floating label near the cursor with the given text.
-	// The label auto-dismisses after the given duration.
-	Show(text string, duration time.Duration) error
+// Indicator displays a small ghost icon near the mouse cursor to provide
+// visual feedback during LLM processing. The icon pulses while working,
+// then briefly shows a success or error state before fading out.
+type Indicator interface {
+	Show()    // start pulsing working indicator near cursor
+	Success() // swap to success state, auto-hide after 1s
+	Error()   // swap to error state, auto-hide after 2s
+	Hide()    // immediately hide (for cancel)
+	Close()   // destroy window, free resources
 }

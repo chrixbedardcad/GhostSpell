@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/chrixbedardcad/GhostType/assets"
 	"github.com/chrixbedardcad/GhostType/clipboard"
 	"github.com/chrixbedardcad/GhostType/config"
 	"github.com/chrixbedardcad/GhostType/hotkey"
@@ -22,10 +22,6 @@ import (
 	"github.com/chrixbedardcad/GhostType/sound"
 	"github.com/chrixbedardcad/GhostType/tray"
 )
-
-//go:embed GhostType_icon_512.png
-var appIconPNG []byte
-
 
 // captureText detects whether the user has an active text selection. It clears
 // the clipboard, copies, and checks. If text was copied the user had a selection.
@@ -225,7 +221,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 	var stopTrayFn func()
 
 	trayCfg := tray.Config{
-		IconPNG: appIconPNG,
+		IconPNG: assets.AppIcon512,
 		OnModeChange: func(modeName string) {
 			setActiveMode(modeName)
 		},
