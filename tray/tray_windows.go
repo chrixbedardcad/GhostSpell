@@ -4,6 +4,7 @@ package tray
 
 import (
 	"fmt"
+	"log/slog"
 	"runtime"
 	"sync"
 	"syscall"
@@ -70,14 +71,24 @@ type wndClassExW struct {
 	iconSm     uintptr
 }
 
+// notifyIconData matches the full Win32 NOTIFYICONDATAW (V3, Vista+).
+// cbSize must equal unsafe.Sizeof of this struct for Shell_NotifyIconW to accept it.
 type notifyIconData struct {
-	size            uint32
-	hwnd            uintptr
-	id              uint32
-	flags           uint32
-	callbackMessage uint32
-	icon            uintptr
-	tip             [128]uint16
+	size             uint32
+	hwnd             uintptr
+	id               uint32
+	flags            uint32
+	callbackMessage  uint32
+	icon             uintptr
+	tip              [128]uint16
+	state            uint32
+	stateMask        uint32
+	info             [256]uint16
+	versionOrTimeout uint32
+	infoTitle        [64]uint16
+	infoFlags        uint32
+	guidItem         [16]byte
+	balloonIcon      uintptr
 }
 
 type point struct {
@@ -206,20 +217,30 @@ func (ts *trayState) run() {
 		iconSm:    hIcon,
 		className: className,
 	}
-	procRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
+	atom, _, err := procRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
+	if atom == 0 {
+		slog.Error("RegisterClassExW failed", "error", err)
+		return
+	}
 
 	// Create message-only window.
-	ts.hwnd, _, _ = procCreateWindowExW.Call(
+	ts.hwnd, _, err = procCreateWindowExW.Call(
 		0,
 		uintptr(unsafe.Pointer(className)),
 		uintptr(unsafe.Pointer(utf16Ptr("GhostType"))),
 		0, 0, 0, 0, 0,
 		hwndMessage, 0, hInstance, 0,
 	)
+	if ts.hwnd == 0 {
+		slog.Error("CreateWindowExW failed", "error", err)
+		return
+	}
 
 	// Add tray icon.
+	nidSize := unsafe.Sizeof(notifyIconData{})
+	slog.Debug("NOTIFYICONDATAW size", "bytes", nidSize)
 	ts.nid = notifyIconData{
-		size:            uint32(unsafe.Sizeof(notifyIconData{})),
+		size:            uint32(nidSize),
 		hwnd:            ts.hwnd,
 		id:              1,
 		flags:           nifMessage | nifIcon | nifTip,
@@ -227,7 +248,12 @@ func (ts *trayState) run() {
 		icon:            hIcon,
 	}
 	ts.setTooltip()
-	procShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&ts.nid)))
+	ret, _, err := procShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&ts.nid)))
+	if ret == 0 {
+		slog.Error("Shell_NotifyIconW(NIM_ADD) failed", "error", err, "nid_size", nidSize, "hwnd", ts.hwnd, "icon", hIcon)
+		return
+	}
+	slog.Info("System tray icon added")
 
 	// Message loop.
 	var m msg
