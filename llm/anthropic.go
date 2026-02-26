@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -93,6 +94,8 @@ func (c *AnthropicClient) Send(ctx context.Context, req Request) (*Response, err
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
+	slog.Debug("anthropic: sending request", "model", c.model, "endpoint", c.endpoint, "body_len", len(jsonBody))
+
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -108,12 +111,15 @@ func (c *AnthropicClient) Send(ctx context.Context, req Request) (*Response, err
 	}
 	defer resp.Body.Close()
 
+	slog.Debug("anthropic: response received", "status", resp.StatusCode)
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		slog.Debug("anthropic: HTTP error", "status", resp.StatusCode, "body", string(respBody))
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 

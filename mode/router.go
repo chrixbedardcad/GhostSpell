@@ -3,6 +3,7 @@ package mode
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/chrixbedardcad/GhostType/config"
@@ -76,14 +77,23 @@ func (r *Router) Process(ctx context.Context, mode Mode, text string) (string, e
 		return "", fmt.Errorf("unknown mode: %d", mode)
 	}
 
+	truncatedPrompt := prompt
+	if len(truncatedPrompt) > 80 {
+		truncatedPrompt = truncatedPrompt[:80] + "..."
+	}
+	slog.Debug("processing text", "mode", mode.String(), "prompt", truncatedPrompt, "input_len", len(text))
+
 	resp, err := r.client.Send(ctx, llm.Request{
 		Prompt:    prompt,
 		Text:      text,
 		MaxTokens: r.cfg.MaxTokens,
 	})
 	if err != nil {
+		slog.Debug("LLM request failed", "mode", mode.String(), "input_len", len(text), "error", err)
 		return "", fmt.Errorf("LLM request failed: %w", err)
 	}
+
+	slog.Debug("LLM response received", "provider", resp.Provider, "model", resp.Model, "response_len", len(resp.Text))
 
 	return strings.TrimSpace(resp.Text), nil
 }
