@@ -149,6 +149,8 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
+	slog.Debug("openai: raw response body", "body", string(respBody))
+
 	var apiResp openaiResponse
 	if err := json.Unmarshal(respBody, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
@@ -162,8 +164,11 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("empty response from API")
 	}
 
+	text := apiResp.Choices[0].Message.Content
+	slog.Debug("openai: parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
+
 	return &Response{
-		Text:     apiResp.Choices[0].Message.Content,
+		Text:     text,
 		Provider: "openai",
 		Model:    c.model,
 	}, nil
