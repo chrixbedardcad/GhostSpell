@@ -27,11 +27,10 @@
   "default_translate_target": "en",
   "hotkeys": {
     "correct": "Ctrl+G",
-    "translate": "Ctrl+J",
-    "toggle_language": "Ctrl+F8",
-    "rewrite": "F9",
-    "cycle_template": "Ctrl+F9",
-    "cancel": "Escape"
+    "translate": "",
+    "toggle_language": "",
+    "rewrite": "",
+    "cycle_template": ""
   },
   "prompts": {
     "correct": "Detect the language of the following text ({languages}). Fix all spelling and grammar errors while preserving the original meaning and language. Return ONLY the corrected text with no explanation.",
