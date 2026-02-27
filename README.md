@@ -14,8 +14,8 @@ Type in French, hit **Ctrl+G**, get it corrected. Switch to English, hit **Ctrl+
 
 ## Download
 
-[![GitHub Release](https://img.shields.io/github/v/release/chrixbedardcad/GhostType?style=for-the-badge&logo=github)](https://github.com/chrixbedardcad/GhostType/releases/latest)
-[![CI](https://img.shields.io/github/actions/workflow/status/chrixbedardcad/GhostType/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml)
+[![CI](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml)
+[![Release](https://github.com/chrixbedardcad/GhostType/actions/workflows/release.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/releases/latest)
 
 | Platform | Download |
 |----------|----------|
