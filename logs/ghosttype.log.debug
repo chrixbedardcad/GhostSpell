@@ -1,0 +1,46 @@
+time=2026-02-27T00:24:30.763-05:00 level=INFO msg="GhostType starting" version=0.1.25 provider="" model=""
+time=2026-02-27T00:24:30.770-05:00 level=INFO msg="GhostType ready" version=0.1.25 active_mode=correct hotkey_action=Ctrl+G
+time=2026-02-27T00:24:30.770-05:00 level=DEBUG msg="Hotkey registered" name=action key=Ctrl+G id=1 mod=0x2 vk=0x47
+time=2026-02-27T00:24:30.770-05:00 level=DEBUG msg="Hotkey registered" name=translate key=Ctrl+J id=2 mod=0x2 vk=0x4A
+time=2026-02-27T00:24:30.770-05:00 level=DEBUG msg="Hotkey registered" name=toggle_language key=Ctrl+F8 id=3 mod=0x2 vk=0x77
+time=2026-02-27T00:24:30.770-05:00 level=DEBUG msg="Hotkey registered" name=rewrite key=F9 id=4 mod=0x0 vk=0x78
+time=2026-02-27T00:24:30.770-05:00 level=DEBUG msg="Hotkey registered" name=cycle_template key=Ctrl+F9 id=5 mod=0x2 vk=0x78
+time=2026-02-27T00:24:30.771-05:00 level=DEBUG msg="Entering message loop" registered_hotkeys=5 threadID=6024
+time=2026-02-27T00:24:30.777-05:00 level=DEBUG msg="NOTIFYICONDATAW size" bytes=976
+time=2026-02-27T00:24:30.784-05:00 level=INFO msg="System tray icon added"
+time=2026-02-27T00:27:34.534-05:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-02-27T00:27:34.534-05:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-02-27T00:27:34.534-05:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-02-27T00:27:34.534-05:00 level=INFO msg="Correction triggered"
+time=2026-02-27T00:27:34.699-05:00 level=DEBUG msg="No selection detected, falling back to select-all" mode=Correction
+time=2026-02-27T00:27:34.874-05:00 level=INFO msg="Captured text" mode=Correction len=19 selection=false text="do oyu know my name"
+time=2026-02-27T00:27:34.874-05:00 level=DEBUG msg="processing text" mode=correct llm=claude prompt="Detect the language of the following text (English or French). Fix all spelling ..." input_len=19
+time=2026-02-27T00:27:34.874-05:00 level=DEBUG msg="anthropic: sending request" model=claude-sonnet-4-5-20250929 endpoint=https://api.anthropic.com/v1/messages body_len=322
+time=2026-02-27T00:27:36.038-05:00 level=DEBUG msg="anthropic: response received" status=200
+time=2026-02-27T00:27:36.038-05:00 level=DEBUG msg="LLM response received" provider=anthropic model=claude-sonnet-4-5-20250929 llm=claude response_len=20
+time=2026-02-27T00:27:36.165-05:00 level=INFO msg="Correction complete" result="Do you know my name?"
+time=2026-02-27T00:27:47.422-05:00 level=INFO msg="Active mode changed" mode=rewrite
+time=2026-02-27T00:27:51.158-05:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-02-27T00:27:51.158-05:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-02-27T00:27:51.158-05:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-02-27T00:27:51.158-05:00 level=INFO msg="Rewrite triggered"
+time=2026-02-27T00:27:51.322-05:00 level=DEBUG msg="No selection detected, falling back to select-all" mode=Rewrite
+time=2026-02-27T00:27:51.496-05:00 level=INFO msg="Captured text" mode=Rewrite len=20 selection=false text="Do you know my name?"
+time=2026-02-27T00:27:51.496-05:00 level=DEBUG msg="processing text" mode=rewrite llm=gpt prompt="Rewrite this as a funny, witty reply. Keep it short and punchy. Return ONLY the ..." input_len=20
+time=2026-02-27T00:27:51.496-05:00 level=DEBUG msg="openai: sending request" model=gpt-5-nano endpoint=https://api.openai.com/v1/chat/completions body_len=200
+time=2026-02-27T00:27:52.102-05:00 level=DEBUG msg="openai: response received" status=400
+time=2026-02-27T00:27:52.102-05:00 level=DEBUG msg="openai: HTTP error" status=400 body="{\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
+time=2026-02-27T00:27:52.102-05:00 level=DEBUG msg="LLM request failed" mode=rewrite llm=gpt input_len=20 error="API returned status 400: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
+time=2026-02-27T00:27:52.102-05:00 level=ERROR msg="LLM processing failed" mode=Rewrite error="LLM request failed: API returned status 400: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
+time=2026-02-27T00:27:55.470-05:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-02-27T00:27:55.470-05:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-02-27T00:27:55.470-05:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-02-27T00:27:55.470-05:00 level=INFO msg="Rewrite triggered"
+time=2026-02-27T00:27:55.634-05:00 level=INFO msg="Selection detected" mode=Rewrite len=20
+time=2026-02-27T00:27:55.634-05:00 level=INFO msg="Captured text" mode=Rewrite len=20 selection=true text="Do you know my name?"
+time=2026-02-27T00:27:55.634-05:00 level=DEBUG msg="processing text" mode=rewrite llm=gpt prompt="Rewrite this as a funny, witty reply. Keep it short and punchy. Return ONLY the ..." input_len=20
+time=2026-02-27T00:27:55.634-05:00 level=DEBUG msg="openai: sending request" model=gpt-5-nano endpoint=https://api.openai.com/v1/chat/completions body_len=200
+time=2026-02-27T00:27:56.287-05:00 level=DEBUG msg="openai: response received" status=400
+time=2026-02-27T00:27:56.287-05:00 level=DEBUG msg="openai: HTTP error" status=400 body="{\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
+time=2026-02-27T00:27:56.287-05:00 level=DEBUG msg="LLM request failed" mode=rewrite llm=gpt input_len=20 error="API returned status 400: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
+time=2026-02-27T00:27:56.287-05:00 level=ERROR msg="LLM processing failed" mode=Rewrite error="LLM request failed: API returned status 400: {\n  \"error\": {\n    \"message\": \"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"max_tokens\",\n    \"code\": \"unsupported_parameter\"\n  }\n}"
