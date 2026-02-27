@@ -1,0 +1,7 @@
+time=2026-02-27T00:38:14.623-05:00 level=INFO msg="GhostType starting" version=0.1.28 default_llm=claude llm_providers=3
+time=2026-02-27T00:38:14.629-05:00 level=INFO msg="GhostType ready" version=0.1.28 active_mode=correct hotkey_action=Ctrl+G
+time=2026-02-27T00:38:14.643-05:00 level=INFO msg="System tray icon added"
+time=2026-02-27T00:38:22.812-05:00 level=INFO msg="Active mode changed" mode=rewrite
+time=2026-02-27T00:38:27.437-05:00 level=INFO msg="Rewrite triggered"
+time=2026-02-27T00:38:27.777-05:00 level=INFO msg="Captured text" mode=Rewrite len=20 selection=false text="Do you know my name?"
+time=2026-02-27T00:38:30.430-05:00 level=INFO msg="Rewrite complete" result=""
