@@ -45,6 +45,9 @@ func NewOpenAIClient(cfg *config.Config) *OpenAIClient {
 }
 
 // newOpenAIFromDef creates a new OpenAI client from a provider definition.
+// Default max_completion_tokens is 2048 (higher than other providers) because
+// OpenAI reasoning models (gpt-5-nano, o1, etc.) consume tokens for internal
+// chain-of-thought in addition to the visible output.
 func newOpenAIFromDef(def config.LLMProviderDef) *OpenAIClient {
 	endpoint := def.APIEndpoint
 	if endpoint == "" {
@@ -52,7 +55,7 @@ func newOpenAIFromDef(def config.LLMProviderDef) *OpenAIClient {
 	}
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
-		maxTokens = 256
+		maxTokens = 2048
 	}
 	timeoutMs := def.TimeoutMs
 	if timeoutMs == 0 {
@@ -149,7 +152,7 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	slog.Info("openai: raw response body", "body", string(respBody))
+	slog.Debug("openai: raw response body", "body", string(respBody))
 
 	var apiResp openaiResponse
 	if err := json.Unmarshal(respBody, &apiResp); err != nil {
@@ -165,7 +168,7 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 
 	text := apiResp.Choices[0].Message.Content
-	slog.Info("openai: parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
+	slog.Debug("openai: parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
 
 	return &Response{
 		Text:     text,
