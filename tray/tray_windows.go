@@ -60,6 +60,8 @@ const (
 	idTemplBase     = 2200 // + template index
 	idCancel        = 2098
 	idSoundToggle   = 2300
+	idSettings      = 2401
+	idWizard        = 2402
 )
 
 // Win32 structs.
@@ -184,6 +186,8 @@ type Config struct {
 	OnTemplSelect  func(idx int)
 	OnSoundToggle  func(enabled bool)
 	OnCancel       func()
+	OnSettings     func()
+	OnWizard       func()
 	OnExit         func()
 
 	// State readers — called to build the menu each time.
@@ -431,6 +435,11 @@ func (ts *trayState) showMenu() {
 	}
 	procAppendMenuW.Call(hMenu, cancelFlags, idCancel, uintptr(unsafe.Pointer(utf16Ptr("Cancel LLM"))))
 
+	// Settings & Wizard.
+	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
+	procAppendMenuW.Call(hMenu, mfString, idSettings, uintptr(unsafe.Pointer(utf16Ptr("Settings..."))))
+	procAppendMenuW.Call(hMenu, mfString, idWizard, uintptr(unsafe.Pointer(utf16Ptr("Setup Wizard..."))))
+
 	// Exit.
 	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
 	procAppendMenuW.Call(hMenu, mfString, idExit, uintptr(unsafe.Pointer(utf16Ptr("Exit"))))
@@ -487,6 +496,16 @@ func (ts *trayState) handleMenuCommand(id int) {
 		if ts.cfg.OnSoundToggle != nil && ts.cfg.GetSoundEnabled != nil {
 			newState := !ts.cfg.GetSoundEnabled()
 			ts.cfg.OnSoundToggle(newState)
+		}
+
+	case id == idSettings:
+		if ts.cfg.OnSettings != nil {
+			ts.cfg.OnSettings()
+		}
+
+	case id == idWizard:
+		if ts.cfg.OnWizard != nil {
+			ts.cfg.OnWizard()
 		}
 
 	case id == idExit:

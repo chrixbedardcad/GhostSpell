@@ -16,6 +16,7 @@ import (
 	"github.com/chrixbedardcad/GhostType/assets"
 	"github.com/chrixbedardcad/GhostType/clipboard"
 	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostType/gui"
 	"github.com/chrixbedardcad/GhostType/hotkey"
 	"github.com/chrixbedardcad/GhostType/keyboard"
 	"github.com/chrixbedardcad/GhostType/mode"
@@ -249,6 +250,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 			if enabled {
 				sound.PlayToggle()
 			}
+		},
+		OnSettings: func() {
+			gui.ShowSettings(cfg, configPath)
+		},
+		OnWizard: func() {
+			gui.ShowSettings(cfg, configPath)
 		},
 		OnCancel: func() {
 			mu.Lock()

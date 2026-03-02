@@ -168,10 +168,36 @@ func Load(path string) (*Config, error) {
 
 	applyDefaults(&cfg)
 
-	if err := validate(&cfg); err != nil {
+	if err := Validate(&cfg); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
+	return &cfg, nil
+}
+
+// LoadRaw reads a config from the given JSON file path without validation.
+// It applies defaults but skips Validate(), allowing the GUI wizard to run
+// before an API key is configured.
+func LoadRaw(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			cfg := DefaultConfig()
+			if writeErr := WriteDefault(path, &cfg); writeErr != nil {
+				return nil, fmt.Errorf("failed to create default config: %w", writeErr)
+			}
+			applyDefaults(&cfg)
+			return &cfg, nil
+		}
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config JSON: %w", err)
+	}
+
+	applyDefaults(&cfg)
 	return &cfg, nil
 }
 
@@ -281,8 +307,8 @@ func applyDefaults(cfg *Config) {
 	}
 }
 
-// validate checks that the config has all required fields.
-func validate(cfg *Config) error {
+// Validate checks that the config has all required fields.
+func Validate(cfg *Config) error {
 	validProviders := map[string]bool{
 		"anthropic": true,
 		"openai":    true,

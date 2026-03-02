@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostType/gui"
 	"github.com/chrixbedardcad/GhostType/llm"
 	"github.com/chrixbedardcad/GhostType/mode"
 	"github.com/chrixbedardcad/GhostType/sound"
@@ -52,13 +53,37 @@ func main() {
 		configPath = absPath
 	}
 
-	// Load configuration.
+	// Load configuration (without validation so the wizard can run first).
 	fmt.Printf("Loading config from: %s\n", configPath)
-	cfg, err := config.Load(configPath)
+	cfg, err := config.LoadRaw(configPath)
 	if err != nil {
 		logStartupError(filepath.Dir(configPath), "Failed to load config", err)
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		fmt.Println("A default config.json has been created. Please add your API key and restart.")
+		os.Exit(1)
+	}
+
+	// First-launch wizard: show GUI if no provider is configured.
+	if gui.NeedsSetup(cfg) {
+		fmt.Println("No API key configured. Starting setup wizard...")
+		cfg = gui.ShowWizard(cfg, configPath)
+		if gui.NeedsSetup(cfg) {
+			fmt.Println("Setup cancelled.")
+			os.Exit(1)
+		}
+		// Re-load from disk after wizard saved.
+		cfg, err = config.LoadRaw(configPath)
+		if err != nil {
+			logStartupError(filepath.Dir(configPath), "Failed to reload config after wizard", err)
+			fmt.Fprintf(os.Stderr, "Error reloading config: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Validate the config now that we know it has a provider.
+	if err := config.Validate(cfg); err != nil {
+		logStartupError(filepath.Dir(configPath), "Config validation failed", err)
+		fmt.Fprintf(os.Stderr, "Error: config validation failed: %v\n", err)
 		os.Exit(1)
 	}
 
