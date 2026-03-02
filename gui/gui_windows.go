@@ -46,7 +46,7 @@ func guiLog(msg string, args ...any) {
 // Returns the (potentially updated) config. Used by main.go on first launch.
 func ShowSettingsBlocking(cfg *config.Config, configPath string) *config.Config {
 	guiLog("[GUI] ShowSettingsBlocking called, configPath=%s", configPath)
-	updated := showWindow(cfg, configPath)
+	updated := showWindow(cfg, configPath, nil)
 	if updated != nil {
 		return updated
 	}
@@ -54,7 +54,8 @@ func ShowSettingsBlocking(cfg *config.Config, configPath string) *config.Config 
 }
 
 // ShowSettings opens the settings window. Non-blocking (for tray).
-func ShowSettings(cfg *config.Config, configPath string) {
+// onSaved is called after each save so the caller can reload the live config.
+func ShowSettings(cfg *config.Config, configPath string, onSaved func()) {
 	guiLog("[GUI] ShowSettings (async) called")
 	settingsOpenMu.Lock()
 	if settingsOpen {
@@ -76,13 +77,13 @@ func ShowSettings(cfg *config.Config, configPath string) {
 			settingsOpenMu.Unlock()
 			guiLog("[GUI] ShowSettings goroutine exited")
 		}()
-		showWindow(cfg, configPath)
+		showWindow(cfg, configPath, onSaved)
 	}()
 }
 
 // showWindow creates the WebView2 window, binds Go functions, and blocks until closed.
 // Returns the updated config if any saves occurred, or nil if no changes were made.
-func showWindow(cfg *config.Config, configPath string) *config.Config {
+func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.Config {
 	guiLog("[GUI] showWindow entered")
 
 	// WebView2 requires the window and message loop on the same OS thread.
@@ -100,6 +101,23 @@ func showWindow(cfg *config.Config, configPath string) *config.Config {
 	}
 
 	var saved bool
+
+	// clearLegacyAndSave writes cfgCopy to disk, clearing legacy flat fields
+	// so only llm_providers is authoritative. Calls onSaved if set.
+	clearLegacyAndSave := func() error {
+		cfgCopy.LLMProvider = ""
+		cfgCopy.APIKey = ""
+		cfgCopy.Model = ""
+		cfgCopy.APIEndpoint = ""
+		if err := config.WriteDefault(configPath, &cfgCopy); err != nil {
+			return err
+		}
+		saved = true
+		if onSaved != nil {
+			onSaved()
+		}
+		return nil
+	}
 
 	guiLog("[GUI] Creating WebView2 window...")
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
@@ -168,11 +186,10 @@ func showWindow(cfg *config.Config, configPath string) *config.Config {
 			cfgCopy.DefaultLLM = label
 		}
 
-		if err := config.WriteDefault(configPath, &cfgCopy); err != nil {
+		if err := clearLegacyAndSave(); err != nil {
 			return fmt.Sprintf("error: %v", err)
 		}
 
-		saved = true
 		guiLog("[GUI] Provider saved: label=%s provider=%s", label, provider)
 		return "ok"
 	})
@@ -188,11 +205,10 @@ func showWindow(cfg *config.Config, configPath string) *config.Config {
 			}
 		}
 
-		if err := config.WriteDefault(configPath, &cfgCopy); err != nil {
+		if err := clearLegacyAndSave(); err != nil {
 			return fmt.Sprintf("error: %v", err)
 		}
 
-		saved = true
 		return "ok"
 	})
 
@@ -203,11 +219,10 @@ func showWindow(cfg *config.Config, configPath string) *config.Config {
 		}
 		cfgCopy.DefaultLLM = label
 
-		if err := config.WriteDefault(configPath, &cfgCopy); err != nil {
+		if err := clearLegacyAndSave(); err != nil {
 			return fmt.Sprintf("error: %v", err)
 		}
 
-		saved = true
 		return "ok"
 	})
 

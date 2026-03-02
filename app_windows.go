@@ -253,7 +253,18 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 			}
 		},
 		OnSettings: func() {
-			gui.ShowSettings(cfg, configPath)
+			gui.ShowSettings(cfg, configPath, func() {
+				// Reload config from disk after settings save.
+				newCfg, err := config.LoadRaw(configPath)
+				if err != nil {
+					slog.Error("Failed to reload config after settings save", "error", err)
+					return
+				}
+				mu.Lock()
+				*cfg = *newCfg
+				mu.Unlock()
+				slog.Info("Live config reloaded after settings save")
+			})
 		},
 		OnModelSelect: func(label string) {
 			mu.Lock()

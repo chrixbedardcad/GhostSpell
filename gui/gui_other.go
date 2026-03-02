@@ -11,4 +11,4 @@ func ShowSettingsBlocking(cfg *config.Config, configPath string) *config.Config 
 }
 
 // ShowSettings is a no-op on non-Windows platforms.
-func ShowSettings(cfg *config.Config, configPath string) {}
+func ShowSettings(cfg *config.Config, configPath string, onSaved func()) {}

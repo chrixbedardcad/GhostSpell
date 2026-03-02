@@ -399,12 +399,12 @@ func (ts *trayState) showMenu() {
 		uintptr(idModeCorrect), uintptr(idModeRewrite),
 		uintptr(activeID), 0) // 0 = MF_BYCOMMAND
 
-	// Models section.
+	// Models section (includes Settings entry).
+	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
+	procAppendMenuW.Call(hMenu, mfString|mfGrayed, 0, uintptr(unsafe.Pointer(utf16Ptr("Models:"))))
 	if ts.cfg.GetModelLabels != nil {
 		models := ts.cfg.GetModelLabels()
 		if len(models) > 0 {
-			procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
-			procAppendMenuW.Call(hMenu, mfString|mfGrayed, 0, uintptr(unsafe.Pointer(utf16Ptr("Models:"))))
 			for i, ml := range models {
 				displayName := ml.Label
 				if displayName == "" {
@@ -424,8 +424,13 @@ func (ts *trayState) showMenu() {
 			procCheckMenuRadioItem.Call(hMenu,
 				uintptr(idModelBase), uintptr(idModelBase+len(models)-1),
 				uintptr(idModelBase+defaultIdx), 0)
+		} else {
+			procAppendMenuW.Call(hMenu, mfString|mfGrayed, 0, uintptr(unsafe.Pointer(utf16Ptr("  Add a model in Settings..."))))
 		}
+	} else {
+		procAppendMenuW.Call(hMenu, mfString|mfGrayed, 0, uintptr(unsafe.Pointer(utf16Ptr("  Add a model in Settings..."))))
 	}
+	procAppendMenuW.Call(hMenu, mfString, idSettings, uintptr(unsafe.Pointer(utf16Ptr("  Settings..."))))
 
 	// Language/target section.
 	if len(ts.cfg.TargetLabels) > 0 {
@@ -471,10 +476,6 @@ func (ts *trayState) showMenu() {
 		cancelFlags = uintptr(mfString)
 	}
 	procAppendMenuW.Call(hMenu, cancelFlags, idCancel, uintptr(unsafe.Pointer(utf16Ptr("Cancel LLM"))))
-
-	// Settings.
-	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
-	procAppendMenuW.Call(hMenu, mfString, idSettings, uintptr(unsafe.Pointer(utf16Ptr("Settings..."))))
 
 	// Exit.
 	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
