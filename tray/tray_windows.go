@@ -406,7 +406,11 @@ func (ts *trayState) showMenu() {
 			procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
 			procAppendMenuW.Call(hMenu, mfString|mfGrayed, 0, uintptr(unsafe.Pointer(utf16Ptr("Models:"))))
 			for i, ml := range models {
-				label := fmt.Sprintf("  %s  (%s \xC2\xB7 %s)", ml.Label, ml.Provider, ml.Model)
+				displayName := ml.Label
+				if displayName == "" {
+					displayName = ml.Model
+				}
+				label := "  " + displayName
 				procAppendMenuW.Call(hMenu, mfString, uintptr(idModelBase+i), uintptr(unsafe.Pointer(utf16Ptr(label))))
 			}
 			// Radio-check the default model.

@@ -274,13 +274,34 @@ function editProvider(label) {
   clearStatus('form-status');
 }
 
-async function deleteProvider(label) {
-  if (!confirm('Delete provider "' + label + '"?')) return;
+function deleteProvider(label) {
+  // Two-click delete: first click swaps button to "Confirm?", second click deletes.
+  const card = document.getElementById('card-' + label);
+  if (!card) return;
+  const btn = card.querySelector('.btn-danger');
+  if (!btn) return;
+
+  if (btn.dataset.confirming === 'true') {
+    // Second click — do the delete.
+    doDelete(label);
+  } else {
+    // First click — show confirmation.
+    btn.dataset.confirming = 'true';
+    btn.textContent = 'Confirm?';
+    setTimeout(() => {
+      // Reset after 3 seconds if not confirmed.
+      if (btn.dataset.confirming === 'true') {
+        btn.dataset.confirming = '';
+        btn.textContent = 'Delete';
+      }
+    }, 3000);
+  }
+}
+
+async function doDelete(label) {
   const result = await goCall('deleteProvider', label);
   if (result && result.startsWith('ok')) {
     renderProviderList();
-  } else {
-    alert(result || 'Delete failed');
   }
 }
 
