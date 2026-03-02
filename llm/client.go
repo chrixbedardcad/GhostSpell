@@ -37,6 +37,24 @@ func NewClient(cfg *config.Config) (Client, error) {
 		return NewAnthropicClient(cfg), nil
 	case "openai":
 		return NewOpenAIClient(cfg), nil
+	case "gemini":
+		return NewClientFromDef(config.LLMProviderDef{
+			Provider:    "gemini",
+			APIKey:      cfg.APIKey,
+			Model:       cfg.Model,
+			APIEndpoint: cfg.APIEndpoint,
+			MaxTokens:   cfg.MaxTokens,
+			TimeoutMs:   cfg.TimeoutMs,
+		})
+	case "xai":
+		return NewClientFromDef(config.LLMProviderDef{
+			Provider:    "xai",
+			APIKey:      cfg.APIKey,
+			Model:       cfg.Model,
+			APIEndpoint: cfg.APIEndpoint,
+			MaxTokens:   cfg.MaxTokens,
+			TimeoutMs:   cfg.TimeoutMs,
+		})
 	case "ollama":
 		return NewOllamaClient(cfg), nil
 	default:
@@ -51,6 +69,10 @@ func NewClientFromDef(def config.LLMProviderDef) (Client, error) {
 		return newAnthropicFromDef(def), nil
 	case "openai":
 		return newOpenAIFromDef(def), nil
+	case "gemini":
+		return newGeminiFromDef(def), nil
+	case "xai":
+		return newXAIFromDef(def), nil
 	case "ollama":
 		return newOllamaFromDef(def), nil
 	default:

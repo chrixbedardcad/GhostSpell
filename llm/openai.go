@@ -15,14 +15,17 @@ import (
 
 const defaultOpenAIEndpoint = "https://api.openai.com/v1/chat/completions"
 
-// OpenAIClient implements the Client interface for OpenAI.
+// OpenAIClient implements the Client interface for OpenAI and OpenAI-compatible
+// providers (Gemini, xAI). The providerName field controls the name reported
+// in Provider() and Response.Provider.
 type OpenAIClient struct {
-	apiKey     string
-	model      string
-	endpoint   string
-	maxTokens  int
-	timeoutMs  int
-	httpClient *http.Client
+	apiKey       string
+	model        string
+	endpoint     string
+	maxTokens    int
+	timeoutMs    int
+	providerName string
+	httpClient   *http.Client
 }
 
 // NewOpenAIClient creates a new OpenAI client from config.
@@ -33,12 +36,13 @@ func NewOpenAIClient(cfg *config.Config) *OpenAIClient {
 	}
 
 	return &OpenAIClient{
-		apiKey:     cfg.APIKey,
-		model:      cfg.Model,
-		endpoint:   endpoint,
-		maxTokens:  cfg.MaxTokens,
-		timeoutMs:  cfg.TimeoutMs,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		apiKey:       cfg.APIKey,
+		model:        cfg.Model,
+		endpoint:     endpoint,
+		maxTokens:    cfg.MaxTokens,
+		timeoutMs:    cfg.TimeoutMs,
+		providerName: "openai",
+		httpClient:   &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
@@ -61,17 +65,18 @@ func newOpenAIFromDef(def config.LLMProviderDef) *OpenAIClient {
 	}
 
 	return &OpenAIClient{
-		apiKey:     def.APIKey,
-		model:      def.Model,
-		endpoint:   endpoint,
-		maxTokens:  maxTokens,
-		timeoutMs:  timeoutMs,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		apiKey:       def.APIKey,
+		model:        def.Model,
+		endpoint:     endpoint,
+		maxTokens:    maxTokens,
+		timeoutMs:    timeoutMs,
+		providerName: "openai",
+		httpClient:   &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
 func (c *OpenAIClient) Provider() string {
-	return "openai"
+	return c.providerName
 }
 
 // openaiRequest is the request body for the OpenAI Chat Completions API.
@@ -120,7 +125,7 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	slog.Debug("openai: sending request", "model", c.model, "endpoint", c.endpoint, "body_len", len(jsonBody))
+	slog.Debug(c.providerName+": sending request", "model", c.model, "endpoint", c.endpoint, "body_len", len(jsonBody))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -136,7 +141,7 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 	defer resp.Body.Close()
 
-	slog.Debug("openai: response received", "status", resp.StatusCode)
+	slog.Debug(c.providerName+": response received", "status", resp.StatusCode)
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -144,11 +149,11 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		slog.Debug("openai: HTTP error", "status", resp.StatusCode, "body", string(respBody))
+		slog.Debug(c.providerName+": HTTP error", "status", resp.StatusCode, "body", string(respBody))
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	slog.Debug("openai: raw response body", "body", string(respBody))
+	slog.Debug(c.providerName+": raw response body", "body", string(respBody))
 
 	var apiResp openaiResponse
 	if err := json.Unmarshal(respBody, &apiResp); err != nil {
@@ -164,11 +169,11 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 
 	text := apiResp.Choices[0].Message.Content
-	slog.Debug("openai: parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
+	slog.Debug(c.providerName+": parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
 
 	return &Response{
 		Text:     text,
-		Provider: "openai",
+		Provider: c.providerName,
 		Model:    c.model,
 	}, nil
 }
