@@ -126,11 +126,6 @@
   .ollama-status-bar.not-installed .ollama-status-dot { background: #f38ba8; }
   .ollama-status-bar.checking .ollama-status-dot { background: #a6adc8; }
 
-  .ollama-recommend-btns {
-    display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;
-  }
-  .ollama-recommend-btns .btn { flex: 1; min-width: 100px; justify-content: center; }
-
   .ollama-spinner {
     display: inline-block; width: 16px; height: 16px;
     border: 2px solid #45475a; border-top-color: #89b4fa;
@@ -593,19 +588,19 @@ function onOllamaRenderDropdown(container, models) {
   sel.addEventListener('change', function() { onOllamaSetFormModel(this.value); });
 }
 
-// State 2: running + no models — show 3 recommended model buttons.
+// State 2: running + no models — prompt user to pull a model.
 function onOllamaRenderRecommend(container) {
   container.innerHTML = `
     <div style="font-size:0.88em;color:#bac2de;margin-bottom:8px">
-      No models installed. Pick one to download:
+      No models installed yet. Open a terminal and pull one:
     </div>
-    <div class="ollama-recommend-btns">
-      <button class="btn btn-primary btn-sm" onclick="onOllamaPullRecommended('mistral')">mistral</button>
-      <button class="btn btn-primary btn-sm" onclick="onOllamaPullRecommended('llama3')">llama3</button>
-      <button class="btn btn-primary btn-sm" onclick="onOllamaPullRecommended('gemma2')">gemma2</button>
+    <div style="font-size:0.85em;margin-bottom:8px">
+      <code style="display:block;padding:6px 10px;background:#313244;border-radius:4px;color:#cdd6f4">ollama pull qwen2.5:1.5b</code>
     </div>
-    <div style="font-size:0.75em;color:#6c7086;margin-top:4px">
-      Browse more at <span style="color:#89b4fa">ollama.com/library</span>
+    <div style="font-size:0.78em;color:#6c7086;line-height:1.4">
+      For text correction, small models work great and download fast.<br>
+      Good choices: <strong>qwen2.5:1.5b</strong> (~1 GB), <strong>gemma2:2b</strong> (~1.6 GB), <strong>phi3:mini</strong> (~2.3 GB).<br>
+      Browse all models at <span style="color:#89b4fa">ollama.com/library</span> &mdash; then click <strong>Refresh</strong>.
     </div>`;
 }
 
@@ -630,27 +625,6 @@ function onOllamaRenderNotInstalled(container) {
         Install Ollama
       </button>
     </div>`;
-}
-
-// Pull a recommended model (State 2 button click).
-async function onOllamaPullRecommended(model) {
-  const btns = document.querySelectorAll('.ollama-recommend-btns .btn');
-  btns.forEach(b => { b.disabled = true; });
-  const statusEl = document.getElementById('ollama-action-status');
-  statusEl.className = 'status info';
-  statusEl.innerHTML = '<span class="ollama-spinner"></span> Downloading ' + esc(model) + '... this may take a few minutes.';
-
-  const result = await goCall('ollamaPullModel', model);
-  if (result && result.startsWith('ok')) {
-    statusEl.className = 'status success';
-    statusEl.textContent = model + ' downloaded successfully!';
-    onOllamaSetFormModel(model);
-    onOllamaRefresh();
-  } else {
-    statusEl.className = 'status error';
-    statusEl.textContent = result || 'Download failed';
-    btns.forEach(b => { b.disabled = false; });
-  }
 }
 
 // Install Ollama (State 4 button click).
