@@ -290,7 +290,13 @@ func applyDefaults(cfg *Config) {
 	// sensible default (e.g. 2048 for OpenAI reasoning models vs 256 for others).
 	for label, def := range cfg.LLMProviders {
 		if def.TimeoutMs == 0 {
-			def.TimeoutMs = cfg.TimeoutMs
+			if def.Provider == "ollama" {
+				// Ollama needs a longer timeout: the first request loads the
+				// model into memory which can take 30-60+ seconds.
+				def.TimeoutMs = 120000
+			} else {
+				def.TimeoutMs = cfg.TimeoutMs
+			}
 		}
 		cfg.LLMProviders[label] = def
 	}

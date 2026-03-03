@@ -74,14 +74,20 @@ func Start(cfg Config) (stop func()) {
 	// Build and set the initial menu.
 	ts.refreshMenu()
 
-	// On macOS, left-click opens the menu. On Windows/Linux, right-click does.
-	// Rebuild the menu before showing to reflect current state.
-	ts.systray.OnClick(func() {
-		ts.refreshMenu()
-	})
-	ts.systray.OnRightClick(func() {
-		ts.refreshMenu()
-	})
+	// On Linux with DBus-based StatusNotifierItem, the desktop environment
+	// automatically shows the tray menu on click. Rebuilding the menu inside
+	// OnClick/OnRightClick emits LayoutUpdated signals that interfere with
+	// the DE's menu display, causing the menu to not appear. Instead, let
+	// the DE handle menu display and only rebuild when state actually changes
+	// (which the individual menu-item click handlers already do).
+	if runtime.GOOS != "linux" {
+		ts.systray.OnClick(func() {
+			ts.refreshMenu()
+		})
+		ts.systray.OnRightClick(func() {
+			ts.refreshMenu()
+		})
+	}
 
 	go func() {
 		runtime.LockOSThread()
