@@ -224,6 +224,9 @@
   </div>
 </div>
 
+<!-- Load the Wails v3 runtime (provides wails.Call, wails.Browser, etc.) -->
+<script type="module" src="/wails/runtime.js"></script>
+
 <script>
 // ---- State ----
 let configData = null;
@@ -658,37 +661,21 @@ async function onOllamaInstall() {
   statusEl.className = 'status info';
   statusEl.textContent = 'Opening download page...';
 
-  const url = 'https://ollama.com/download';
-  let opened = false;
-
-  // Try Go binding first (uses xdg-open / open / start).
-  const result = await goCall('ollamaDownloadInstaller');
-  if (result && String(result).startsWith('ok')) {
-    opened = true;
-  }
-
-  // Fallback: programmatic link click.
-  if (!opened) {
-    try {
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      opened = true;
-    } catch (e) {
-      console.error('Link click fallback failed:', e);
-    }
-  }
-
-  if (opened) {
+  try {
+    // Use Wails runtime browser API (preferred — platform-native).
+    await wails.Browser.OpenURL('https://ollama.com/download');
     statusEl.className = 'status success';
     statusEl.textContent = 'Download page opened! Install Ollama, then click Refresh.';
-  } else {
-    statusEl.className = 'status error';
-    statusEl.textContent = 'Could not open automatically. Visit: ' + url;
+  } catch (e) {
+    // Fallback: Go binding (xdg-open / open / start).
+    const result = await goCall('ollamaDownloadInstaller');
+    if (result && String(result).startsWith('ok')) {
+      statusEl.className = 'status success';
+      statusEl.textContent = 'Download page opened! Install Ollama, then click Refresh.';
+    } else {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Could not open automatically. Visit: https://ollama.com/download';
+    }
   }
   if (btn) btn.disabled = false;
 }
