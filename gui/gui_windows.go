@@ -339,6 +339,20 @@ func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.C
 		return "ok"
 	})
 
+	w.Bind("ollamaDetectHardware", func() string {
+		guiLog("[GUI] JS called: ollamaDetectHardware")
+		cap := detectSystemCapacity()
+		model, reason := ollamaRecommendModel(cap)
+		data, _ := json.Marshal(map[string]interface{}{
+			"ram_gb":            cap.TotalRAMGB,
+			"has_gpu":           cap.HasNVIDIA,
+			"vram_gb":           cap.NVIDIAVRAMGB,
+			"recommended_model": model,
+			"reason":            reason,
+		})
+		return string(data)
+	})
+
 	w.Bind("ollamaDeleteModel", func(model, endpoint string) string {
 		guiLog("[GUI] JS called: ollamaDeleteModel(%s)", model)
 		base := ollamaBaseURL(endpoint)

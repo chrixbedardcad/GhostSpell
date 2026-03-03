@@ -241,6 +241,32 @@ func ollamaDeleteModelAPI(base, model string) error {
 	return nil
 }
 
+// ollamaRecommendModel picks the best Ollama model for the detected hardware.
+// Returns (model, reason).
+func ollamaRecommendModel(cap SystemCapacity) (string, string) {
+	vram := cap.NVIDIAVRAMGB
+	ram := cap.TotalRAMGB
+
+	switch {
+	case vram >= 24:
+		return "qwen2.5:14b", "High quality — fits in your " + formatGB(vram) + " VRAM"
+	case vram >= 8 || ram >= 16:
+		return "mistral:7b", "Best quality/speed balance for your system"
+	case vram >= 4 || ram >= 8:
+		return "llama3.2:3b", "Fast and compact — good for 8 GB systems"
+	default:
+		return "phi3", "Smallest usable model — works on CPU"
+	}
+}
+
+// formatGB formats a float GB value for display.
+func formatGB(gb float64) string {
+	if gb == float64(int(gb)) {
+		return fmt.Sprintf("%d GB", int(gb))
+	}
+	return fmt.Sprintf("%.1f GB", gb)
+}
+
 // formatBytes converts bytes to a human-readable string.
 func formatBytes(b int64) string {
 	const unit = 1024
