@@ -16,6 +16,7 @@ Type in French, hit **Ctrl+G**, get it corrected. Switch to English, hit **Ctrl+
 
 [![CI](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml)
 [![Release](https://github.com/chrixbedardcad/GhostType/actions/workflows/release.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/releases/latest)
+[![Latest Version](https://img.shields.io/github/v/release/chrixbedardcad/GhostType?label=version&color=blue)](https://github.com/chrixbedardcad/GhostType/releases/latest)
 
 | Platform | Download |
 |----------|----------|
@@ -108,9 +109,9 @@ No additional packages to install. On first launch, macOS will prompt you to gra
 
 1. **Run** GhostType and open the Settings GUI.
 2. **Click Ollama** in the provider dropdown — the Ollama panel appears.
-3. If Ollama isn't installed, click **Install** — the GUI downloads and installs it for you.
-4. **Pull a model** (e.g., `mistral`) from the GUI, then click **Activate**.
-5. Press **Ctrl+G** in any application — corrections run locally, no API key needed.
+3. If Ollama isn't installed, click **Install Ollama** — your browser opens the download page. Install it, then click **Refresh**.
+4. Start Ollama (`ollama serve`), then pick a recommended model (mistral, llama3, or gemma2) — it downloads automatically.
+5. **Save** and press **Ctrl+G** in any application — corrections run locally, no API key needed.
 
 ---
 
