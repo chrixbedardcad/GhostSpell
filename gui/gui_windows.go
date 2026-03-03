@@ -302,6 +302,68 @@ func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.C
 		return "ok"
 	})
 
+	// --- Ollama lifecycle bindings ---
+
+	w.Bind("ollamaStatus", func(endpoint string) string {
+		guiLog("[GUI] JS called: ollamaStatus(%s)", endpoint)
+		data, _ := json.Marshal(ollamaGetStatus(endpoint))
+		return string(data)
+	})
+
+	w.Bind("ollamaListModels", func(endpoint string) string {
+		guiLog("[GUI] JS called: ollamaListModels(%s)", endpoint)
+		base := ollamaBaseURL(endpoint)
+		models, err := ollamaFetchModels(base)
+		if err != nil {
+			guiLog("[GUI] ollamaListModels error: %v", err)
+			return "[]"
+		}
+		data, _ := json.Marshal(models)
+		return string(data)
+	})
+
+	w.Bind("ollamaPullModel", func(model, endpoint string) string {
+		guiLog("[GUI] JS called: ollamaPullModel(%s, %s)", model, endpoint)
+		base := ollamaBaseURL(endpoint)
+		ollamaStartPull(base, model)
+		return "ok"
+	})
+
+	w.Bind("ollamaGetPullProgress", func() string {
+		return ollamaGetPullProgress()
+	})
+
+	w.Bind("ollamaCancelPull", func() string {
+		guiLog("[GUI] JS called: ollamaCancelPull")
+		ollamaCancelPull()
+		return "ok"
+	})
+
+	w.Bind("ollamaDeleteModel", func(model, endpoint string) string {
+		guiLog("[GUI] JS called: ollamaDeleteModel(%s)", model)
+		base := ollamaBaseURL(endpoint)
+		if err := ollamaDeleteModelAPI(base, model); err != nil {
+			return fmt.Sprintf("error: %v", err)
+		}
+		return "ok"
+	})
+
+	w.Bind("ollamaStartServeCmd", func() string {
+		guiLog("[GUI] JS called: ollamaStartServeCmd")
+		if err := ollamaStartServe(); err != nil {
+			return fmt.Sprintf("error: %v", err)
+		}
+		return "ok"
+	})
+
+	w.Bind("ollamaDownloadInstaller", func() string {
+		guiLog("[GUI] JS called: ollamaDownloadInstaller")
+		if err := ollamaDownloadInstallerWindows(); err != nil {
+			return fmt.Sprintf("error: %v", err)
+		}
+		return "ok"
+	})
+
 	guiLog("[GUI] All JS functions bound")
 
 	// Load the embedded HTML.

@@ -101,6 +101,67 @@
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 16px;
   }
+
+  /* --- Ollama panel --- */
+  .ollama-panel {
+    background: #1e1e2e; border: 1px solid #45475a; border-radius: 8px;
+    padding: 14px; margin: 12px 0;
+  }
+  .ollama-panel h3 {
+    font-size: 0.95em; font-weight: 600; color: #cdd6f4; margin-bottom: 10px;
+  }
+  .ollama-status-bar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    border-radius: 6px; font-size: 0.85em; margin-bottom: 10px;
+  }
+  .ollama-status-bar.running { background: #1e3a2e; color: #a6e3a1; }
+  .ollama-status-bar.installed { background: #1e2e3a; color: #89b4fa; }
+  .ollama-status-bar.not-installed { background: #3a1e1e; color: #f38ba8; }
+  .ollama-status-bar.checking { background: #2a2a3e; color: #a6adc8; }
+  .ollama-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .ollama-status-bar.running .ollama-status-dot { background: #a6e3a1; }
+  .ollama-status-bar.installed .ollama-status-dot { background: #89b4fa; }
+  .ollama-status-bar.not-installed .ollama-status-dot { background: #f38ba8; }
+  .ollama-status-bar.checking .ollama-status-dot { background: #a6adc8; }
+
+  .ollama-model-list { margin: 8px 0; }
+  .ollama-model-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; background: #313244; border-radius: 6px;
+    margin-bottom: 4px; font-size: 0.85em;
+  }
+  .ollama-model-item .model-info {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+  }
+  .ollama-model-item .model-name { font-weight: 600; color: #cdd6f4; }
+  .ollama-model-item .model-meta { font-size: 0.8em; color: #a6adc8; }
+  .ollama-model-item .model-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  .ollama-pull-section { margin-top: 10px; }
+  .ollama-pull-row {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .ollama-pull-row select { flex: 1; }
+
+  .progress-bar-bg {
+    width: 100%; height: 20px; background: #313244; border-radius: 4px;
+    overflow: hidden; margin-top: 8px; position: relative;
+  }
+  .progress-bar-fill {
+    height: 100%; background: #89b4fa; border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .progress-bar-text {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75em; color: #cdd6f4; font-weight: 600;
+  }
+  .ollama-progress-info {
+    font-size: 0.8em; color: #a6adc8; margin-top: 4px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
 </style>
 </head>
 <body>
@@ -146,6 +207,53 @@
         <label for="form-apikey">API Key</label>
         <input type="password" id="form-apikey" placeholder="sk-...">
       </div>
+
+      <!-- Ollama inline panel (shown when provider = ollama) -->
+      <div id="ollama-panel" class="ollama-panel" style="display:none">
+        <h3>Ollama Status</h3>
+        <div id="ollama-status-bar" class="ollama-status-bar checking">
+          <span class="ollama-status-dot"></span>
+          <span id="ollama-status-text">Checking...</span>
+          <span style="flex:1"></span>
+          <button class="btn btn-secondary btn-sm" onclick="onOllamaCheck()" style="padding:4px 10px;font-size:0.8em">Refresh</button>
+        </div>
+
+        <!-- Action buttons (install / start) -->
+        <div id="ollama-actions" style="display:none;margin-bottom:10px">
+          <div style="display:flex;gap:6px">
+            <button id="ollama-install-btn" class="btn btn-primary btn-sm" onclick="onOllamaInstall()" style="display:none">Download &amp; Install Ollama</button>
+            <button id="ollama-start-btn" class="btn btn-primary btn-sm" onclick="onOllamaStartServe()" style="display:none">Start Ollama Server</button>
+          </div>
+          <div id="ollama-action-status" class="status" style="margin-top:6px"></div>
+        </div>
+
+        <!-- Installed models -->
+        <div id="ollama-models-section" style="display:none">
+          <div style="font-size:0.85em;font-weight:600;color:#bac2de;margin-bottom:6px">Installed Models</div>
+          <div id="ollama-model-list" class="ollama-model-list"></div>
+        </div>
+
+        <!-- Download new model -->
+        <div id="ollama-pull-section" class="ollama-pull-section" style="display:none">
+          <div style="font-size:0.85em;font-weight:600;color:#bac2de;margin-bottom:6px">Download Model</div>
+          <div class="ollama-pull-row">
+            <select id="ollama-pull-select"></select>
+            <button class="btn btn-primary btn-sm" onclick="onOllamaPull()" id="ollama-pull-btn">Download</button>
+          </div>
+          <!-- Progress bar -->
+          <div id="ollama-progress" style="display:none">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="ollama-progress-fill" style="width:0%"></div>
+              <div class="progress-bar-text" id="ollama-progress-text">0%</div>
+            </div>
+            <div class="ollama-progress-info">
+              <span id="ollama-progress-status">Starting...</span>
+              <button class="btn btn-danger btn-sm" onclick="onOllamaCancelPull()" style="padding:2px 8px;font-size:0.75em">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
         <label for="form-model">Model</label>
         <select id="form-model"></select>
@@ -335,9 +443,14 @@ function cancelForm() {
 
 function onFormProviderChange() {
   const provider = document.getElementById('form-provider').value;
-  document.getElementById('form-apikey-group').style.display = provider === 'ollama' ? 'none' : 'block';
-  document.getElementById('form-endpoint-group').style.display = provider === 'ollama' ? 'block' : 'none';
+  const isOllama = provider === 'ollama';
+  document.getElementById('form-apikey-group').style.display = isOllama ? 'none' : 'block';
+  document.getElementById('form-endpoint-group').style.display = isOllama ? 'block' : 'none';
+  document.getElementById('ollama-panel').style.display = isOllama ? 'block' : 'none';
   loadModels('form-model', provider);
+  if (isOllama) {
+    onOllamaCheck();
+  }
 }
 
 async function testForm() {
@@ -445,6 +558,296 @@ function esc(s) {
 // (inline onclick handlers). Handles backslashes, single quotes, and newlines.
 function escJS(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+// ---- Ollama panel functions ----
+let ollamaPollTimer = null;
+
+async function onOllamaCheck() {
+  const bar = document.getElementById('ollama-status-bar');
+  const text = document.getElementById('ollama-status-text');
+  bar.className = 'ollama-status-bar checking';
+  text.textContent = 'Checking...';
+
+  const endpoint = document.getElementById('form-endpoint').value.trim();
+  const raw = await goCall('ollamaStatus', endpoint);
+  if (!raw) {
+    bar.className = 'ollama-status-bar not-installed';
+    text.textContent = 'Could not check status';
+    onOllamaUpdateActions('not_installed');
+    return;
+  }
+
+  let st;
+  try { st = JSON.parse(raw); } catch(e) {
+    bar.className = 'ollama-status-bar not-installed';
+    text.textContent = 'Status check failed';
+    onOllamaUpdateActions('not_installed');
+    return;
+  }
+
+  const status = st.status || 'not_installed';
+  if (status === 'running') {
+    bar.className = 'ollama-status-bar running';
+    text.textContent = 'Running' + (st.version ? ' — ' + st.version : '');
+    onOllamaUpdateActions('running');
+    onOllamaRefreshModels();
+  } else if (status === 'installed') {
+    bar.className = 'ollama-status-bar installed';
+    text.textContent = 'Installed but not running';
+    onOllamaUpdateActions('installed');
+  } else {
+    bar.className = 'ollama-status-bar not-installed';
+    text.textContent = 'Not installed';
+    onOllamaUpdateActions('not_installed');
+  }
+}
+
+function onOllamaUpdateActions(status) {
+  const actionsDiv = document.getElementById('ollama-actions');
+  const installBtn = document.getElementById('ollama-install-btn');
+  const startBtn = document.getElementById('ollama-start-btn');
+  const modelsSection = document.getElementById('ollama-models-section');
+  const pullSection = document.getElementById('ollama-pull-section');
+
+  installBtn.style.display = 'none';
+  startBtn.style.display = 'none';
+  actionsDiv.style.display = 'none';
+  modelsSection.style.display = 'none';
+  pullSection.style.display = 'none';
+
+  if (status === 'running') {
+    modelsSection.style.display = 'block';
+    pullSection.style.display = 'block';
+    onOllamaLoadPullDropdown();
+  } else if (status === 'installed') {
+    actionsDiv.style.display = 'block';
+    startBtn.style.display = 'inline-flex';
+  } else {
+    actionsDiv.style.display = 'block';
+    installBtn.style.display = 'inline-flex';
+  }
+}
+
+async function onOllamaInstall() {
+  const btn = document.getElementById('ollama-install-btn');
+  const statusEl = document.getElementById('ollama-action-status');
+  btn.disabled = true;
+  btn.textContent = 'Downloading...';
+  statusEl.className = 'status info';
+  statusEl.textContent = 'Downloading Ollama installer...';
+
+  const result = await goCall('ollamaDownloadInstaller');
+  btn.disabled = false;
+  btn.textContent = 'Download & Install Ollama';
+
+  if (result && result.startsWith('ok')) {
+    statusEl.className = 'status success';
+    statusEl.textContent = 'Installer launched! Complete the setup, then click Refresh.';
+  } else {
+    statusEl.className = 'status error';
+    statusEl.textContent = result || 'Download failed';
+  }
+}
+
+async function onOllamaStartServe() {
+  const btn = document.getElementById('ollama-start-btn');
+  const statusEl = document.getElementById('ollama-action-status');
+  btn.disabled = true;
+  btn.textContent = 'Starting...';
+  statusEl.className = 'status info';
+  statusEl.textContent = 'Starting Ollama server...';
+
+  const result = await goCall('ollamaStartServeCmd');
+  btn.disabled = false;
+  btn.textContent = 'Start Ollama Server';
+
+  if (result && result.startsWith('ok')) {
+    statusEl.className = 'status';
+    statusEl.textContent = '';
+    onOllamaCheck();
+  } else {
+    statusEl.className = 'status error';
+    statusEl.textContent = result || 'Failed to start server';
+  }
+}
+
+async function onOllamaRefreshModels() {
+  const container = document.getElementById('ollama-model-list');
+  container.innerHTML = '<div style="color:#a6adc8;font-size:0.8em">Loading...</div>';
+
+  const endpoint = document.getElementById('form-endpoint').value.trim();
+  const raw = await goCall('ollamaListModels', endpoint);
+  let models = [];
+  if (raw) {
+    try { models = JSON.parse(raw); } catch(e) {}
+  }
+
+  if (models.length === 0) {
+    container.innerHTML = '<div style="color:#6c7086;font-size:0.8em;padding:8px">No models installed. Download one below.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const m of models) {
+    const meta = [m.parameter_size, m.quantization_level, m.size_human].filter(Boolean).join(' · ');
+    html += `<div class="ollama-model-item">
+      <div class="model-info">
+        <span class="model-name">${esc(m.name)}</span>
+        <span class="model-meta">${esc(meta)}</span>
+      </div>
+      <div class="model-actions">
+        <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:0.75em" onclick="onOllamaSelectModel('${escJS(m.name)}')">Use</button>
+        <button class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:0.75em" onclick="onOllamaDeleteModel('${escJS(m.name)}')">Delete</button>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+async function onOllamaLoadPullDropdown() {
+  const sel = document.getElementById('ollama-pull-select');
+  sel.innerHTML = '';
+
+  const raw = await goCall('getKnownModels', 'ollama');
+  let models = [];
+  if (raw) {
+    try { models = JSON.parse(raw); } catch(e) {}
+  }
+
+  for (const m of models) {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    sel.appendChild(opt);
+  }
+
+  const custom = document.createElement('option');
+  custom.value = '__custom__';
+  custom.textContent = '(custom model...)';
+  sel.appendChild(custom);
+
+  sel.onchange = function() {
+    if (this.value === '__custom__') {
+      const name = prompt('Enter model name (e.g. llama3.2:7b):');
+      if (name && name.trim()) {
+        const opt = document.createElement('option');
+        opt.value = name.trim();
+        opt.textContent = name.trim();
+        this.insertBefore(opt, this.lastChild);
+        this.value = name.trim();
+      } else {
+        this.selectedIndex = 0;
+      }
+    }
+  };
+}
+
+async function onOllamaPull() {
+  const model = document.getElementById('ollama-pull-select').value;
+  if (!model || model === '__custom__') return;
+
+  const endpoint = document.getElementById('form-endpoint').value.trim();
+  const result = await goCall('ollamaPullModel', model, endpoint);
+  if (!result || !result.startsWith('ok')) return;
+
+  document.getElementById('ollama-progress').style.display = 'block';
+  document.getElementById('ollama-pull-btn').disabled = true;
+
+  // Start polling progress every 500ms.
+  if (ollamaPollTimer) clearInterval(ollamaPollTimer);
+  ollamaPollTimer = setInterval(onOllamaPollProgress, 500);
+}
+
+async function onOllamaPollProgress() {
+  const raw = await goCall('ollamaGetPullProgress');
+  if (!raw) return;
+
+  let p;
+  try { p = JSON.parse(raw); } catch(e) { return; }
+
+  const fill = document.getElementById('ollama-progress-fill');
+  const text = document.getElementById('ollama-progress-text');
+  const status = document.getElementById('ollama-progress-status');
+
+  const pct = Math.min(Math.round(p.pct || 0), 100);
+  fill.style.width = pct + '%';
+  text.textContent = pct + '%';
+
+  let info = p.status || '';
+  if (p.completed > 0 && p.total > 0) {
+    info += ' — ' + onOllamaFormatBytes(p.completed) + ' / ' + onOllamaFormatBytes(p.total);
+  }
+  status.textContent = info;
+
+  if (p.done || p.error) {
+    clearInterval(ollamaPollTimer);
+    ollamaPollTimer = null;
+    document.getElementById('ollama-pull-btn').disabled = false;
+
+    if (p.error) {
+      status.textContent = 'Error: ' + p.error;
+    } else {
+      document.getElementById('ollama-progress').style.display = 'none';
+      fill.style.width = '0%';
+      text.textContent = '0%';
+      onOllamaRefreshModels();
+    }
+  }
+}
+
+async function onOllamaCancelPull() {
+  await goCall('ollamaCancelPull');
+  if (ollamaPollTimer) {
+    clearInterval(ollamaPollTimer);
+    ollamaPollTimer = null;
+  }
+  document.getElementById('ollama-progress').style.display = 'none';
+  document.getElementById('ollama-pull-btn').disabled = false;
+}
+
+function onOllamaSelectModel(name) {
+  // Strip the :tag if present for the model dropdown value,
+  // but also add it as an option if not present.
+  const sel = document.getElementById('form-model');
+  let found = false;
+  for (const opt of sel.options) {
+    if (opt.value === name) { found = true; break; }
+  }
+  if (!found) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.insertBefore(opt, sel.lastChild);
+  }
+  sel.value = name;
+
+  // Auto-fill label if empty.
+  const labelEl = document.getElementById('form-label');
+  if (!labelEl.value.trim()) {
+    labelEl.value = 'ollama-' + name.replace(/[:/]/g, '-');
+  }
+}
+
+async function onOllamaDeleteModel(name) {
+  if (!confirm('Delete model "' + name + '"? This cannot be undone.')) return;
+
+  const endpoint = document.getElementById('form-endpoint').value.trim();
+  const result = await goCall('ollamaDeleteModel', name, endpoint);
+  if (result && result.startsWith('ok')) {
+    onOllamaRefreshModels();
+  } else {
+    alert('Delete failed: ' + (result || 'unknown error'));
+  }
+}
+
+function onOllamaFormatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let u = -1;
+  let b = bytes;
+  do { b /= 1024; u++; } while (b >= 1024 && u < units.length - 1);
+  return b.toFixed(1) + ' ' + units[u];
 }
 
 // ---- Boot ----
