@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// ollamaDownloadInstallerWindows downloads OllamaSetup.exe to %TEMP% and launches it.
-func ollamaDownloadInstallerWindows() error {
+// ollamaDownloadInstallerPlatform downloads OllamaSetup.exe to %TEMP% and launches it.
+func ollamaDownloadInstallerPlatform() error {
 	const url = "https://ollama.com/download/OllamaSetup.exe"
 
 	tmpDir := os.TempDir()
@@ -48,9 +48,9 @@ func ollamaDownloadInstallerWindows() error {
 	return nil
 }
 
-// ollamaStartServe starts "ollama serve" as a detached background process
+// ollamaStartServePlatform starts "ollama serve" as a detached background process
 // and polls GET / for up to 10 seconds until the server is reachable.
-func ollamaStartServe() error {
+func ollamaStartServePlatform() error {
 	cmd := exec.Command("ollama", "serve")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: 0x00000008 | 0x00000010, // DETACHED_PROCESS | CREATE_NEW_CONSOLE

@@ -354,12 +354,12 @@
 // ---- State ----
 let configData = null;
 
-// ---- Go bridge helpers ----
+// ---- Go bridge helpers (Wails v3) ----
 async function goCall(fn, ...args) {
   try {
-    const f = window[fn];
-    if (!f) { console.error('Bridge function not found:', fn); return null; }
-    return await f(...args);
+    // Capitalize first letter to match Go public method names.
+    const method = 'SettingsService.' + fn.charAt(0).toUpperCase() + fn.slice(1);
+    return await wails.Call(method, ...args);
   } catch (e) {
     console.error('Bridge call failed:', fn, e);
     return null;
