@@ -37,7 +37,7 @@ jobs:
             cgo: '1'
           - goos: darwin
             goarch: amd64
-            runner: macos-13
+            runner: macos-15-intel
             ext: ""
             cgo: '1'
           - goos: darwin
