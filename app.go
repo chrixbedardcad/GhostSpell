@@ -350,7 +350,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 	stopTrayFn = tray.Start(trayCfg, wailsApp)
 
 	// Register main action hotkey — dispatches based on active mode.
-	err := hk.Register("action", cfg.Hotkeys.Correct, func() {
+	err = hk.Register("action", cfg.Hotkeys.Correct, func() {
 		mu.Lock()
 		currentMode := activeMode
 		mu.Unlock()
