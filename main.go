@@ -127,9 +127,15 @@ func main() {
 	)
 
 	// First-launch: show settings GUI if no provider is configured.
-	if gui.NeedsSetup(cfg) {
+	needsSetup := gui.NeedsSetup(cfg)
+	slog.Info("First-launch check", "needs_setup", needsSetup, "providers", len(cfg.LLMProviders), "default_llm", cfg.DefaultLLM)
+	fmt.Printf("First-launch check: needs_setup=%v providers=%d default_llm=%q\n", needsSetup, len(cfg.LLMProviders), cfg.DefaultLLM)
+	if needsSetup {
 		fmt.Println("No API key configured. Opening settings...")
+		slog.Info("Opening first-launch settings GUI (this creates a Wails app)")
 		cfg = gui.ShowSettingsBlocking(cfg, configPath)
+		slog.Info("Settings GUI closed, checking if setup still needed")
+		fmt.Println("Settings GUI closed, checking if setup still needed...")
 		if gui.NeedsSetup(cfg) {
 			fmt.Println("Setup cancelled.")
 			os.Exit(1)
@@ -143,6 +149,8 @@ func main() {
 		}
 		// Re-init logging in case settings changed the log level/file.
 		setupLogging(cfg, configDir)
+		slog.Info("Config reloaded after first-launch setup", "providers", len(cfg.LLMProviders), "default_llm", cfg.DefaultLLM)
+		fmt.Printf("Config reloaded: providers=%d default_llm=%q\n", len(cfg.LLMProviders), cfg.DefaultLLM)
 	}
 
 	// Validate the config now that we know it has a provider.

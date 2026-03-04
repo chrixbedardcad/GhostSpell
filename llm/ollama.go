@@ -42,17 +42,26 @@ func NewOllamaClient(cfg *config.Config) *OllamaClient {
 // Users often enter just the base URL (e.g. http://localhost:11434).
 func normalizeOllamaEndpoint(endpoint string) string {
 	if endpoint == "" {
+		slog.Debug("[ollama] endpoint empty, using default", "endpoint", defaultOllamaEndpoint)
+		fmt.Printf("[ollama] endpoint empty → using default: %s\n", defaultOllamaEndpoint)
 		return defaultOllamaEndpoint
 	}
+	original := endpoint
 	endpoint = strings.TrimRight(endpoint, "/")
 	if !strings.HasSuffix(endpoint, "/api/generate") {
 		endpoint += "/api/generate"
+	}
+	if original != endpoint {
+		slog.Info("[ollama] endpoint normalized", "original", original, "normalized", endpoint)
+		fmt.Printf("[ollama] endpoint normalized: %q → %q\n", original, endpoint)
 	}
 	return endpoint
 }
 
 // newOllamaFromDef creates a new Ollama client from a provider definition.
 func newOllamaFromDef(def config.LLMProviderDef) *OllamaClient {
+	slog.Info("[ollama] newOllamaFromDef", "model", def.Model, "raw_endpoint", def.APIEndpoint, "timeout_ms", def.TimeoutMs)
+	fmt.Printf("[ollama] Creating client: model=%s endpoint=%q timeout=%dms\n", def.Model, def.APIEndpoint, def.TimeoutMs)
 	endpoint := normalizeOllamaEndpoint(def.APIEndpoint)
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
@@ -103,7 +112,8 @@ func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	slog.Debug("ollama: sending request", "model", c.model, "endpoint", c.endpoint, "body_len", len(jsonBody))
+	slog.Info("[ollama] sending request", "model", c.model, "endpoint", c.endpoint, "body_len", len(jsonBody))
+	fmt.Printf("[ollama] POST %s model=%s body=%d bytes\n", c.endpoint, c.model, len(jsonBody))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
@@ -112,13 +122,18 @@ func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error)
 
 	httpReq.Header.Set("Content-Type", "application/json")
 
+	start := time.Now()
 	resp, err := c.httpClient.Do(httpReq)
+	elapsed := time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("API request failed (is Ollama running?): %w", err)
+		slog.Error("[ollama] request failed", "endpoint", c.endpoint, "elapsed", elapsed, "error", err)
+		fmt.Printf("[ollama] FAILED after %s: %v\n", elapsed, err)
+		return nil, fmt.Errorf("API request failed (is Ollama running at %s?): %w", c.endpoint, err)
 	}
 	defer resp.Body.Close()
 
-	slog.Debug("ollama: response received", "status", resp.StatusCode)
+	slog.Info("[ollama] response received", "status", resp.StatusCode, "elapsed", elapsed)
+	fmt.Printf("[ollama] Response: status=%d elapsed=%s\n", resp.StatusCode, elapsed)
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -126,7 +141,8 @@ func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		slog.Debug("ollama: HTTP error", "status", resp.StatusCode, "body", string(respBody))
+		slog.Error("[ollama] HTTP error", "status", resp.StatusCode, "body", string(respBody))
+		fmt.Printf("[ollama] HTTP ERROR %d: %s\n", resp.StatusCode, string(respBody))
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 

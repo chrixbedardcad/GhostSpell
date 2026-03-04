@@ -144,7 +144,7 @@ func (s *SettingsService) SetDefault(label string) string {
 
 // TestConnection tests provider credentials.
 func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint string) string {
-	guiLog("[GUI] JS called: TestConnection(%s)", provider)
+	guiLog("[GUI] JS called: TestConnection(provider=%s, model=%s, endpoint=%q)", provider, model, endpoint)
 
 	// Ollama needs much longer timeout — first request loads model into memory.
 	timeout := 10 * time.Second
@@ -152,6 +152,7 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 	if provider == "ollama" {
 		timeout = 120 * time.Second
 		timeoutMs = 120000
+		guiLog("[GUI] Ollama detected — using %s timeout", timeout)
 	}
 
 	def := config.LLMProviderDef{
@@ -165,21 +166,27 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 
 	client, err := llm.NewClientFromDef(def)
 	if err != nil {
+		guiLog("[GUI] TestConnection: NewClientFromDef failed: %v", err)
 		return fmt.Sprintf("error: %v", err)
 	}
 
+	guiLog("[GUI] TestConnection: sending test request (timeout=%s)...", timeout)
 	tctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	start := time.Now()
 	_, err = client.Send(tctx, llm.Request{
 		Prompt:    "Reply with OK",
 		Text:      "test",
 		MaxTokens: 32,
 	})
+	elapsed := time.Since(start)
 	if err != nil {
+		guiLog("[GUI] TestConnection FAILED after %s: %v", elapsed, err)
 		return fmt.Sprintf("error: %v", err)
 	}
 
+	guiLog("[GUI] TestConnection OK (elapsed=%s)", elapsed)
 	return "ok"
 }
 
@@ -188,8 +195,10 @@ func (s *SettingsService) TestProvider(label string) string {
 	guiLog("[GUI] JS called: TestProvider(%s)", label)
 	def, ok := s.cfgCopy.LLMProviders[label]
 	if !ok {
+		guiLog("[GUI] TestProvider: provider %q not found in config", label)
 		return "error: provider not found"
 	}
+	guiLog("[GUI] TestProvider: provider=%s model=%s endpoint=%q", def.Provider, def.Model, def.APIEndpoint)
 
 	// Ollama needs much longer timeout — first request loads model into memory.
 	timeout := 10 * time.Second
@@ -197,6 +206,7 @@ func (s *SettingsService) TestProvider(label string) string {
 	if def.Provider == "ollama" {
 		timeout = 120 * time.Second
 		timeoutMs = 120000
+		guiLog("[GUI] Ollama detected — using %s timeout", timeout)
 	}
 
 	def.MaxTokens = 32
@@ -204,21 +214,27 @@ func (s *SettingsService) TestProvider(label string) string {
 
 	client, err := llm.NewClientFromDef(def)
 	if err != nil {
+		guiLog("[GUI] TestProvider: NewClientFromDef failed: %v", err)
 		return fmt.Sprintf("error: %v", err)
 	}
 
+	guiLog("[GUI] TestProvider: sending test request (timeout=%s)...", timeout)
 	tctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	start := time.Now()
 	_, err = client.Send(tctx, llm.Request{
 		Prompt:    "Reply with OK",
 		Text:      "test",
 		MaxTokens: 32,
 	})
+	elapsed := time.Since(start)
 	if err != nil {
+		guiLog("[GUI] TestProvider FAILED after %s: %v", elapsed, err)
 		return fmt.Sprintf("error: %v", err)
 	}
 
+	guiLog("[GUI] TestProvider OK (elapsed=%s)", elapsed)
 	return "ok"
 }
 

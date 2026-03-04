@@ -55,23 +55,45 @@ type trayState struct {
 // Start launches the system tray icon in a background goroutine.
 // Returns a stop function that removes the icon and shuts down.
 func Start(cfg Config) (stop func()) {
+	slog.Info("[tray] Start() called",
+		"os", runtime.GOOS,
+		"icon_bytes", len(cfg.IconPNG),
+		"target_labels", len(cfg.TargetLabels),
+		"template_names", len(cfg.TemplateNames),
+	)
+	fmt.Printf("[tray] Start() called on %s, icon=%d bytes\n", runtime.GOOS, len(cfg.IconPNG))
+
 	ts := &trayState{cfg: cfg}
 
+	slog.Info("[tray] Creating Wails application...")
+	fmt.Println("[tray] Creating Wails application...")
 	ts.app = application.New(application.Options{
 		Name: "GhostType",
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
 	})
+	slog.Info("[tray] Wails application created", "app_nil", ts.app == nil)
+	fmt.Printf("[tray] Wails application created (nil=%v)\n", ts.app == nil)
 
+	slog.Info("[tray] Creating SystemTray...")
+	fmt.Println("[tray] Creating SystemTray...")
 	ts.systray = ts.app.SystemTray.New()
+	slog.Info("[tray] SystemTray created", "systray_nil", ts.systray == nil)
+	fmt.Printf("[tray] SystemTray created (nil=%v)\n", ts.systray == nil)
 
 	if len(cfg.IconPNG) > 0 {
 		ts.systray.SetIcon(cfg.IconPNG)
+		slog.Info("[tray] Icon set", "bytes", len(cfg.IconPNG))
+	} else {
+		slog.Warn("[tray] No icon PNG provided!")
+		fmt.Println("[tray] WARNING: No icon PNG provided!")
 	}
 	ts.systray.SetTooltip(fmt.Sprintf("GhostType v%s", version.Version))
 
 	// Build and set the initial menu.
+	slog.Info("[tray] Building initial menu...")
+	fmt.Println("[tray] Building initial menu...")
 	ts.refreshMenu()
 
 	// On Linux with DBus-based StatusNotifierItem, the desktop environment
@@ -87,16 +109,32 @@ func Start(cfg Config) (stop func()) {
 		ts.systray.OnRightClick(func() {
 			ts.refreshMenu()
 		})
+	} else {
+		slog.Info("[tray] Linux detected — skipping OnClick/OnRightClick (DE handles menu via DBus)")
+		fmt.Println("[tray] Linux detected — skipping OnClick/OnRightClick (DE handles menu via DBus)")
 	}
 
+	slog.Info("[tray] Starting Wails app.Run() in goroutine...")
+	fmt.Println("[tray] Starting Wails app.Run() in goroutine...")
 	go func() {
 		runtime.LockOSThread()
+		slog.Info("[tray] goroutine: calling app.Run()")
+		fmt.Println("[tray] goroutine: calling app.Run()")
 		if err := ts.app.Run(); err != nil {
-			slog.Error("Tray Wails app error", "error", err)
+			slog.Error("[tray] Wails app.Run() FAILED", "error", err)
+			fmt.Printf("[tray] ERROR: Wails app.Run() failed: %v\n", err)
+		} else {
+			slog.Info("[tray] Wails app.Run() returned successfully")
+			fmt.Println("[tray] Wails app.Run() returned successfully")
 		}
 	}()
 
+	slog.Info("[tray] Start() complete — tray is running")
+	fmt.Println("[tray] Start() complete — tray is running")
+
 	return func() {
+		slog.Info("[tray] Stop function called — quitting app")
+		fmt.Println("[tray] Stop function called — quitting app")
 		ts.app.Quit()
 	}
 }
@@ -145,8 +183,10 @@ func (ts *trayState) refreshMenu() {
 	menu.AddSeparator()
 	menu.Add("Models:").SetEnabled(false)
 
+	modelCount := 0
 	if ts.cfg.GetModelLabels != nil {
 		models := ts.cfg.GetModelLabels()
+		modelCount = len(models)
 		if len(models) > 0 {
 			for _, ml := range models {
 				displayName := ml.Label
@@ -254,6 +294,16 @@ func (ts *trayState) refreshMenu() {
 	})
 
 	ts.systray.SetMenu(menu)
+
+	// Count items for debug.
+	itemCount := 3 + modelCount + 3 // modes + models + sound/cancel/exit + separators
+	slog.Info("[tray] Menu built and set",
+		"active_mode", activeMode,
+		"models", modelCount,
+		"targets", len(ts.cfg.TargetLabels),
+		"templates", len(ts.cfg.TemplateNames),
+		"approx_items", itemCount,
+	)
 }
 
 // uncheckModes unchecks all mode radio items.

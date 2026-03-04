@@ -81,7 +81,7 @@ func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.C
 		return nil
 	}
 
-	guiLog("[GUI] Creating Wails app...")
+	guiLog("[GUI] Creating Wails app (checking if globalApplication exists=%v)...", application.Get() != nil)
 	app := application.New(application.Options{
 		Name: "GhostType Settings",
 		Services: []application.Service{
@@ -92,6 +92,7 @@ func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.C
 		},
 	})
 	svc.app = app
+	guiLog("[GUI] Wails app created (app_nil=%v)", app == nil)
 
 	// Create the settings window.
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -110,12 +111,16 @@ func showWindow(cfg *config.Config, configPath string, onSaved func()) *config.C
 	// Run blocks until the app quits (window closed or CloseWindow called).
 	if err := app.Run(); err != nil {
 		guiLog("[GUI] Wails app.Run error: %v", err)
+	} else {
+		guiLog("[GUI] Wails app.Run completed without error")
 	}
 
 	// Reset the Wails singleton so the tray (or a later settings window)
 	// can create a fresh App. Without this, New() returns the stale app
 	// and Run() fails with "application is running or a previous run has failed".
+	guiLog("[GUI] Calling ResetGlobal() to clear Wails singleton...")
 	application.ResetGlobal()
+	guiLog("[GUI] ResetGlobal() done (globalApplication should be nil now: %v)", application.Get() == nil)
 
 	guiLog("[GUI] Run returned, window closed")
 	if svc.saved {
