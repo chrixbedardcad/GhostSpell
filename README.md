@@ -71,10 +71,45 @@ Sound requires PulseAudio (`paplay`) or ALSA (`aplay`) — usually pre-installed
 
 ### macOS
 
-No additional packages to install. On first launch, macOS will prompt you to grant:
+No additional packages to install, but macOS requires a few one-time setup steps.
+
+#### 1. Allow the app to run (Gatekeeper)
+
+GhostType is not signed with an Apple Developer certificate, so macOS will block it by default. After downloading, open Terminal and run:
+
+```bash
+# Make it executable
+chmod +x ~/Downloads/ghosttype-darwin-arm64
+
+# Remove the quarantine flag so macOS allows it to run
+xattr -d com.apple.quarantine ~/Downloads/ghosttype-darwin-arm64
+```
+
+> **Note:** Replace `ghosttype-darwin-arm64` with `ghosttype-darwin-amd64` if you have an Intel Mac.
+
+**Alternative (no Terminal):** Right-click the file → **Open** → click **Open** in the security warning dialog.
+
+#### 2. Grant permissions
+
+On first launch, macOS will prompt you to grant:
 
 - **Accessibility** permission (System Settings → Privacy & Security → Accessibility) — required for keyboard simulation
 - **Input Monitoring** permission — required for global hotkeys
+
+If the prompts don't appear automatically, add GhostType manually in System Settings → Privacy & Security.
+
+#### 3. Run
+
+```bash
+./ghosttype-darwin-arm64
+```
+
+Or move it to a permanent location:
+
+```bash
+sudo mv ~/Downloads/ghosttype-darwin-arm64 /usr/local/bin/ghosttype
+ghosttype
+```
 
 ---
 
