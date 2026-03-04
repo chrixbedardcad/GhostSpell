@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"sync"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"github.com/chrixbedardcad/GhostType/config"
 	"github.com/chrixbedardcad/GhostType/gui"
 	"github.com/chrixbedardcad/GhostType/keyboard"
+	"github.com/chrixbedardcad/GhostType/llm"
 	"github.com/chrixbedardcad/GhostType/mode"
 	"github.com/chrixbedardcad/GhostType/sound"
 	"github.com/chrixbedardcad/GhostType/tray"
@@ -186,7 +188,7 @@ func modeFromString(name string) (mode.Mode, string) {
 	}
 }
 
-func runApp(cfg *config.Config, router *mode.Router, configPath string) {
+func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSetup bool) {
 	cb := newClipboard()
 	kb := newKeyboard()
 	hk := newHotkeyManager()
@@ -218,9 +220,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 		templNames[i] = t.Name
 	}
 
-	// Create the shared Wails application used by both the tray and settings.
+	// Create the shared Wails application used by both the tray, wizard, and settings.
 	// The SettingsService is pre-registered so its JS bindings are available
-	// whenever a settings window is created on this app.
+	// whenever a settings or wizard window is created on this app.
 	settingsSvc := gui.NewSettingsService()
 	subFS, err := gui.FrontendSubFS()
 	if err != nil {
@@ -246,7 +248,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 		Linux: application.LinuxOptions{
 			DisableQuitOnLastWindowClosed: true,
 		},
-		// Prevent auto-quit when the settings window closes; the tray keeps running.
+		// Prevent auto-quit when the settings/wizard window closes; the tray keeps running.
 		ShouldQuit: func() bool { return false },
 	})
 
@@ -254,18 +256,29 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 	var stopTrayFn func()
 	var trayRun func() error
 
+	// wizardDone is closed when the wizard completes (or immediately if no wizard needed).
+	// registerHotkeys blocks on this channel so hotkeys are only registered after
+	// the LLM client and router are ready.
+	wizardDone := make(chan struct{})
+
 	trayCfg := tray.Config{
 		IconPNG: assets.AppIcon512,
 		OnModeChange: func(modeName string) {
 			setActiveMode(modeName)
 		},
 		OnTargetSelect: func(idx int) {
+			if router == nil {
+				return
+			}
 			label := router.SetTranslateTarget(idx)
 			setActiveMode("translate")
 			slog.Info("Translation target changed", "target", label)
 			fmt.Printf("Translation target: %s\n", label)
 		},
 		OnTemplSelect: func(idx int) {
+			if router == nil {
+				return
+			}
 			name := router.SetTemplate(idx)
 			setActiveMode("rewrite")
 			slog.Info("Rewrite template changed", "template", name)
@@ -285,6 +298,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 			}
 		},
 		OnSettings: func() {
+			if router == nil {
+				return
+			}
 			gui.ShowSettings(settingsSvc, cfg, configPath, func() {
 				// Reload config from disk after settings save.
 				newCfg, err := config.LoadRaw(configPath)
@@ -354,17 +370,95 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 			sort.Slice(labels, func(i, j int) bool { return labels[i].Label < labels[j].Label })
 			return labels
 		},
-		GetTargetIdx:   router.CurrentTranslateIdx,
-		GetTemplateIdx: router.CurrentTemplateIdx,
-		TargetLabels:   targetLabels,
-		TemplateNames:  templNames,
+		GetTargetIdx: func() int {
+			if router == nil {
+				return 0
+			}
+			return router.CurrentTranslateIdx()
+		},
+		GetTemplateIdx: func() int {
+			if router == nil {
+				return 0
+			}
+			return router.CurrentTemplateIdx()
+		},
+		TargetLabels:  targetLabels,
+		TemplateNames: templNames,
 	}
 
 	trayRun, stopTrayFn = tray.Start(trayCfg, wailsApp)
 
+	// If first launch, show the wizard on this same Wails app (no separate app).
+	// The wizard window appears alongside the tray icon. When the user saves a
+	// provider, the LLM client + router are initialised and wizardDone is closed
+	// to unblock hotkey registration.
+	if needsSetup {
+		gui.ShowWizardOnApp(settingsSvc, wailsApp, cfg, configPath,
+			func() {
+				// onSaved — provider was saved to disk. Initialise everything.
+				slog.Info("Wizard: provider saved, initialising LLM client...")
+				fmt.Println("Wizard: provider saved, initialising...")
+
+				newCfg, err := config.LoadRaw(configPath)
+				if err != nil {
+					slog.Error("Failed to reload config after wizard", "error", err)
+					fmt.Fprintf(os.Stderr, "Error reloading config: %v\n", err)
+					os.Exit(1)
+				}
+				mu.Lock()
+				*cfg = *newCfg
+				mu.Unlock()
+
+				// Re-init logging in case the reload changed settings.
+				setupLogging(cfg, filepath.Dir(configPath))
+
+				if err := config.Validate(cfg); err != nil {
+					slog.Error("Config validation failed after wizard", "error", err)
+					fmt.Fprintf(os.Stderr, "Config validation failed: %v\n", err)
+					os.Exit(1)
+				}
+
+				var client llm.Client
+				if cfg.DefaultLLM != "" {
+					def := cfg.LLMProviders[cfg.DefaultLLM]
+					client, err = llm.NewClientFromDef(def)
+				} else {
+					client, err = llm.NewClient(cfg)
+				}
+				if err != nil {
+					slog.Error("Failed to init LLM client after wizard", "error", err)
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+
+				router = mode.NewRouter(cfg, client)
+				sound.Init(*cfg.SoundEnabled)
+				sound.PlayStart()
+
+				slog.Info("Wizard: init complete, unblocking hotkeys")
+				fmt.Println("Wizard: setup complete, starting GhostType...")
+				close(wizardDone)
+			},
+			func() {
+				// onCancel — user closed wizard without saving.
+				os.Exit(1)
+			},
+		)
+	} else {
+		// No wizard needed — router is already initialised from main().
+		close(wizardDone)
+	}
+
 	// registerHotkeys is called by startMainLoop at the right time for each
 	// platform (deferred on macOS so the Cocoa event loop is running first).
+	// It blocks on wizardDone so hotkeys are only registered after the LLM
+	// client and router are ready.
 	registerHotkeys := func() error {
+		<-wizardDone
+
+		fmt.Println("GhostType is ready. Waiting for hotkey input...")
+		fmt.Println("Press Ctrl+C to exit.")
+
 		// Main action hotkey — dispatches based on active mode.
 		if err := hk.Register("action", cfg.Hotkeys.Correct, func() {
 			mu.Lock()
@@ -444,11 +538,10 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 		}()
 	}()
 
-	fmt.Println("GhostType is ready. Waiting for hotkey input...")
-	fmt.Println("Press Ctrl+C to exit.")
-
 	// Platform-specific main loop: controls which thread runs the Cocoa/GTK
 	// event loop vs the hotkey listener. On macOS this runs app.Run() on the
 	// main thread so the Carbon hotkey API doesn't deadlock.
+	// On all platforms, the event loop starts BEFORE registerHotkeys so that
+	// the wizard window (if needed) can render while hotkeys wait on wizardDone.
 	startMainLoop(trayRun, registerHotkeys, hk)
 }

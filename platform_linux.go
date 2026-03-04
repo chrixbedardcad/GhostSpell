@@ -12,10 +12,11 @@ func newClipboard() *clipboard.Clipboard  { return clipboard.NewLinuxClipboard()
 func newKeyboard() keyboard.Simulator     { return keyboard.NewLinuxSimulator() }
 func newHotkeyManager() hotkey.Manager    { return hotkey.NewXPlatManager() }
 
-// startMainLoop preserves Linux behavior: register hotkeys, run Wails in a
-// background goroutine, then block on the hotkey listener.
+// startMainLoop starts the GTK event loop in a background goroutine first (so
+// the wizard window can render if needed), then registers hotkeys (which may
+// block waiting for the wizard to complete), then blocks on the hotkey listener.
 func startMainLoop(trayRun func() error, registerHotkeys func() error, hk hotkey.Manager) {
-	registerHotkeys()
 	go func() { trayRun() }()
+	registerHotkeys()
 	hk.Listen()
 }

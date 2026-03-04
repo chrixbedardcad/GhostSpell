@@ -126,54 +126,57 @@ func main() {
 		"llm_providers", len(cfg.LLMProviders),
 	)
 
-	// First-launch: show settings GUI if no provider is configured.
+	// First-launch check: if no provider is configured, the wizard will
+	// run on the tray Wails app (no separate app to avoid goroutine leaks).
 	needsSetup := gui.NeedsSetup(cfg)
 	slog.Info("First-launch check", "needs_setup", needsSetup, "providers", len(cfg.LLMProviders), "default_llm", cfg.DefaultLLM)
 	fmt.Printf("First-launch check: needs_setup=%v providers=%d default_llm=%q\n", needsSetup, len(cfg.LLMProviders), cfg.DefaultLLM)
-	if needsSetup {
-		fmt.Println("No API key configured. Opening settings...")
-		slog.Info("Opening first-launch settings GUI (this creates a Wails app)")
-		cfg = gui.ShowSettingsBlocking(cfg, configPath)
-		slog.Info("Settings GUI closed, checking if setup still needed")
-		fmt.Println("Settings GUI closed, checking if setup still needed...")
-		if gui.NeedsSetup(cfg) {
-			fmt.Println("Setup cancelled.")
+
+	var router *mode.Router
+	if !needsSetup {
+		// Validate the config now that we know it has a provider.
+		if err := config.Validate(cfg); err != nil {
+			logStartupError(filepath.Dir(configPath), "Config validation failed", err)
+			fmt.Fprintf(os.Stderr, "Error: config validation failed: %v\n", err)
 			os.Exit(1)
 		}
-		// Re-load from disk after settings saved.
-		cfg, err = config.LoadRaw(configPath)
+
+		// Initialize LLM client
+		var client llm.Client
+		if cfg.DefaultLLM != "" {
+			def := cfg.LLMProviders[cfg.DefaultLLM]
+			client, err = llm.NewClientFromDef(def)
+		} else {
+			client, err = llm.NewClient(cfg)
+		}
 		if err != nil {
-			logStartupError(filepath.Dir(configPath), "Failed to reload config after settings", err)
-			fmt.Fprintf(os.Stderr, "Error reloading config: %v\n", err)
+			logStartupError(filepath.Dir(configPath), "Failed to initialize LLM client", err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		// Re-init logging in case settings changed the log level/file.
-		setupLogging(cfg, configDir)
-		slog.Info("Config reloaded after first-launch setup", "providers", len(cfg.LLMProviders), "default_llm", cfg.DefaultLLM)
-		fmt.Printf("Config reloaded: providers=%d default_llm=%q\n", len(cfg.LLMProviders), cfg.DefaultLLM)
-	}
 
-	// Validate the config now that we know it has a provider.
-	if err := config.Validate(cfg); err != nil {
-		logStartupError(filepath.Dir(configPath), "Config validation failed", err)
-		fmt.Fprintf(os.Stderr, "Error: config validation failed: %v\n", err)
-		os.Exit(1)
-	}
+		// Initialize mode router
+		router = mode.NewRouter(cfg, client)
 
-	// Initialize LLM client
-	var client llm.Client
-	if cfg.DefaultLLM != "" {
-		def := cfg.LLMProviders[cfg.DefaultLLM]
-		client, err = llm.NewClientFromDef(def)
+		// Initialize sound system and play startup sound.
+		sound.Init(*cfg.SoundEnabled)
+		sound.PlayStart()
+
+		printStatus(cfg, client, router)
 	} else {
-		client, err = llm.NewClient(cfg)
-	}
-	if err != nil {
-		logStartupError(filepath.Dir(configPath), "Failed to initialize LLM client", err)
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		fmt.Println("No API key configured — wizard will open...")
 	}
 
+	slog.Info("GhostType launching",
+		"version", Version,
+		"needs_setup", needsSetup,
+	)
+
+	runApp(cfg, router, configPath, needsSetup)
+}
+
+// printStatus prints provider, mode, and hotkey info to stdout.
+func printStatus(cfg *config.Config, client llm.Client, router *mode.Router) {
 	if len(cfg.LLMProviders) > 0 {
 		fmt.Println("")
 		fmt.Println("LLM Providers:")
@@ -200,13 +203,6 @@ func main() {
 		fmt.Printf("Model: %s\n", cfg.Model)
 	}
 
-	// Initialize mode router
-	router := mode.NewRouter(cfg, client)
-
-	// Initialize sound system and play startup sound.
-	sound.Init(*cfg.SoundEnabled)
-	sound.PlayStart()
-
 	fmt.Println("")
 	fmt.Printf("Active mode: %s\n", cfg.ActiveMode)
 	targetLabels := cfg.TranslateTargetLabels()
@@ -230,12 +226,4 @@ func main() {
 		fmt.Printf("  %s - Cycle rewrite template\n", cfg.Hotkeys.CycleTemplate)
 	}
 	fmt.Println("")
-
-	slog.Info("GhostType ready",
-		"version", Version,
-		"active_mode", cfg.ActiveMode,
-		"hotkey_action", cfg.Hotkeys.Correct,
-	)
-
-	runApp(cfg, router, configPath)
 }

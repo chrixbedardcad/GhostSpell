@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"io/fs"
 	"sync"
 
@@ -38,6 +39,38 @@ func ShowSettingsBlocking(cfg *config.Config, configPath string) *config.Config 
 		return updated
 	}
 	return cfg
+}
+
+// ShowWizardOnApp creates the first-launch wizard window on the tray Wails app
+// instead of creating a standalone app. This avoids the goroutine leak caused by
+// running two sequential Wails apps in the same process.
+// onSaved is called when the user saves a provider. onCancel is called when the
+// user closes the wizard without saving.
+func ShowWizardOnApp(svc *SettingsService, app *application.App, cfg *config.Config, configPath string, onSaved func(), onCancel func()) {
+	guiLog("[GUI] ShowWizardOnApp: creating wizard window on tray app")
+
+	svc.Reset(cfg, configPath, onSaved)
+	svc.app = app
+
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "GhostType Setup",
+		Width:  600,
+		Height: 640,
+		URL:    "/wizard.html",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:               application.MacBackdropTranslucent,
+		},
+	})
+	svc.window = win
+
+	win.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		guiLog("[GUI] Wizard window closing (saved=%v)", svc.saved)
+		if !svc.saved && onCancel != nil {
+			fmt.Println("Setup cancelled — no provider configured.")
+			onCancel()
+		}
+	})
 }
 
 // ShowSettings opens the settings window on the already-running tray Wails app.
