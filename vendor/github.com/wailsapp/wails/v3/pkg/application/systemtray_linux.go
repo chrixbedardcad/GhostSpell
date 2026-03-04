@@ -349,6 +349,9 @@ func (s *linuxSystemTray) run() {
 		return
 	}
 	s.setLabel(s.label)
+	// Populate menu items BEFORE register() notifies the DE, so GNOME
+	// sees a fully-populated menu on its first query (race condition fix).
+	s.setMenu(s.menu)
 	go func() {
 		defer handlePanic()
 		s.register()
@@ -391,7 +394,6 @@ func (s *linuxSystemTray) run() {
 	if s.parent.tooltip != "" {
 		s.setTooltip(s.parent.tooltip)
 	}
-	s.setMenu(s.menu)
 }
 
 func (s *linuxSystemTray) setTooltip(_ string) {
@@ -561,7 +563,7 @@ func (s *linuxSystemTray) createPropSpec() map[string]map[string]*prop.Prop {
 			Callback: nil,
 		},
 		"ItemIsMenu": {
-			Value:    false,
+			Value:    true,
 			Writable: false,
 			Emit:     prop.EmitTrue,
 			Callback: nil,

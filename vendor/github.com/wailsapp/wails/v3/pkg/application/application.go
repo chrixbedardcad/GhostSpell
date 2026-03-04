@@ -39,6 +39,13 @@ func Get() *App {
 	return globalApplication
 }
 
+// ResetGlobal clears the global singleton so a subsequent call to New()
+// creates a fresh App. Required when running multiple sequential Wails
+// apps in the same process (e.g. settings GUI followed by tray app).
+func ResetGlobal() {
+	globalApplication = nil
+}
+
 func New(appOptions Options) *App {
 	if globalApplication != nil {
 		return globalApplication
