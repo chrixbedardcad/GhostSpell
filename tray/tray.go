@@ -96,23 +96,13 @@ func Start(cfg Config) (stop func()) {
 	fmt.Println("[tray] Building initial menu...")
 	ts.refreshMenu()
 
-	// On Linux with DBus-based StatusNotifierItem, the desktop environment
-	// automatically shows the tray menu on click. Rebuilding the menu inside
-	// OnClick/OnRightClick emits LayoutUpdated signals that interfere with
-	// the DE's menu display, causing the menu to not appear. Instead, let
-	// the DE handle menu display and only rebuild when state actually changes
-	// (which the individual menu-item click handlers already do).
-	if runtime.GOOS != "linux" {
-		ts.systray.OnClick(func() {
-			ts.refreshMenu()
-		})
-		ts.systray.OnRightClick(func() {
-			ts.refreshMenu()
-		})
-	} else {
-		slog.Info("[tray] Linux detected — skipping OnClick/OnRightClick (DE handles menu via DBus)")
-		fmt.Println("[tray] Linux detected — skipping OnClick/OnRightClick (DE handles menu via DBus)")
-	}
+	// Do NOT override OnClick/OnRightClick. Each platform's default handler
+	// takes care of showing the menu popup (Windows: right-click calls
+	// openMenu; Linux: DBus DE displays it; macOS: framework handles it).
+	// Overriding the handlers replaces the menu-display logic with just a
+	// refreshMenu() call, which rebuilds the items but never opens the popup.
+	// The individual menu-item OnClick callbacks already call refreshMenu()
+	// when state changes, so the menu stays up-to-date.
 
 	slog.Info("[tray] Starting Wails app.Run() in goroutine...")
 	fmt.Println("[tray] Starting Wails app.Run() in goroutine...")

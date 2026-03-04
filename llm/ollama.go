@@ -87,9 +87,15 @@ func (c *OllamaClient) Provider() string {
 
 // ollamaRequest is the request body for the Ollama generate API.
 type ollamaRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
+	Model   string         `json:"model"`
+	Prompt  string         `json:"prompt"`
+	Stream  bool           `json:"stream"`
+	Options ollamaOptions  `json:"options,omitempty"`
+}
+
+// ollamaOptions maps to Ollama's model options (num_predict, etc.).
+type ollamaOptions struct {
+	NumPredict int `json:"num_predict,omitempty"`
 }
 
 // ollamaResponse is the response body from the Ollama generate API.
@@ -99,12 +105,24 @@ type ollamaResponse struct {
 }
 
 func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error) {
-	fullPrompt := req.Prompt + "\n\n" + req.Text
+	// Prepend /no_think to suppress chain-of-thought on thinking models
+	// (qwen3, deepseek-r1, etc.). Without this, thinking models generate
+	// thousands of internal reasoning tokens before the actual answer,
+	// causing requests to hang for minutes on modest hardware.
+	fullPrompt := "/no_think\n" + req.Prompt + "\n\n" + req.Text
+
+	maxTok := c.maxTokens
+	if req.MaxTokens > 0 {
+		maxTok = req.MaxTokens
+	}
 
 	body := ollamaRequest{
 		Model:  c.model,
 		Prompt: fullPrompt,
 		Stream: false,
+		Options: ollamaOptions{
+			NumPredict: maxTok,
+		},
 	}
 
 	jsonBody, err := json.Marshal(body)
@@ -155,13 +173,37 @@ func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error)
 		return nil, fmt.Errorf("Ollama error: %s", apiResp.Error)
 	}
 
-	if apiResp.Response == "" {
+	// Strip <think>...</think> blocks from thinking models (qwen3, deepseek-r1)
+	// that may still emit them despite /no_think.
+	text := stripThinkingTags(apiResp.Response)
+
+	if text == "" {
 		return nil, fmt.Errorf("empty response from Ollama")
 	}
 
 	return &Response{
-		Text:     apiResp.Response,
+		Text:     text,
 		Provider: "ollama",
 		Model:    c.model,
 	}, nil
+}
+
+// stripThinkingTags removes <think>...</think> blocks from model output.
+// Thinking models like qwen3 and deepseek-r1 sometimes emit these even when
+// told not to think.
+func stripThinkingTags(s string) string {
+	for {
+		start := strings.Index(s, "<think>")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(s, "</think>")
+		if end == -1 {
+			// Unclosed tag — remove from <think> to end.
+			s = s[:start]
+			break
+		}
+		s = s[:start] + s[end+len("</think>"):]
+	}
+	return strings.TrimSpace(s)
 }
