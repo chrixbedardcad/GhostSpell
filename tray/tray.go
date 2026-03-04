@@ -96,13 +96,22 @@ func Start(cfg Config) (stop func()) {
 	fmt.Println("[tray] Building initial menu...")
 	ts.refreshMenu()
 
-	// Do NOT override OnClick/OnRightClick. Each platform's default handler
-	// takes care of showing the menu popup (Windows: right-click calls
-	// openMenu; Linux: DBus DE displays it; macOS: framework handles it).
-	// Overriding the handlers replaces the menu-display logic with just a
-	// refreshMenu() call, which rebuilds the items but never opens the popup.
-	// The individual menu-item OnClick callbacks already call refreshMenu()
-	// when state changes, so the menu stays up-to-date.
+	// On Windows/macOS, both left and right click should refresh state and
+	// show the menu popup. Wails' default only opens the menu on right-click.
+	// We must call OpenMenu() explicitly after refreshing — just calling
+	// refreshMenu() (which rebuilds via SetMenu) is not enough.
+	// On Linux, the DBus DE handles menu display natively; overriding
+	// handlers emits LayoutUpdated signals that interfere with the DE.
+	if runtime.GOOS != "linux" {
+		ts.systray.OnClick(func() {
+			ts.refreshMenu()
+			ts.systray.OpenMenu()
+		})
+		ts.systray.OnRightClick(func() {
+			ts.refreshMenu()
+			ts.systray.OpenMenu()
+		})
+	}
 
 	slog.Info("[tray] Starting Wails app.Run() in goroutine...")
 	fmt.Println("[tray] Starting Wails app.Run() in goroutine...")
