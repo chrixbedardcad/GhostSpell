@@ -234,6 +234,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string) {
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
+		Windows: application.WindowsOptions{
+			DisableQuitOnLastWindowClosed: true,
+		},
+		Linux: application.LinuxOptions{
+			DisableQuitOnLastWindowClosed: true,
+		},
 		// Prevent auto-quit when the settings window closes; the tray keeps running.
 		ShouldQuit: func() bool { return false },
 	})
