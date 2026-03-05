@@ -16,7 +16,7 @@ Type in French, hit **Ctrl+G**, get it corrected. Switch to English, hit **Ctrl+
 
 [![CI](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml)
 [![Release](https://github.com/chrixbedardcad/GhostType/actions/workflows/release.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/releases/latest)
-[![Version](https://img.shields.io/badge/version-v0.1.94-blue)](https://github.com/chrixbedardcad/GhostType/releases/latest)
+[![Version](https://img.shields.io/badge/version-v0.1.95-blue)](https://github.com/chrixbedardcad/GhostType/releases/latest)
 
 | Platform | Download |
 |----------|----------|
@@ -188,6 +188,26 @@ All hotkeys are configurable in `config.json`. Set `active_mode` to `"correct"`,
 ## Configuration
 
 Most users won't need to hand-edit config — the **Settings GUI** handles provider management, testing, and defaults. For power users, GhostType stores everything in `config.json`.
+
+### Data Location
+
+GhostType stores its config, logs, and crash logs in the OS-standard app data directory:
+
+| Platform | Path |
+|----------|------|
+| **macOS** | `~/Library/Application Support/GhostType/` |
+| **Windows** | `%APPDATA%\GhostType\` |
+| **Linux** | `~/.config/GhostType/` |
+
+Files in this directory:
+
+| File | Purpose |
+|------|---------|
+| `config.json` | All settings (providers, hotkeys, prompts, etc.) |
+| `ghosttype.log` | Application log (when `log_level` is set) |
+| `ghosttype_crash.log` | Startup error log for windowless builds |
+
+> **Upgrading from v0.1.94 or earlier?** If a `config.json` exists next to the executable, GhostType automatically migrates it to the new location on first launch.
 
 ### Provider Map (`llm_providers`)
 

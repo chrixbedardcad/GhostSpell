@@ -16,6 +16,53 @@ import (
 	"github.com/chrixbedardcad/GhostType/sound"
 )
 
+// appDataDir returns the OS-standard directory for GhostType's config, logs,
+// and other persistent data.
+//
+//	macOS:   ~/Library/Application Support/GhostType/
+//	Windows: %APPDATA%\GhostType\
+//	Linux:   ~/.config/GhostType/  (or $XDG_CONFIG_HOME/GhostType/)
+func appDataDir() (string, error) {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("os.UserConfigDir: %w", err)
+	}
+	return filepath.Join(base, "GhostType"), nil
+}
+
+// migrateConfigFromExeDir checks whether a config.json exists next to the
+// executable (the old storage location). If it does and the target path does
+// not yet exist, it copies the old config to the new app data directory and
+// renames the original to config.json.bak so it isn't loaded again.
+func migrateConfigFromExeDir(newConfigPath string) {
+	// Already have a config in the new location — nothing to migrate.
+	if _, err := os.Stat(newConfigPath); err == nil {
+		return
+	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return
+	}
+	oldPath := filepath.Join(filepath.Dir(execPath), "config.json")
+	if _, err := os.Stat(oldPath); err != nil {
+		return // no old config
+	}
+
+	data, err := os.ReadFile(oldPath)
+	if err != nil {
+		return
+	}
+	if err := os.WriteFile(newConfigPath, data, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to migrate config to %s: %v\n", newConfigPath, err)
+		return
+	}
+
+	// Rename old file so it won't be picked up again.
+	os.Rename(oldPath, oldPath+".bak")
+	fmt.Printf("Migrated config from %s to %s\n", oldPath, newConfigPath)
+}
+
 // logStartupError writes a fatal startup error to a crash log file next to the
 // config so that errors are visible even in windowless builds.
 func logStartupError(dir, msg string, err error) {
@@ -85,26 +132,29 @@ func main() {
 	fmt.Printf("GhostType v%s - AI-powered multilingual auto-correction\n", Version)
 	fmt.Println("====================================================")
 
-	// Determine config path (same directory as executable, then CWD).
-	execPath, err := os.Executable()
+	// Determine the app data directory using the OS-standard location:
+	//   macOS:   ~/Library/Application Support/GhostType/
+	//   Windows: %APPDATA%\GhostType\
+	//   Linux:   ~/.config/GhostType/  (XDG_CONFIG_HOME)
+	appDir, err := appDataDir()
 	if err != nil {
-		execPath = "."
+		fmt.Fprintf(os.Stderr, "Error: could not determine app data directory: %v\n", err)
+		os.Exit(1)
 	}
-	execDir := filepath.Dir(execPath)
-	configPath := filepath.Join(execDir, "config.json")
-
-	// Fall back to current working directory.
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		configPath = "config.json"
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: could not create app directory %s: %v\n", appDir, err)
+		os.Exit(1)
 	}
 
-	// Resolve to absolute so log messages always show the full path.
-	if absPath, err := filepath.Abs(configPath); err == nil {
-		configPath = absPath
-	}
+	configPath := filepath.Join(appDir, "config.json")
+
+	// Migration: if a config exists next to the executable (old behavior) but
+	// not in the new app directory, move it over so existing users don't lose
+	// their settings.
+	migrateConfigFromExeDir(configPath)
 
 	// Load configuration (without validation so the wizard can run first).
-	fmt.Printf("Loading config from: %s\n", configPath)
+	fmt.Printf("App data: %s\n", appDir)
 	cfg, err := config.LoadRaw(configPath)
 	if err != nil {
 		logStartupError(filepath.Dir(configPath), "Failed to load config", err)
