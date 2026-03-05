@@ -15,21 +15,21 @@ func newClipboard() *clipboard.Clipboard  { return clipboard.NewWindowsClipboard
 func newKeyboard() keyboard.Simulator     { return keyboard.NewWindowsSimulator() }
 func newHotkeyManager() hotkey.Manager    { return hotkey.NewWindowsManager() }
 
-// startMainLoop starts the Wails event loop in a background goroutine first
-// (so the wizard window can render if needed), then registers hotkeys on the
-// current thread (which may block waiting for the wizard), then locks this
-// thread for the Windows message loop (RegisterHotKey + GetMessageW).
+// startMainLoop runs the Wails event loop on the main thread (required because
+// COM/CoInitializeEx was called on the main thread during init — WebView2 needs
+// it). Hotkeys are registered in a background goroutine (which blocks on
+// wizardDone so the wizard can render first), then that goroutine runs the
+// Windows message loop for RegisterHotKey + GetMessageW.
 func startMainLoop(trayRun func() error, registerHotkeys func() error, hk hotkey.Manager) {
 	go func() {
-		// LockOSThread is required because Wails' initMainLoop() and
-		// runMainLoop() (both inside app.Run) must execute on the same
-		// OS thread — otherwise runMainLoop panics.
 		runtime.LockOSThread()
-		trayRun()
+		if err := registerHotkeys(); err != nil {
+			os.Exit(1)
+		}
+		hk.Listen()
 	}()
-	if err := registerHotkeys(); err != nil {
-		os.Exit(1)
-	}
-	runtime.LockOSThread()
-	hk.Listen()
+	// Wails event loop on main thread — blocks until app quits.
+	// COM was initialized here by go-webview2's init().
+	trayRun()
+	hk.Stop()
 }
