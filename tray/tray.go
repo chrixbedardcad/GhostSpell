@@ -21,6 +21,9 @@ type ModelLabel struct {
 type Config struct {
 	// IconPNG is the raw PNG bytes for the tray icon.
 	IconPNG []byte
+	// TemplateIconPNG is a macOS template icon (used via SetTemplateIcon on darwin).
+	// If set and running on macOS, this takes precedence over IconPNG.
+	TemplateIconPNG []byte
 
 	// Callbacks — called on the tray thread.
 	OnModeChange   func(modeName string) // "correct", "translate", "rewrite"
@@ -75,7 +78,10 @@ func Start(cfg Config, app *application.App) (run func() error, stop func()) {
 	slog.Info("[tray] SystemTray created", "systray_nil", ts.systray == nil)
 	fmt.Printf("[tray] SystemTray created (nil=%v)\n", ts.systray == nil)
 
-	if len(cfg.IconPNG) > 0 {
+	if runtime.GOOS == "darwin" && len(cfg.TemplateIconPNG) > 0 {
+		ts.systray.SetTemplateIcon(cfg.TemplateIconPNG)
+		slog.Info("[tray] macOS template icon set", "bytes", len(cfg.TemplateIconPNG))
+	} else if len(cfg.IconPNG) > 0 {
 		ts.systray.SetIcon(cfg.IconPNG)
 		slog.Info("[tray] Icon set", "bytes", len(cfg.IconPNG))
 	} else {

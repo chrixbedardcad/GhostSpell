@@ -124,7 +124,7 @@ install_macos() {
     echo "  Two System Settings windows should be open now."
     echo "  Enable GhostType in both, then press Enter to launch."
     echo ""
-    read -r -p "  Press Enter when done..."
+    read -r -p "  Press Enter when done..." </dev/tty
 
     info "Launching GhostType..."
     open /Applications/GhostType.app
