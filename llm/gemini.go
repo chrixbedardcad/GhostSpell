@@ -19,7 +19,12 @@ func newGeminiFromDef(def config.LLMProviderDef) *OpenAIClient {
 	}
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
-		maxTokens = 256
+		// Gemini thinking models (gemini-2.5-pro, etc.) consume tokens for
+		// internal reasoning in addition to the visible output. max_tokens
+		// limits the TOTAL (thinking + output). 256 is far too low — the
+		// model exhausts the budget on thinking and returns empty content.
+		// 8192 gives ample room for both reasoning and output.
+		maxTokens = 8192
 	}
 	timeoutMs := def.TimeoutMs
 	if timeoutMs == 0 {
