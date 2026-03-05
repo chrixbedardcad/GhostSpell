@@ -1,0 +1,76 @@
+time=2026-03-05T00:21:08.926-05:00 level=INFO msg="GhostType starting" version=0.1.92 default_llm="" llm_providers=0
+time=2026-03-05T00:21:08.927-05:00 level=INFO msg="First-launch check" needs_setup=true providers=0 default_llm=""
+time=2026-03-05T00:21:08.927-05:00 level=INFO msg="GhostType launching" version=0.1.92 needs_setup=true
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Start() called" os=windows icon_bytes=194169 target_labels=1 template_names=5
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Icon set" bytes=194169
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=0 targets=1 templates=5 approx_items=6
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[GUI] ShowWizardOnApp: creating wizard window on tray app"
+time=2026-03-05T00:21:08.928-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-05T00:21:08.946-05:00 level=INFO msg="[WebView2] Environment created successfully"
+time=2026-03-05T00:21:12.425-05:00 level=INFO msg="[GUI] JS called: GetKnownModels(gemini)"
+time=2026-03-05T00:21:31.888-05:00 level=INFO msg="[GUI] JS called: TestConnection(provider=gemini, model=gemini-2.5-flash-lite, endpoint=\"\")"
+time=2026-03-05T00:21:31.888-05:00 level=INFO msg="[GUI] TestConnection: sending test request (timeout=10s)..."
+time=2026-03-05T00:21:32.223-05:00 level=INFO msg="[GUI] TestConnection OK (elapsed=335.2837ms)"
+time=2026-03-05T00:21:33.343-05:00 level=INFO msg="[GUI] JS called: SaveProvider(gemini, gemini)"
+time=2026-03-05T00:21:33.344-05:00 level=INFO msg="Wizard: provider saved, initialising LLM client..."
+time=2026-03-05T00:21:33.359-05:00 level=INFO msg="Wizard: init complete, unblocking hotkeys"
+time=2026-03-05T00:21:33.359-05:00 level=INFO msg="[GUI] Provider saved: label=gemini provider=gemini"
+time=2026-03-05T00:21:35.323-05:00 level=INFO msg="[GUI] JS called: CloseWindow (standalone=false)"
+time=2026-03-05T00:21:35.323-05:00 level=INFO msg="[GUI] Wizard window closing (saved=true)"
+time=2026-03-05T00:21:37.670-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5 approx_items=7
+time=2026-03-05T00:21:53.333-05:00 level=INFO msg="Correction triggered"
+time=2026-03-05T00:21:53.678-05:00 level=INFO msg="Captured text" mode=Correction len=42 selection=false text="revois mon text pour que cela soit clairte"
+time=2026-03-05T00:21:54.110-05:00 level=INFO msg="Correction complete" result="revois mon texte pour qu'il soit clair"
+time=2026-03-05T00:22:06.941-05:00 level=INFO msg="Correction triggered"
+time=2026-03-05T00:22:07.285-05:00 level=INFO msg="Captured text" mode=Correction len=25 selection=false text="tu pense tu me bais/ toi "
+time=2026-03-05T00:22:08.180-05:00 level=INFO msg="Correction complete" result="Tu penses me baiser, toi ?"
+time=2026-03-05T00:22:29.457-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5 approx_items=7
+time=2026-03-05T00:22:31.191-05:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-05T00:22:31.191-05:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-05T00:22:31.193-05:00 level=INFO msg="[WebView2] Environment created successfully"
+time=2026-03-05T00:22:31.351-05:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-05T00:22:31.417-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-05T00:22:31.420-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-05T00:22:35.405-05:00 level=INFO msg="[GUI] JS called: GetKnownModels(anthropic)"
+time=2026-03-05T00:22:41.147-05:00 level=INFO msg="[GUI] JS called: GetKnownModels(openai)"
+time=2026-03-05T00:22:54.555-05:00 level=INFO msg="[GUI] JS called: GetKnownModels(xai)"
+time=2026-03-05T00:23:11.960-05:00 level=INFO msg="[GUI] JS called: OpenConfigFile"
+time=2026-03-05T00:23:23.187-05:00 level=INFO msg="[GUI] Settings window closing event received"
+time=2026-03-05T00:23:25.498-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5 approx_items=7
+time=2026-03-05T00:23:33.459-05:00 level=INFO msg="Active mode changed" mode=rewrite
+time=2026-03-05T00:23:37.668-05:00 level=INFO msg="Rewrite triggered"
+time=2026-03-05T00:23:38.012-05:00 level=INFO msg="Captured text" mode=Rewrite len=26 selection=false text="Tu penses me baiser, toi ?"
+time=2026-03-05T00:23:38.633-05:00 level=INFO msg="Rewrite complete" result="Oh, tu crois que j'ai besoin de ça pour te faire croire que t'es mon type ?"
+time=2026-03-05T01:44:04.789-05:00 level=INFO msg="GhostType starting" version=0.1.93 default_llm=gemini llm_providers=1
+time=2026-03-05T01:44:04.789-05:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=gemini
+time=2026-03-05T01:44:04.799-05:00 level=INFO msg="GhostType launching" version=0.1.93 needs_setup=false
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Start() called" os=windows icon_bytes=194169 target_labels=1 template_names=5
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Icon set" bytes=194169
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5 approx_items=7
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-05T01:44:04.804-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-05T01:44:04.809-05:00 level=ERROR msg="RegisterHotKey failed" name=action key=Ctrl+G id=1 mod=0x2 vk=0x47 error="Hot key is already registered."
+time=2026-03-05T01:44:04.809-05:00 level=ERROR msg="Failed to register action hotkey" key=Ctrl+G error="failed to register hotkey 'Ctrl+G' (id=1)"
+time=2026-03-05T01:44:09.986-05:00 level=INFO msg="GhostType starting" version=0.1.93 default_llm=gemini llm_providers=1
+time=2026-03-05T01:44:09.986-05:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=gemini
+time=2026-03-05T01:44:09.990-05:00 level=INFO msg="GhostType launching" version=0.1.93 needs_setup=false
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Start() called" os=windows icon_bytes=194169 target_labels=1 template_names=5
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Icon set" bytes=194169
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5 approx_items=7
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-05T01:44:09.991-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-05T01:44:09.994-05:00 level=ERROR msg="RegisterHotKey failed" name=action key=Ctrl+G id=1 mod=0x2 vk=0x47 error="Hot key is already registered."
+time=2026-03-05T01:44:09.994-05:00 level=ERROR msg="Failed to register action hotkey" key=Ctrl+G error="failed to register hotkey 'Ctrl+G' (id=1)"
