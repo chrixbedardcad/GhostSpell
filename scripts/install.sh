@@ -110,15 +110,27 @@ install_macos() {
     ok "  GhostType ${version} installed successfully!"
     echo "============================================"
     echo ""
+    # Open permission settings so the user can enable both before launching.
+    info "Opening macOS permission settings..."
+    echo ""
+    echo "  GhostType needs two permissions to work. Please enable both:"
+    echo ""
+    echo "  1. ACCESSIBILITY  — toggle GhostType ON (for keyboard simulation)"
+    echo "  2. INPUT MONITORING — toggle GhostType ON (for global hotkeys)"
+    echo ""
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+    sleep 2
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+    echo "  Two System Settings windows should be open now."
+    echo "  Enable GhostType in both, then press Enter to launch."
+    echo ""
+    read -r -p "  Press Enter when done..."
+
     info "Launching GhostType..."
     open /Applications/GhostType.app
     echo ""
     echo "  GhostType is running in your menu bar (top right)."
     echo "  Look for the GhostType icon — there is no app window."
-    echo ""
-    info "On first launch, macOS will ask for permissions:"
-    echo "  - Accessibility (System Settings > Privacy & Security > Accessibility)"
-    echo "  - Input Monitoring (for global hotkeys)"
     echo ""
     info "Config is stored in: ~/Library/Application Support/GhostType/"
 }
