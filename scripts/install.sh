@@ -110,7 +110,13 @@ install_macos() {
     ok "  GhostType ${version} installed successfully!"
     echo "============================================"
     echo ""
-    # Open permission settings so the user can enable both before launching.
+
+    # Launch GhostType first so macOS registers it in the permission lists.
+    # Without this, the app won't appear in Accessibility / Input Monitoring.
+    info "Launching GhostType to register permissions..."
+    open /Applications/GhostType.app
+    sleep 3
+
     info "Opening macOS permission settings..."
     echo ""
     echo "  GhostType needs two permissions to work. Please enable both:"
@@ -121,12 +127,16 @@ install_macos() {
     open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
     sleep 2
     open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+    echo ""
     echo "  Two System Settings windows should be open now."
-    echo "  Enable GhostType in both, then press Enter to launch."
+    echo "  Enable GhostType in both, then press Enter to relaunch."
     echo ""
     read -r -p "  Press Enter when done..." </dev/tty
 
-    info "Launching GhostType..."
+    # Relaunch so the app picks up the newly granted permissions.
+    info "Relaunching GhostType..."
+    killall GhostType 2>/dev/null || true
+    sleep 1
     open /Applications/GhostType.app
     echo ""
     echo "  GhostType is running in your menu bar (top right)."
