@@ -28,10 +28,10 @@ Open a terminal and paste the command for your platform. It downloads the latest
 curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostType/main/scripts/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+**Windows** (paste in CMD, PowerShell, or Windows Terminal):
 
-```powershell
-irm https://raw.githubusercontent.com/chrixbedardcad/GhostType/main/scripts/install.ps1 | iex
+```cmd
+powershell -c "irm https://raw.githubusercontent.com/chrixbedardcad/GhostType/main/scripts/install.ps1 | iex"
 ```
 
 <details>
