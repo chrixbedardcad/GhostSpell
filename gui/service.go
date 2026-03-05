@@ -52,12 +52,33 @@ func (s *SettingsService) Reset(cfg *config.Config, configPath string, onSaved f
 	s.saved = false
 }
 
-// clearLegacyAndSave writes the config to disk, clearing legacy flat fields.
+// clearLegacyAndSave writes the config to disk, clearing legacy flat fields
+// and removing any provider entries that are clearly invalid (no API key for
+// non-ollama providers). This prevents phantom entries synthesized from stale
+// legacy fields from poisoning the saved config.
 func (s *SettingsService) clearLegacyAndSave() error {
 	s.cfgCopy.LLMProvider = ""
 	s.cfgCopy.APIKey = ""
 	s.cfgCopy.Model = ""
 	s.cfgCopy.APIEndpoint = ""
+
+	// Remove invalid provider entries (e.g. phantom "default" from legacy synthesis).
+	for label, def := range s.cfgCopy.LLMProviders {
+		if def.Provider != "ollama" && def.APIKey == "" {
+			delete(s.cfgCopy.LLMProviders, label)
+			if s.cfgCopy.DefaultLLM == label {
+				s.cfgCopy.DefaultLLM = ""
+			}
+		}
+	}
+	// Ensure DefaultLLM points to a valid provider.
+	if s.cfgCopy.DefaultLLM == "" && len(s.cfgCopy.LLMProviders) > 0 {
+		for k := range s.cfgCopy.LLMProviders {
+			s.cfgCopy.DefaultLLM = k
+			break
+		}
+	}
+
 	if err := config.WriteDefault(s.configPath, s.cfgCopy); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/chrixbedardcad/GhostType/config"
@@ -80,10 +81,14 @@ func (c *OpenAIClient) Provider() string {
 }
 
 // openaiRequest is the request body for the OpenAI Chat Completions API.
+// OpenAI uses max_completion_tokens (required for reasoning models like o1).
+// Gemini and xAI use the standard max_tokens field via their OpenAI-compatible
+// endpoints — they ignore max_completion_tokens.
 type openaiRequest struct {
-	Model              string          `json:"model"`
-	Messages           []openaiMessage `json:"messages"`
-	MaxCompletionTokens int            `json:"max_completion_tokens"`
+	Model               string          `json:"model"`
+	Messages            []openaiMessage `json:"messages"`
+	MaxCompletionTokens int             `json:"max_completion_tokens,omitempty"`
+	MaxTokens           int             `json:"max_tokens,omitempty"`
 }
 
 type openaiMessage struct {
@@ -117,7 +122,13 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		Messages: []openaiMessage{
 			{Role: "user", Content: fullPrompt},
 		},
-		MaxCompletionTokens: maxTokens,
+	}
+	// OpenAI uses max_completion_tokens (required for reasoning models).
+	// Gemini and xAI use the standard max_tokens field.
+	if c.providerName == "openai" {
+		body.MaxCompletionTokens = maxTokens
+	} else {
+		body.MaxTokens = maxTokens
 	}
 
 	jsonBody, err := json.Marshal(body)
@@ -170,6 +181,10 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 
 	text := apiResp.Choices[0].Message.Content
 	slog.Debug(c.providerName+": parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
+
+	if strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("API returned empty content")
+	}
 
 	return &Response{
 		Text:     text,
