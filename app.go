@@ -516,7 +516,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		//   2. Input Monitoring — for RegisterEventHotKey (global hotkeys)
 		// Only Accessibility can be checked via AXIsProcessTrusted(). There is
 		// no reliable public API for Input Monitoring, so we poll Accessibility
-		// and remind the user to also grant Input Monitoring.
+		// and always remind about Input Monitoring.
 		axOK := checkAccessibility()
 		slog.Info("Permission check", "accessibility", axOK)
 		fmt.Printf("Accessibility permission: %v\n", axOK)
@@ -528,7 +528,6 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			fmt.Println("  2. Input Monitoring  — for global hotkeys (Cmd+G)")
 			fmt.Println("")
 			fmt.Println("  System Settings > Privacy & Security > grant BOTH permissions.")
-			fmt.Println("  If you just updated, old entries were cleared automatically.")
 			fmt.Println("  Click '+', add GhostType.app, and toggle ON in both panes.")
 			fmt.Println("")
 			slog.Info("Opening permission settings panes")
@@ -544,9 +543,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				}
 			}
 			fmt.Println("Accessibility permission granted!")
-			fmt.Println("Make sure Input Monitoring is also enabled for GhostType.")
 			slog.Info("Accessibility permission granted after polling", "polls", pollCount)
 		}
+
+		// Always remind about Input Monitoring — we can't check it
+		// programmatically, and hotkeys silently fail without it.
+		remindInputMonitoring()
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
 		fmt.Println("Press Ctrl+C to exit.")

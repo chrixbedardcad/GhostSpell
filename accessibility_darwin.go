@@ -32,3 +32,15 @@ func openAccessibilitySettings() {
 	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Start()
 	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent").Start()
 }
+
+// remindInputMonitoring prints a reminder and opens the Input Monitoring
+// settings pane. Called on every launch because there's no API to check
+// Input Monitoring, and hotkeys silently fail without it.
+func remindInputMonitoring() {
+	fmt.Println("")
+	fmt.Println("  Ensure Input Monitoring is enabled for GhostType:")
+	fmt.Println("  System Settings > Privacy & Security > Input Monitoring")
+	fmt.Println("  (Hotkeys won't work without this permission)")
+	fmt.Println("")
+	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent").Start()
+}

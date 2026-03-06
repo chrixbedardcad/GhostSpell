@@ -10,3 +10,6 @@ func checkAccessibility() bool {
 
 // openAccessibilitySettings is a no-op on non-macOS platforms.
 func openAccessibilitySettings() {}
+
+// remindInputMonitoring is a no-op on non-macOS platforms.
+func remindInputMonitoring() {}
