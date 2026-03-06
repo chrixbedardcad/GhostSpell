@@ -132,6 +132,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Single-instance check — exit if another GhostType is already running.
+	removeLock := acquireSingleInstance(appDir)
+	defer removeLock()
+
 	// Panic recovery — writes stack trace to crash log.
 	defer recoverPanic(appDir)
 
