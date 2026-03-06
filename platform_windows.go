@@ -3,6 +3,8 @@
 package main
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"runtime"
 
@@ -24,7 +26,9 @@ func startMainLoop(trayRun func() error, registerHotkeys func() error, hk hotkey
 	go func() {
 		runtime.LockOSThread()
 		if err := registerHotkeys(); err != nil {
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "Hotkey registration failed: %v\n", err)
+			slog.Error("Hotkey registration failed — app remains running for diagnostics", "error", err)
+			select {} // block forever; tray stays alive for Settings access
 		}
 		hk.Listen()
 	}()

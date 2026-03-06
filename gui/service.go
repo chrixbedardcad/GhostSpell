@@ -34,6 +34,13 @@ type SettingsService struct {
 	window     *application.WebviewWindow
 	saved      bool
 	standalone bool // true for first-launch (app.Quit on close), false when tray app is running
+
+	// Debug callbacks — set by app.go to access the debugState.
+	DebugEnableFn  func() (string, error)
+	DebugDisableFn func()
+	DebugEnabledFn func() bool
+	DebugLogPathFn func() string
+	DebugTailFn    func() (string, error)
 }
 
 // Reset reinitializes the service for a new settings session. Called each time
@@ -633,6 +640,71 @@ func (s *SettingsService) UpdateNow() string {
 	}()
 
 	return "ok"
+}
+
+// --- Debug tools -----------------------------------------------------------
+
+// EnableDebug activates debug-level logging. Returns the log file path.
+func (s *SettingsService) EnableDebug() string {
+	guiLog("[GUI] JS called: EnableDebug")
+	if s.DebugEnableFn == nil {
+		return "error: debug not available"
+	}
+	path, err := s.DebugEnableFn()
+	if err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return path
+}
+
+// DisableDebug deactivates debug logging.
+func (s *SettingsService) DisableDebug() string {
+	guiLog("[GUI] JS called: DisableDebug")
+	if s.DebugDisableFn == nil {
+		return "error: debug not available"
+	}
+	s.DebugDisableFn()
+	return "ok"
+}
+
+// GetDebugEnabled returns whether debug logging is active.
+func (s *SettingsService) GetDebugEnabled() bool {
+	if s.DebugEnabledFn == nil {
+		return false
+	}
+	return s.DebugEnabledFn()
+}
+
+// GetDebugLogPath returns the path to the debug log file.
+func (s *SettingsService) GetDebugLogPath() string {
+	if s.DebugLogPathFn == nil {
+		return ""
+	}
+	return s.DebugLogPathFn()
+}
+
+// OpenLogFile opens the log file in the OS default editor/viewer.
+func (s *SettingsService) OpenLogFile() string {
+	guiLog("[GUI] JS called: OpenLogFile")
+	path := s.GetDebugLogPath()
+	if path == "" {
+		return "error: no log path"
+	}
+	OpenFile(path)
+	return "ok"
+}
+
+// TailDebugLog returns the last ~200 lines of the log file.
+func (s *SettingsService) TailDebugLog() string {
+	guiLog("[GUI] JS called: TailDebugLog")
+	if s.DebugTailFn == nil {
+		return "error: debug not available"
+	}
+	tail, err := s.DebugTailFn()
+	if err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return tail
 }
 
 // splitTarget splits "en|fr" into ["en", "fr"] or "es" into ["es"].

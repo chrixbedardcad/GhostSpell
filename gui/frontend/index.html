@@ -487,9 +487,23 @@
           <option value="debug">Debug</option>
         </select>
       </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-secondary btn-sm" onclick="onOpenConfigFile()">Open config.json</button>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Debug Logging</div>
+          <div class="sublabel">Enable verbose logging for 30 minutes (auto-disables)</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="pref-debug" onchange="onToggleDebug(this.checked)">
+          <span class="slider"></span>
+        </label>
       </div>
+      <div id="debug-log-path" style="font-size:0.78em;color:#6c7086;margin-bottom:8px;display:none"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="onOpenConfigFile()">Open config.json</button>
+        <button class="btn btn-secondary btn-sm" onclick="onOpenLogFile()">Open Log File</button>
+        <button class="btn btn-secondary btn-sm" onclick="onCopyLog()">Copy Log to Clipboard</button>
+      </div>
+      <div class="status" id="debug-status"></div>
     </div>
   </div>
 
@@ -1010,6 +1024,14 @@ async function renderGeneral() {
   document.getElementById('pref-clipboard').checked = configData.preserve_clipboard !== false;
   document.getElementById('pref-loglevel').value = configData.log_level || '';
 
+  // Debug toggle state
+  const debugOn = await goCall('getDebugEnabled');
+  document.getElementById('pref-debug').checked = !!debugOn;
+  const logPath = await goCall('getDebugLogPath');
+  const pathEl = document.getElementById('debug-log-path');
+  if (logPath) { pathEl.textContent = 'Log: ' + logPath; pathEl.style.display = 'block'; }
+  else { pathEl.style.display = 'none'; }
+
   // Hotkeys
   const hk = configData.hotkeys || {};
   document.getElementById('hk-correct').value = hk.correct || '';
@@ -1022,6 +1044,45 @@ async function renderGeneral() {
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }
 async function onToggleClipboard(enabled) { await goCall('setPreserveClipboard', enabled); }
 async function onLogLevelChange(level) { await goCall('setLogLevel', level); }
+
+async function onToggleDebug(enabled) {
+  clearStatus('debug-status');
+  if (enabled) {
+    const result = await goCall('enableDebug');
+    if (result && !result.startsWith('error')) {
+      setStatus('debug-status', 'success', 'Debug logging enabled. Log: ' + result);
+      document.getElementById('debug-log-path').textContent = 'Log: ' + result;
+      document.getElementById('debug-log-path').style.display = 'block';
+    } else {
+      setStatus('debug-status', 'error', result || 'Failed to enable');
+      document.getElementById('pref-debug').checked = false;
+    }
+  } else {
+    await goCall('disableDebug');
+    setStatus('debug-status', 'info', 'Debug logging disabled.');
+  }
+}
+
+async function onOpenLogFile() {
+  clearStatus('debug-status');
+  const result = await goCall('openLogFile');
+  if (result && result.startsWith('error')) setStatus('debug-status', 'error', result);
+}
+
+async function onCopyLog() {
+  clearStatus('debug-status');
+  const tail = await goCall('tailDebugLog');
+  if (!tail || tail.startsWith('error')) {
+    setStatus('debug-status', 'error', tail || 'No log data');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(tail);
+    setStatus('debug-status', 'success', 'Log copied to clipboard (' + tail.split('\n').length + ' lines)');
+  } catch(e) {
+    setStatus('debug-status', 'error', 'Copy failed: ' + e.message);
+  }
+}
 
 function clearHotkey(name) {
   document.getElementById('hk-' + name).value = '';

@@ -224,6 +224,16 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	// The SettingsService is pre-registered so its JS bindings are available
 	// whenever a settings or wizard window is created on this app.
 	settingsSvc := gui.NewSettingsService()
+
+	// Wire debug callbacks so the Settings GUI can control debug logging.
+	if debugState != nil {
+		settingsSvc.DebugEnableFn = debugState.Enable
+		settingsSvc.DebugDisableFn = debugState.Disable
+		settingsSvc.DebugEnabledFn = debugState.Enabled
+		settingsSvc.DebugLogPathFn = debugState.LogPath
+		settingsSvc.DebugTailFn = debugState.Tail
+	}
+
 	subFS, err := gui.FrontendSubFS()
 	if err != nil {
 		slog.Error("Failed to load frontend assets", "error", err)
@@ -493,9 +503,13 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		// Without it, the Carbon API deadlocks (SIGTRAP) and keyboard simulation
 		// silently fails. Poll until the user grants permission — AXIsProcessTrusted()
 		// updates live when the toggle is flipped in System Settings.
-		if !checkAccessibility() {
+		axOK := checkAccessibility()
+		slog.Info("Accessibility check", "granted", axOK)
+		fmt.Printf("Accessibility permission: %v\n", axOK)
+		if !axOK {
 			fmt.Println("Waiting for Accessibility permission...")
 			fmt.Println("Please enable GhostType in System Settings > Privacy & Security > Accessibility")
+			slog.Info("Opening Accessibility settings panes")
 			openAccessibilitySettings()
 
 			for !checkAccessibility() {
@@ -507,6 +521,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
 		fmt.Println("Press Ctrl+C to exit.")
+		slog.Info("Registering hotkeys", "action", cfg.Hotkeys.Correct)
 
 		// Main action hotkey — dispatches based on active mode.
 		if err := hk.Register("action", cfg.Hotkeys.Correct, func() {

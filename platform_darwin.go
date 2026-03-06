@@ -3,6 +3,8 @@
 package main
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/chrixbedardcad/GhostType/clipboard"
@@ -22,7 +24,12 @@ func newHotkeyManager() hotkey.Manager    { return hotkey.NewXPlatManager() }
 func startMainLoop(trayRun func() error, registerHotkeys func() error, hk hotkey.Manager) {
 	go func() {
 		if err := registerHotkeys(); err != nil {
-			os.Exit(1)
+			// Log the error but keep the app running so the user can
+			// access Settings to diagnose the issue. Previously this
+			// called os.Exit(1) which silently killed the .app bundle.
+			fmt.Fprintf(os.Stderr, "Hotkey registration failed: %v\n", err)
+			slog.Error("Hotkey registration failed — app remains running for diagnostics", "error", err)
+			return
 		}
 		hk.Listen()
 	}()
