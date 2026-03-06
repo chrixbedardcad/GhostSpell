@@ -54,6 +54,22 @@ jobs:
       - name: Install Linux system deps
         if: matrix.goos == 'linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev
+      - name: Embed Windows version info
+        if: matrix.goos == 'windows'
+        run: |
+          go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+          # Extract version from internal/version/version.go (e.g. "0.1.108")
+          VER=$(grep 'const Version' internal/version/version.go | sed 's/.*"\(.*\)".*/\1/')
+          MAJOR=$(echo "$VER" | cut -d. -f1)
+          MINOR=$(echo "$VER" | cut -d. -f2)
+          PATCH=$(echo "$VER" | cut -d. -f3)
+          # Update versioninfo.json with actual version numbers
+          sed -i "s/\"Major\": 0,/\"Major\": $MAJOR,/g" versioninfo.json
+          sed -i "s/\"Minor\": 1,/\"Minor\": $MINOR,/g" versioninfo.json
+          sed -i "s/\"Patch\": 0,/\"Patch\": $PATCH,/g" versioninfo.json
+          sed -i "s/\"FileVersion\": \"\"/\"FileVersion\": \"$VER.0\"/" versioninfo.json
+          sed -i "s/\"ProductVersion\": \"\"/\"ProductVersion\": \"$VER.0\"/" versioninfo.json
+          goversioninfo -64
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}

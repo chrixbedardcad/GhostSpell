@@ -1,0 +1,39 @@
+{
+  "FixedFileInfo": {
+    "FileVersion": {
+      "Major": 0,
+      "Minor": 1,
+      "Patch": 0,
+      "Build": 0
+    },
+    "ProductVersion": {
+      "Major": 0,
+      "Minor": 1,
+      "Patch": 0,
+      "Build": 0
+    },
+    "FileFlagsMask": "3f",
+    "FileFlags": "",
+    "FileOS": "040004",
+    "FileType": "01",
+    "FileSubType": "00"
+  },
+  "StringFileInfo": {
+    "Comments": "",
+    "CompanyName": "GhostType",
+    "FileDescription": "GhostType - AI-powered text correction",
+    "FileVersion": "",
+    "InternalName": "ghosttype",
+    "LegalCopyright": "Copyright (c) GhostType contributors",
+    "OriginalFilename": "ghosttype.exe",
+    "ProductName": "GhostType",
+    "ProductVersion": ""
+  },
+  "VarFileInfo": {
+    "Translation": {
+      "LangID": "0409",
+      "CharsetID": "04B0"
+    }
+  },
+  "IconPath": "assets/ghosttype.ico"
+}
