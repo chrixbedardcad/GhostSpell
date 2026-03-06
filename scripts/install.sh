@@ -166,6 +166,10 @@ install_linux() {
     local tmpdir
     tmpdir=$(mktemp -d)
 
+    # Kill any running GhostType before replacing the binary.
+    killall ghosttype 2>/dev/null || true
+    sleep 1
+
     info "Downloading ${asset} (${version})..."
     curl -fsSL -o "${tmpdir}/ghosttype" "$url" || fail "Download failed. Check your internet connection."
     chmod +x "${tmpdir}/ghosttype"
