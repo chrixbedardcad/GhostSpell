@@ -23,7 +23,9 @@ func checkAccessibility() bool {
 }
 
 // openAccessibilitySettings opens the macOS System Settings to the
-// Accessibility privacy pane so the user can grant permission.
+// Accessibility and Input Monitoring privacy panes so the user can grant
+// both permissions GhostType needs.
 func openAccessibilitySettings() {
 	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Start()
+	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent").Start()
 }

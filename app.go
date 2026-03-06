@@ -491,14 +491,18 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 		// On macOS, verify Accessibility permission before registering hotkeys.
 		// Without it, the Carbon API deadlocks (SIGTRAP) and keyboard simulation
-		// silently fails.
+		// silently fails. Poll until the user grants permission — AXIsProcessTrusted()
+		// updates live when the toggle is flipped in System Settings.
 		if !checkAccessibility() {
-			slog.Error("Accessibility permission not granted — hotkeys and keyboard simulation will not work")
-			fmt.Fprintln(os.Stderr, "Error: GhostType requires Accessibility permission.")
-			fmt.Fprintln(os.Stderr, "Please grant access in System Settings → Privacy & Security → Accessibility.")
-			// Attempt to open the Accessibility pane for the user.
+			fmt.Println("Waiting for Accessibility permission...")
+			fmt.Println("Please enable GhostType in System Settings > Privacy & Security > Accessibility")
 			openAccessibilitySettings()
-			return fmt.Errorf("accessibility permission not granted")
+
+			for !checkAccessibility() {
+				time.Sleep(2 * time.Second)
+			}
+			fmt.Println("Accessibility permission granted!")
+			slog.Info("Accessibility permission granted after polling")
 		}
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
