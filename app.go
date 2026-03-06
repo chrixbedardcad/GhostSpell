@@ -34,21 +34,25 @@ func captureText(
 	kb keyboard.Simulator,
 ) (text string, hadSelection bool, err error) {
 	// Clear clipboard so we can detect whether Ctrl+C actually grabbed something.
+	slog.Debug("captureText: clearing clipboard...")
 	if err := cb.Clear(); err != nil {
 		return "", false, fmt.Errorf("clear clipboard: %w", err)
 	}
 	time.Sleep(50 * time.Millisecond)
 
 	// Try copying the current selection (if any).
+	slog.Debug("captureText: sending Copy keystroke...")
 	if err := kb.Copy(); err != nil {
 		return "", false, fmt.Errorf("copy: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
 
+	slog.Debug("captureText: reading clipboard...")
 	text, err = cb.Read()
 	if err != nil {
 		return "", false, fmt.Errorf("read clipboard: %w", err)
 	}
+	slog.Debug("captureText: clipboard read", "len", len(text), "empty", text == "")
 
 	if text != "" {
 		slog.Info("Selection detected", "mode", modeName, "len", len(text))
@@ -62,15 +66,18 @@ func captureText(
 	}
 	time.Sleep(50 * time.Millisecond)
 
+	slog.Debug("captureText: sending Copy after select-all...")
 	if err := kb.Copy(); err != nil {
 		return "", false, fmt.Errorf("copy after select-all: %w", err)
 	}
 	time.Sleep(100 * time.Millisecond)
 
+	slog.Debug("captureText: reading clipboard after select-all...")
 	text, err = cb.Read()
 	if err != nil {
 		return "", false, fmt.Errorf("read clipboard after select-all: %w", err)
 	}
+	slog.Debug("captureText: final clipboard read", "len", len(text))
 
 	return text, false, nil
 }
@@ -89,15 +96,19 @@ func processMode(
 	cancelLLM *context.CancelFunc,
 ) {
 	slog.Info(modeName + " triggered")
+	slog.Debug("Playing working sound...")
 	sound.PlayWorking()
 
 	// Save original clipboard.
+	slog.Debug("Saving clipboard...")
 	if err := cb.Save(); err != nil {
 		slog.Error("Failed to save clipboard", "mode", modeName, "error", err)
 		return
 	}
+	slog.Debug("Clipboard saved")
 
 	// Capture text — detects existing selection or falls back to select-all.
+	slog.Debug("Capturing text...")
 	text, hadSelection, err := captureText(modeName, cb, kb)
 	if err != nil {
 		slog.Error("Failed to capture text", "mode", modeName, "error", err)
@@ -129,6 +140,7 @@ func processMode(
 	}()
 
 	// Send to LLM via mode router.
+	slog.Debug("Sending to LLM...", "mode", modeName, "text_len", len(text))
 	result, err := router.Process(ctx, m, text)
 	if err != nil {
 		slog.Error("LLM processing failed", "mode", modeName, "error", err)
