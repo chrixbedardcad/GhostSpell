@@ -11,5 +11,5 @@ var AppIcon16 []byte
 //go:embed GhostType_icon_32.png
 var AppIcon32 []byte
 
-//go:embed GhostType_tray_mac_64.png
-var TrayIconMac64 []byte
+//go:embed GhostType_tray_64.png
+var TrayIcon64 []byte
