@@ -511,32 +511,27 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		<-wizardDone
 
-		// On macOS, verify BOTH permissions before registering hotkeys:
-		//   1. Accessibility — without it, Carbon hotkey API deadlocks (SIGTRAP)
-		//   2. Input Monitoring — without it, CGEventPost silently drops keyboard events
-		// Poll until the user grants both. AXIsProcessTrusted() checks Accessibility;
-		// IOHIDCheckAccess(1) checks Input Monitoring (undocumented but stable API).
+		// On macOS, verify Accessibility permission before registering hotkeys.
+		// Without it, the Carbon API deadlocks (SIGTRAP) and keyboard simulation
+		// silently fails. Poll until the user grants it — AXIsProcessTrusted()
+		// updates live when the toggle is flipped in System Settings.
+		//
+		// Input Monitoring is also needed (for CGEventPost) but IOHIDCheckAccess
+		// is unreliable — it can report false even when the permission is granted.
+		// We log it for diagnostics but only block on Accessibility.
 		axOK := checkAccessibility()
 		imOK := checkInputMonitoring()
 		slog.Info("Permission check", "accessibility", axOK, "inputMonitoring", imOK)
 		fmt.Printf("Accessibility permission: %v\n", axOK)
 		fmt.Printf("Input Monitoring permission: %v\n", imOK)
 
-		if !axOK || !imOK {
+		if !axOK {
 			fmt.Println("")
 			fmt.Println("  GhostType needs two macOS permissions to work:")
-			if !axOK {
-				fmt.Println("  [MISSING] Accessibility     — for keyboard simulation (Cmd+A, Cmd+C, Cmd+V)")
-			} else {
-				fmt.Println("  [OK]      Accessibility")
-			}
-			if !imOK {
-				fmt.Println("  [MISSING] Input Monitoring  — for global hotkeys and key events")
-			} else {
-				fmt.Println("  [OK]      Input Monitoring")
-			}
+			fmt.Println("  1. Accessibility     — for keyboard simulation (Cmd+A, Cmd+C, Cmd+V)")
+			fmt.Println("  2. Input Monitoring  — for global hotkeys and key events")
 			fmt.Println("")
-			fmt.Println("  System Settings > Privacy & Security > grant both permissions.")
+			fmt.Println("  System Settings > Privacy & Security > grant BOTH permissions.")
 			fmt.Println("  If you just updated, old entries were cleared automatically.")
 			fmt.Println("  Click '+', add GhostType.app, and toggle ON in both panes.")
 			fmt.Println("")
@@ -544,18 +539,27 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			openAccessibilitySettings()
 
 			pollCount := 0
-			for !checkAccessibility() || !checkInputMonitoring() {
+			for !checkAccessibility() {
 				time.Sleep(2 * time.Second)
 				pollCount++
 				if pollCount%5 == 0 {
-					ax := checkAccessibility()
-					im := checkInputMonitoring()
-					slog.Info("Still waiting for permissions", "accessibility", ax, "inputMonitoring", im, "polls", pollCount)
-					fmt.Printf("Waiting for permissions... Accessibility=%v, Input Monitoring=%v (poll #%d)\n", ax, im, pollCount)
+					slog.Info("Still waiting for Accessibility permission", "polls", pollCount)
+					fmt.Printf("Waiting for Accessibility permission... (poll #%d)\n", pollCount)
 				}
 			}
-			fmt.Println("Both permissions granted!")
-			slog.Info("All permissions granted after polling", "polls", pollCount)
+			fmt.Println("Accessibility permission granted!")
+			slog.Info("Accessibility permission granted after polling", "polls", pollCount)
+
+			// Re-check Input Monitoring after Accessibility is granted.
+			imOK = checkInputMonitoring()
+			if !imOK {
+				slog.Warn("Input Monitoring not detected — keyboard simulation may fail. Grant Input Monitoring in System Settings if hotkeys don't work.")
+				fmt.Println("")
+				fmt.Println("  NOTE: Input Monitoring may also need to be granted.")
+				fmt.Println("  If Cmd+G doesn't work, check:")
+				fmt.Println("  System Settings > Privacy & Security > Input Monitoring")
+				fmt.Println("")
+			}
 		}
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
