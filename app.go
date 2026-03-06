@@ -511,37 +511,51 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		<-wizardDone
 
-		// On macOS, verify Accessibility permission before registering hotkeys.
-		// Without it, the Carbon API deadlocks (SIGTRAP) and keyboard simulation
-		// silently fails. Poll until the user grants permission — AXIsProcessTrusted()
-		// updates live when the toggle is flipped in System Settings.
+		// On macOS, verify BOTH permissions before registering hotkeys:
+		//   1. Accessibility — without it, Carbon hotkey API deadlocks (SIGTRAP)
+		//   2. Input Monitoring — without it, CGEventPost silently drops keyboard events
+		// Poll until the user grants both. AXIsProcessTrusted() checks Accessibility;
+		// IOHIDCheckAccess(1) checks Input Monitoring (undocumented but stable API).
 		axOK := checkAccessibility()
-		slog.Info("Accessibility check", "granted", axOK)
+		imOK := checkInputMonitoring()
+		slog.Info("Permission check", "accessibility", axOK, "inputMonitoring", imOK)
 		fmt.Printf("Accessibility permission: %v\n", axOK)
-		if !axOK {
-			fmt.Println("Waiting for Accessibility permission...")
+		fmt.Printf("Input Monitoring permission: %v\n", imOK)
+
+		if !axOK || !imOK {
 			fmt.Println("")
-			fmt.Println("  GhostType needs two macOS permissions:")
-			fmt.Println("  1. System Settings > Privacy & Security > Accessibility")
-			fmt.Println("  2. System Settings > Privacy & Security > Input Monitoring")
+			fmt.Println("  GhostType needs two macOS permissions to work:")
+			if !axOK {
+				fmt.Println("  [MISSING] Accessibility     — for keyboard simulation (Cmd+A, Cmd+C, Cmd+V)")
+			} else {
+				fmt.Println("  [OK]      Accessibility")
+			}
+			if !imOK {
+				fmt.Println("  [MISSING] Input Monitoring  — for global hotkeys and key events")
+			} else {
+				fmt.Println("  [OK]      Input Monitoring")
+			}
 			fmt.Println("")
+			fmt.Println("  System Settings > Privacy & Security > grant both permissions.")
 			fmt.Println("  If you just updated, old entries were cleared automatically.")
 			fmt.Println("  Click '+', add GhostType.app, and toggle ON in both panes.")
 			fmt.Println("")
-			slog.Info("Opening Accessibility settings panes")
+			slog.Info("Opening permission settings panes")
 			openAccessibilitySettings()
 
 			pollCount := 0
-			for !checkAccessibility() {
+			for !checkAccessibility() || !checkInputMonitoring() {
 				time.Sleep(2 * time.Second)
 				pollCount++
 				if pollCount%5 == 0 {
-					slog.Info("Still waiting for Accessibility permission", "polls", pollCount)
-					fmt.Printf("Still waiting for Accessibility permission... (poll #%d)\n", pollCount)
+					ax := checkAccessibility()
+					im := checkInputMonitoring()
+					slog.Info("Still waiting for permissions", "accessibility", ax, "inputMonitoring", im, "polls", pollCount)
+					fmt.Printf("Waiting for permissions... Accessibility=%v, Input Monitoring=%v (poll #%d)\n", ax, im, pollCount)
 				}
 			}
-			fmt.Println("Accessibility permission granted!")
-			slog.Info("Accessibility permission granted after polling", "polls", pollCount)
+			fmt.Println("Both permissions granted!")
+			slog.Info("All permissions granted after polling", "polls", pollCount)
 		}
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
