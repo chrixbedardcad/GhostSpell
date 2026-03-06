@@ -17,6 +17,8 @@
 
 ---
 
+Unlike traditional auto-correction tools that constantly interrupt your flow with inline suggestions and red underlines, GhostType stays invisible until you need it. No distractions, no popups — just press **Ctrl+G** when you're ready, and it does the work. Your workflow, your timing.
+
 GhostType runs in the background as a system tray app. Select text (or let it select all), press **Ctrl+G**, and your text is corrected, translated, or rewritten — powered by your choice of LLM. Works in any application: browsers, chat clients, editors, email.
 
 ## Install
