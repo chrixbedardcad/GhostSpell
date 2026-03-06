@@ -29,6 +29,8 @@ func TestSettingsServiceHasAllMethods(t *testing.T) {
 		"OllamaListModels",
 		"OllamaPullModel",
 		"OllamaDownloadInstaller",
+		"CheckForUpdate",
+		"UpdateNow",
 	}
 
 	svcType := reflect.TypeOf(svc)

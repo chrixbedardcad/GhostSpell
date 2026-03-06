@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -591,6 +592,47 @@ func (s *SettingsService) CheckForUpdate() string {
 	}
 	data, _ := json.Marshal(result)
 	return string(data)
+}
+
+// UpdateNow launches the platform install script in a detached process and exits
+// the app. The install script handles killing the old process, downloading the
+// latest release, and relaunching.
+func (s *SettingsService) UpdateNow() string {
+	guiLog("[GUI] JS called: UpdateNow")
+
+	const repo = "chrixbedardcad/GhostType"
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		script := fmt.Sprintf("irm https://raw.githubusercontent.com/%s/main/scripts/install.ps1 | iex", repo)
+		cmd = exec.Command("powershell", "-NoProfile", "-Command", script)
+	case "darwin", "linux":
+		script := fmt.Sprintf("curl -fsSL https://raw.githubusercontent.com/%s/main/scripts/install.sh | bash", repo)
+		cmd = exec.Command("bash", "-c", script)
+	default:
+		return "error: unsupported platform"
+	}
+
+	// Detach the process so it survives our exit.
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.Stdin = nil
+
+	if err := cmd.Start(); err != nil {
+		guiLog("[GUI] UpdateNow: failed to start installer: %v", err)
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	guiLog("[GUI] UpdateNow: installer launched (PID %d), exiting app...", cmd.Process.Pid)
+
+	// Give the install script a moment to start, then exit.
+	go func() {
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}()
+
+	return "ok"
 }
 
 // splitTarget splits "en|fr" into ["en", "fr"] or "es" into ["es"].
