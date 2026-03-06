@@ -198,7 +198,27 @@ No dependencies. The installer creates a Start Menu shortcut. Two exe variants: 
 
 ### macOS
 
-Requires **Accessibility** and **Input Monitoring** permissions (the installer guides you through this). Runs as a menu bar app — no Dock icon.
+No dependencies to install. Runs as a menu bar app (no Dock icon). The curl installer handles everything, but macOS requires two manual permission grants:
+
+**1. Allow the app to run (Gatekeeper)**
+
+GhostType is not signed with an Apple Developer certificate, so macOS blocks it by default. The curl installer removes the quarantine flag automatically. If you install manually:
+
+Right-click `GhostType.app` > **Open** > click **Open** in the security dialog. Or from Terminal:
+```bash
+xattr -d com.apple.quarantine /Applications/GhostType.app
+```
+
+**2. Grant permissions**
+
+GhostType needs two macOS permissions — these cannot be bypassed, even by signed apps:
+
+- **Accessibility** (System Settings > Privacy & Security > Accessibility) — required for keyboard simulation (Ctrl+A, Ctrl+C, Ctrl+V)
+- **Input Monitoring** (System Settings > Privacy & Security > Input Monitoring) — required for global hotkeys (Ctrl+G)
+
+The installer opens both settings panes and prompts you to enable GhostType. After granting, it relaunches the app to pick up the new permissions.
+
+> **Note:** An Apple Developer account ($99/year) would eliminate the Gatekeeper warning and allow notarization, but Accessibility and Input Monitoring prompts are always required by macOS for any app that simulates keystrokes or listens to global hotkeys.
 
 ### Linux
 
