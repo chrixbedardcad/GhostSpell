@@ -134,3 +134,92 @@ time=2026-03-06T10:58:21.352-05:00 level=INFO msg="[GUI] Settings window created
 time=2026-03-06T10:58:21.461-05:00 level=INFO msg="[GUI] JS called: GetConfig"
 time=2026-03-06T10:58:21.463-05:00 level=INFO msg="[GUI] JS called: GetConfig"
 time=2026-03-06T10:58:25.488-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-06T11:03:20.805-05:00 level=INFO msg="Correction triggered"
+time=2026-03-06T11:04:00.910-05:00 level=INFO msg="GhostType starting" version=0.1.126 default_llm=gemini llm_providers=1
+time=2026-03-06T11:04:00.998-05:00 level=INFO msg="=== GhostType Debug Session ===" version=0.1.126 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+Shift+G default_llm=gemini providers=1
+time=2026-03-06T11:04:00.998-05:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=gemini
+time=2026-03-06T11:04:01.007-05:00 level=INFO msg="GhostType launching" version=0.1.126 needs_setup=false
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041 target_labels=1 template_names=5
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-06T11:04:01.011-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-06T11:04:01.057-05:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-06T11:04:01.058-05:00 level=INFO msg="Accessibility check" granted=true
+time=2026-03-06T11:04:01.058-05:00 level=INFO msg="Registering hotkeys" action=Ctrl+Shift+G
+time=2026-03-06T11:04:01.083-05:00 level=DEBUG msg="Hotkey registered" name=action key=Ctrl+Shift+G
+time=2026-03-06T11:04:01.083-05:00 level=DEBUG msg="Starting hotkey listener" registered=1
+time=2026-03-06T11:06:42.699-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:06:44.452-05:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-06T11:06:44.452-05:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-06T11:06:44.538-05:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-06T11:06:44.650-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-06T11:06:44.652-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-06T11:07:00.350-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:07:02.026-05:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-06T11:07:02.026-05:00 level=INFO msg="[GUI] ShowSettings: window already open, skipping"
+time=2026-03-06T11:07:14.853-05:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-06T11:07:19.653-05:00 level=INFO msg="[GUI] JS called: SetHotkey(correct, Ctrl+G)"
+time=2026-03-06T11:07:19.656-05:00 level=DEBUG msg="LLM client cache reset"
+time=2026-03-06T11:07:19.656-05:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-06T11:07:19.658-05:00 level=INFO msg="[GUI] JS called: SetHotkey(translate, )"
+time=2026-03-06T11:07:19.659-05:00 level=DEBUG msg="LLM client cache reset"
+time=2026-03-06T11:07:19.659-05:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-06T11:07:19.661-05:00 level=INFO msg="[GUI] JS called: SetHotkey(toggle_language, )"
+time=2026-03-06T11:07:19.662-05:00 level=DEBUG msg="LLM client cache reset"
+time=2026-03-06T11:07:19.662-05:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-06T11:07:19.663-05:00 level=INFO msg="[GUI] JS called: SetHotkey(rewrite, )"
+time=2026-03-06T11:07:19.663-05:00 level=DEBUG msg="LLM client cache reset"
+time=2026-03-06T11:07:19.663-05:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-06T11:07:19.664-05:00 level=INFO msg="[GUI] JS called: SetHotkey(cycle_template, )"
+time=2026-03-06T11:07:19.665-05:00 level=DEBUG msg="LLM client cache reset"
+time=2026-03-06T11:07:19.665-05:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-06T11:07:24.000-05:00 level=INFO msg="[GUI] Settings window closing event received"
+time=2026-03-06T11:07:42.098-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:07:43.647-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:07:45.530-05:00 level=INFO msg="Exit requested via tray menu"
+time=2026-03-06T11:07:45.530-05:00 level=DEBUG msg="Hotkey unregistered on stop" name=action
+time=2026-03-06T11:07:50.260-05:00 level=INFO msg="GhostType starting" version=0.1.126 default_llm=gemini llm_providers=1
+time=2026-03-06T11:07:50.374-05:00 level=INFO msg="=== GhostType Debug Session ===" version=0.1.126 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=gemini providers=1
+time=2026-03-06T11:07:50.374-05:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=gemini
+time=2026-03-06T11:07:50.375-05:00 level=INFO msg="GhostType launching" version=0.1.126 needs_setup=false
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041 target_labels=1 template_names=5
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-06T11:07:50.378-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-06T11:07:50.424-05:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-06T11:07:50.425-05:00 level=INFO msg="Accessibility check" granted=true
+time=2026-03-06T11:07:50.425-05:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-06T11:07:50.448-05:00 level=DEBUG msg="Hotkey registered" name=action key=Ctrl+G
+time=2026-03-06T11:07:50.448-05:00 level=DEBUG msg="Starting hotkey listener" registered=1
+time=2026-03-06T11:07:55.772-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:07:57.394-05:00 level=INFO msg="Exit requested via tray menu"
+time=2026-03-06T11:07:57.397-05:00 level=DEBUG msg="Hotkey unregistered on stop" name=action
+time=2026-03-06T11:08:02.615-05:00 level=INFO msg="GhostType starting" version=0.1.126 default_llm=gemini llm_providers=1
+time=2026-03-06T11:08:02.731-05:00 level=INFO msg="=== GhostType Debug Session ===" version=0.1.126 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=gemini providers=1
+time=2026-03-06T11:08:02.731-05:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=gemini
+time=2026-03-06T11:08:02.732-05:00 level=INFO msg="GhostType launching" version=0.1.126 needs_setup=false
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041 target_labels=1 template_names=5
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Menu built and set" active_mode=correct models=1 targets=1 templates=5
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-06T11:08:02.735-05:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-06T11:08:02.776-05:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-06T11:08:02.781-05:00 level=INFO msg="Accessibility check" granted=true
+time=2026-03-06T11:08:02.781-05:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-06T11:08:02.797-05:00 level=DEBUG msg="Hotkey registered" name=action key=Ctrl+G
+time=2026-03-06T11:08:02.797-05:00 level=DEBUG msg="Starting hotkey listener" registered=1
+time=2026-03-06T11:08:08.710-05:00 level=INFO msg="Correction triggered"
