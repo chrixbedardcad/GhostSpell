@@ -26,26 +26,21 @@ type Config struct {
 	TemplateIconPNG []byte
 
 	// Callbacks — called on the tray thread.
-	OnModeChange    func(modeName string) // "correct", "translate", "rewrite"
-	OnTargetSelect  func(idx int)
-	OnTemplSelect   func(idx int)
-	OnSoundToggle   func(enabled bool)
-	OnCancel        func()
-	OnSettings      func()
-	OnModelSelect   func(label string)
-	OnDebugToggle   func(enabled bool) // toggle debug logging
-	OnOpenLogFile   func()             // open log file in editor
-	OnCopyLog       func()             // copy last 200 log lines to clipboard
-	OnExit          func()
+	OnModeChange   func(modeName string) // "correct", "translate", "rewrite"
+	OnTargetSelect func(idx int)
+	OnTemplSelect  func(idx int)
+	OnCancel       func()
+	OnSettings     func()
+	OnAddProvider  func() // open wizard to add a new provider
+	OnModelSelect  func(label string)
+	OnExit         func()
 
 	// State readers — called to build the menu.
-	GetActiveMode    func() string // returns "correct", "translate", or "rewrite"
-	GetTargetIdx     func() int
-	GetTemplateIdx   func() int
-	GetSoundEnabled  func() bool
-	GetIsProcessing  func() bool
-	GetModelLabels   func() []ModelLabel
-	GetDebugEnabled  func() bool
+	GetActiveMode  func() string // returns "correct", "translate", or "rewrite"
+	GetTargetIdx   func() int
+	GetTemplateIdx func() int
+	GetIsProcessing func() bool
+	GetModelLabels func() []ModelLabel
 
 	// Static data for building menu items.
 	TargetLabels  []string // translate target display labels
@@ -197,15 +192,13 @@ func (ts *trayState) refreshMenu() {
 					ts.refreshMenu()
 				})
 			}
-		} else {
-			menu.Add("  Add a model in Settings...").SetEnabled(false)
 		}
 	}
 
-	settingsItem := menu.Add("  Settings...")
-	settingsItem.OnClick(func(ctx *application.Context) {
-		if ts.cfg.OnSettings != nil {
-			ts.cfg.OnSettings()
+	addItem := menu.Add("  Add...")
+	addItem.OnClick(func(ctx *application.Context) {
+		if ts.cfg.OnAddProvider != nil {
+			ts.cfg.OnAddProvider()
 		}
 	})
 
@@ -253,20 +246,8 @@ func (ts *trayState) refreshMenu() {
 		}
 	}
 
-	// Sound toggle.
-	menu.AddSeparator()
-	soundEnabled := false
-	if ts.cfg.GetSoundEnabled != nil {
-		soundEnabled = ts.cfg.GetSoundEnabled()
-	}
-	soundItem := menu.AddCheckbox("Sound", soundEnabled)
-	soundItem.OnClick(func(ctx *application.Context) {
-		if ts.cfg.OnSoundToggle != nil {
-			ts.cfg.OnSoundToggle(ctx.IsChecked())
-		}
-	})
-
 	// Cancel LLM.
+	menu.AddSeparator()
 	isProcessing := false
 	if ts.cfg.GetIsProcessing != nil {
 		isProcessing = ts.cfg.GetIsProcessing()
@@ -279,37 +260,11 @@ func (ts *trayState) refreshMenu() {
 		}
 	})
 
-	// Debug section.
-	menu.AddSeparator()
-	menu.Add("Debug:").SetEnabled(false)
-
-	debugEnabled := false
-	if ts.cfg.GetDebugEnabled != nil {
-		debugEnabled = ts.cfg.GetDebugEnabled()
-	}
-	debugLabel := "  Enable Debug Logging"
-	if debugEnabled {
-		debugLabel = "  Debug Logging (active)"
-	}
-	debugItem := menu.AddCheckbox(debugLabel, debugEnabled)
-	debugItem.OnClick(func(ctx *application.Context) {
-		if ts.cfg.OnDebugToggle != nil {
-			ts.cfg.OnDebugToggle(ctx.IsChecked())
-		}
-		ts.refreshMenu()
-	})
-
-	openLogItem := menu.Add("  Open Log File...")
-	openLogItem.OnClick(func(ctx *application.Context) {
-		if ts.cfg.OnOpenLogFile != nil {
-			ts.cfg.OnOpenLogFile()
-		}
-	})
-
-	copyLogItem := menu.Add("  Copy Log to Clipboard")
-	copyLogItem.OnClick(func(ctx *application.Context) {
-		if ts.cfg.OnCopyLog != nil {
-			ts.cfg.OnCopyLog()
+	// Settings — just before Exit.
+	settingsItem := menu.Add("Settings...")
+	settingsItem.OnClick(func(ctx *application.Context) {
+		if ts.cfg.OnSettings != nil {
+			ts.cfg.OnSettings()
 		}
 	})
 
@@ -324,14 +279,11 @@ func (ts *trayState) refreshMenu() {
 
 	ts.systray.SetMenu(menu)
 
-	// Count items for debug.
-	itemCount := 3 + modelCount + 3 // modes + models + sound/cancel/exit + separators
 	slog.Info("[tray] Menu built and set",
 		"active_mode", activeMode,
 		"models", modelCount,
 		"targets", len(ts.cfg.TargetLabels),
 		"templates", len(ts.cfg.TemplateNames),
-		"approx_items", itemCount,
 	)
 }
 

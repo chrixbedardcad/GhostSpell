@@ -16,7 +16,7 @@ Type in French, hit **Ctrl+G**, get it corrected. Switch to English, hit **Ctrl+
 
 [![CI](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/actions/workflows/ci.yml)
 [![Release](https://github.com/chrixbedardcad/GhostType/actions/workflows/release.yml/badge.svg)](https://github.com/chrixbedardcad/GhostType/releases/latest)
-[![Version](https://img.shields.io/badge/version-v0.1.100-blue)](https://github.com/chrixbedardcad/GhostType/releases/latest)
+[![Version](https://img.shields.io/badge/version-v0.1.117-blue)](https://github.com/chrixbedardcad/GhostType/releases/latest)
 
 ### Quick Install (recommended)
 
@@ -41,7 +41,7 @@ powershell -c "irm https://raw.githubusercontent.com/chrixbedardcad/GhostType/ma
 
 **Linux:** Downloads the binary to `/usr/local/bin/ghosttype` and checks for required system dependencies (`xclip`, `xdotool`, `libwebkit2gtk-4.1`, `libgtk-3`). Prints install commands for any missing packages.
 
-**Windows:** Downloads both `ghosttype.exe` (with console) and `ghosttype-windowless.exe` (tray only) to `%LOCALAPPDATA%\GhostType\` and adds that directory to your user PATH.
+**Windows:** Downloads both `ghosttype.exe` (tray only, recommended) and `ghosttype-window.exe` (with console window for debugging) to `%LOCALAPPDATA%\GhostType\` and adds that directory to your user PATH.
 
 The scripts only download from official GitHub releases — you can inspect them at [`scripts/install.sh`](scripts/install.sh) and [`scripts/install.ps1`](scripts/install.ps1).
 </details>
@@ -50,8 +50,8 @@ The scripts only download from official GitHub releases — you can inspect them
 
 | Platform | Download |
 |----------|----------|
-| **Windows** (recommended) | [ghosttype-windows-amd64.exe](https://github.com/chrixbedardcad/GhostType/releases/latest/download/ghosttype-windows-amd64.exe) |
-| **Windows** (no console) | [ghosttype-windows-amd64-windowless.exe](https://github.com/chrixbedardcad/GhostType/releases/latest/download/ghosttype-windows-amd64-windowless.exe) |
+| **Windows** (recommended) | [ghosttype-windows-amd64.exe](https://github.com/chrixbedardcad/GhostType/releases/latest/download/ghosttype-windows-amd64.exe) — tray only, no console |
+| **Windows** (debug) | [ghosttype-windows-amd64-window.exe](https://github.com/chrixbedardcad/GhostType/releases/latest/download/ghosttype-windows-amd64-window.exe) — with console window |
 | **Linux** | [ghosttype-linux-amd64](https://github.com/chrixbedardcad/GhostType/releases/latest/download/ghosttype-linux-amd64) |
 | **macOS** (Intel) | [GhostType-darwin-amd64.dmg](https://github.com/chrixbedardcad/GhostType/releases/latest/download/GhostType-darwin-amd64.dmg) |
 | **macOS** (Apple Silicon) | [GhostType-darwin-arm64.dmg](https://github.com/chrixbedardcad/GhostType/releases/latest/download/GhostType-darwin-arm64.dmg) |
@@ -372,13 +372,12 @@ No additional dependencies. Pure Go build with `CGO_ENABLED=0`:
 ```bash
 git clone https://github.com/chrixbedardcad/GhostType.git
 cd GhostType
-go build -o ghosttype.exe .
-```
 
-Windowless build (tray only, no console window):
-
-```bash
+# Recommended: tray only, no console window
 go build -ldflags "-H=windowsgui" -o ghosttype.exe .
+
+# Debug: with console window (shows logs)
+go build -o ghosttype-window.exe .
 ```
 
 ### Linux

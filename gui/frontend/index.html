@@ -31,7 +31,7 @@
   }
   .tab-bar button {
     background: none; border: none; border-bottom: 2px solid transparent;
-    color: #6c7086; padding: 10px 18px; font-size: 0.85em;
+    color: #6c7086; padding: 10px 14px; font-size: 0.85em;
     cursor: pointer; transition: color 0.15s, border-color 0.15s;
     font-weight: 500;
   }
@@ -254,6 +254,7 @@
   <button class="active" onclick="switchTab('models')">Models</button>
   <button onclick="switchTab('templates')">Templates</button>
   <button onclick="switchTab('languages')">Languages</button>
+  <button onclick="switchTab('hotkeys')">Hotkeys</button>
   <button onclick="switchTab('general')">General</button>
   <button onclick="switchTab('about')">About</button>
 </div>
@@ -398,37 +399,11 @@
     </div>
   </div>
 
-  <!-- ============ GENERAL TAB ============ -->
-  <div id="tab-general" class="tab-panel">
-    <div class="section">
-      <h2>Preferences</h2>
-      <div class="toggle-row">
-        <div>
-          <div class="label">Sound Effects</div>
-          <div class="sublabel">Play sounds on success, error, and mode changes</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="pref-sound" onchange="onToggleSound(this.checked)">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="label">Preserve Clipboard</div>
-          <div class="sublabel">Restore clipboard contents after processing</div>
-        </div>
-        <label class="toggle">
-          <input type="checkbox" id="pref-clipboard" onchange="onToggleClipboard(this.checked)">
-          <span class="slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <hr class="section-divider">
-
+  <!-- ============ HOTKEYS TAB ============ -->
+  <div id="tab-hotkeys" class="tab-panel">
     <div class="section">
       <h2>Hotkeys</h2>
-      <p style="font-size:0.82em;color:#6c7086;margin-bottom:12px">
+      <p style="font-size:0.82em;color:#6c7086;margin-bottom:16px">
         Format: <code style="background:#313244;padding:1px 5px;border-radius:3px;font-size:0.9em;color:#f9e2af">Ctrl+G</code>,
         <code style="background:#313244;padding:1px 5px;border-radius:3px;font-size:0.9em;color:#f9e2af">Ctrl+Shift+T</code>.
         Leave blank to disable. Restart required for hotkey changes.
@@ -458,8 +433,35 @@
         <input type="text" id="hk-cycle_template" placeholder="(optional)">
         <button class="clear-btn" onclick="clearHotkey('cycle_template')" title="Clear">&times;</button>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="saveHotkeys()">Save Hotkeys</button>
+      <button class="btn btn-primary btn-sm" onclick="saveHotkeys()" style="margin-top:8px">Save Hotkeys</button>
       <div class="status" id="hk-status"></div>
+    </div>
+  </div>
+
+  <!-- ============ GENERAL TAB ============ -->
+  <div id="tab-general" class="tab-panel">
+    <div class="section">
+      <h2>Preferences</h2>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Sound Effects</div>
+          <div class="sublabel">Play sounds on success, error, and mode changes</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="pref-sound" onchange="onToggleSound(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Preserve Clipboard</div>
+          <div class="sublabel">Restore clipboard contents after processing</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="pref-clipboard" onchange="onToggleClipboard(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <hr class="section-divider">
@@ -529,6 +531,7 @@ function switchTab(name) {
   // Refresh tab data
   if (name === 'templates') renderTemplates();
   if (name === 'languages') renderLanguages();
+  if (name === 'hotkeys') renderGeneral();
   if (name === 'general') renderGeneral();
 }
 

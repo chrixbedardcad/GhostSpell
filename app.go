@@ -15,7 +15,6 @@ import (
 	"github.com/chrixbedardcad/GhostType/clipboard"
 	"github.com/chrixbedardcad/GhostType/config"
 	"github.com/chrixbedardcad/GhostType/gui"
-	"github.com/chrixbedardcad/GhostType/internal/sysinfo"
 	"github.com/chrixbedardcad/GhostType/keyboard"
 	"github.com/chrixbedardcad/GhostType/llm"
 	"github.com/chrixbedardcad/GhostType/mode"
@@ -297,19 +296,6 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			slog.Info("Rewrite template changed", "template", name)
 			fmt.Printf("Rewrite template: %s\n", name)
 		},
-		OnSoundToggle: func(enabled bool) {
-			sound.SetEnabled(enabled)
-			cfg.SoundEnabled = &enabled
-			if err := config.WriteDefault(configPath, cfg); err != nil {
-				slog.Error("Failed to save config", "error", err)
-			} else {
-				slog.Info("Sound toggled", "enabled", enabled)
-				fmt.Printf("Sound: %v\n", enabled)
-			}
-			if enabled {
-				sound.PlayToggle()
-			}
-		},
 		OnSettings: func() {
 			gui.ShowSettings(settingsSvc, cfg, configPath, func() {
 				// Reload config from disk after settings save.
@@ -325,6 +311,23 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					router.ResetClients()
 				}
 				slog.Info("Live config reloaded after settings save")
+			})
+		},
+		OnAddProvider: func() {
+			gui.ShowWizard(settingsSvc, cfg, configPath, func() {
+				// Reload config from disk after wizard save.
+				newCfg, err := config.LoadRaw(configPath)
+				if err != nil {
+					slog.Error("Failed to reload config after wizard", "error", err)
+					return
+				}
+				mu.Lock()
+				*cfg = *newCfg
+				mu.Unlock()
+				if router != nil {
+					router.ResetClients()
+				}
+				slog.Info("Live config reloaded after add-provider wizard")
 			})
 		},
 		OnModelSelect: func(label string) {
@@ -345,54 +348,6 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				fn()
 			}
 		},
-		OnDebugToggle: func(enabled bool) {
-			if debugState == nil {
-				return
-			}
-			if enabled {
-				logPath, err := debugState.Enable()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to enable debug logging: %v\n", err)
-					return
-				}
-				logSysInfo(cfg)
-				fmt.Printf("Debug logging enabled: %s\n", logPath)
-			} else {
-				debugState.Disable()
-				fmt.Println("Debug logging disabled")
-			}
-		},
-		OnOpenLogFile: func() {
-			if debugState == nil {
-				return
-			}
-			logPath := debugState.LogPath()
-			if _, err := os.Stat(logPath); os.IsNotExist(err) {
-				// No log file yet — enable debug logging first so there's something to open.
-				fmt.Println("No log file yet — enabling debug logging first")
-				if _, enableErr := debugState.Enable(); enableErr != nil {
-					fmt.Fprintf(os.Stderr, "Failed to enable debug logging: %v\n", enableErr)
-					return
-				}
-				logSysInfo(cfg)
-			}
-			gui.OpenFile(logPath)
-		},
-		OnCopyLog: func() {
-			if debugState == nil {
-				return
-			}
-			tail, err := debugState.Tail()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to read log: %v\n", err)
-				return
-			}
-			info := sysinfo.Collect()
-			header := fmt.Sprintf("GhostType v%s | %s %s (%s) | Locale: %s | Keyboard: %s\n---\n",
-				Version, info.OS, info.OSVersion, info.Arch, info.Locale, info.KeyboardLayout)
-			cb.Write(header + tail)
-			fmt.Println("Log copied to clipboard (last 200 lines)")
-		},
 		OnExit: func() {
 			slog.Info("Exit requested via tray menu")
 			fmt.Println("\nGhostType exiting (tray menu).")
@@ -406,9 +361,6 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			mu.Lock()
 			defer mu.Unlock()
 			return activeMode
-		},
-		GetSoundEnabled: func() bool {
-			return cfg.SoundEnabled != nil && *cfg.SoundEnabled
 		},
 		GetIsProcessing: func() bool {
 			mu.Lock()
@@ -429,9 +381,6 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			}
 			sort.Slice(labels, func(i, j int) bool { return labels[i].Label < labels[j].Label })
 			return labels
-		},
-		GetDebugEnabled: func() bool {
-			return debugState != nil && debugState.Enabled()
 		},
 		GetTargetIdx: func() int {
 			if router == nil {
