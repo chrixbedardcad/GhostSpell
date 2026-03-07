@@ -215,6 +215,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	var hkMu sync.Mutex
 	var registeredHotkeys config.Hotkeys
 	var hotkeyReady bool
+	var refreshHotkeys func()
 
 	// Active mode state — determines what the action hotkey (Ctrl+G) does.
 	// Protected by mu. Can be changed at runtime (e.g., from tray menu).
@@ -573,7 +574,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 	// refreshHotkeys re-registers hotkeys when the user changes them in Settings.
 	// It stops the current hotkey manager, creates a new one, and starts listening.
-	refreshHotkeys := func() {
+	refreshHotkeys = func() {
 		hkMu.Lock()
 		if !hotkeyReady {
 			hkMu.Unlock()
