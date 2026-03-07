@@ -484,9 +484,14 @@ func (s *DarwinSimulator) PasteAX() error {
 }
 
 func (s *DarwinSimulator) SelectAll() error {
-	resolveKeys()
-	slog.Debug("[keyboard] SelectAll (Cmd+A)", "keyCode", fmt.Sprintf("0x%02X", keyA))
-	if ret := C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyA, C.UniChar('a')); ret != 0 {
+	// Use ANSI/QWERTY key code 0x00 for 'a', NOT the layout-resolved keyA.
+	// This method is only called in Strategy 2 (CGEventPost fallback for non-Cocoa
+	// apps like Firestorm/SDL). Non-Cocoa apps interpret key codes using QWERTY
+	// mapping — on AZERTY, layout-resolved keyA=0x0C maps to 'q' on QWERTY,
+	// turning Cmd+A into Cmd+Q (Quit!). The Unicode char is still set to 'a'
+	// via CGEventKeyboardSetUnicodeString for Cocoa compatibility.
+	slog.Debug("[keyboard] SelectAll (Cmd+A, ANSI key code)", "keyCode", fmt.Sprintf("0x%02X", kVK_ANSI_A))
+	if ret := C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), C.CGKeyCode(kVK_ANSI_A), C.UniChar('a')); ret != 0 {
 		slog.Error("[keyboard] CGEventCreate returned NULL — Accessibility permission revoked or stale",
 			"action", "SelectAll")
 		return fmt.Errorf("CGEventCreate failed for SelectAll — Accessibility permission likely revoked (toggle OFF/ON in System Settings)")
