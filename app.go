@@ -33,6 +33,7 @@ const (
 	captureViaAXAPI      captureMethod = iota // AX API read — paste via AX write
 	captureViaCGEvent                         // CGEventPost + clipboard — paste via CGEventPost
 	captureViaAXKeystroke                     // AXUIElementPostKeyboardEvent + clipboard — paste via AX keystroke
+	captureViaScript                          // osascript System Events + clipboard — paste via osascript
 )
 
 // captureText reads text from the focused UI element.
@@ -41,6 +42,7 @@ const (
 //     — instant, no clipboard pollution, no keyboard simulation needed.
 //  2. Fall back to CGEventPost Cmd+C / Cmd+A+Cmd+C clipboard approach.
 //  3. Fall back to AXUIElementPostKeyboardEvent Cmd+A+Cmd+C (for Chrome/browsers).
+//  4. Fall back to osascript / System Events (true last resort).
 //
 // Returns the captured text, whether the user had an active selection,
 // the capture method used (for paste strategy), and any error.
@@ -152,11 +154,43 @@ func captureText(
 	}
 	if text != "" {
 		slog.Info("captureText: got text via AX keystroke fallback", "len", len(text))
+		return text, false, captureViaAXKeystroke, nil
+	}
+	slog.Debug("captureText: AX keystroke fallback also returned empty")
+
+	// --- Strategy 4: osascript / System Events (macOS, true last resort) ---
+	// Both CGEventPost and AXUIElementPostKeyboardEvent failed. Try osascript
+	// which routes through System Events — a completely different mechanism.
+	slog.Debug("captureText: trying osascript fallback")
+
+	if err := cb.Clear(); err != nil {
+		return "", false, captureViaScript, fmt.Errorf("clear clipboard (script fallback): %w", err)
+	}
+	time.Sleep(50 * time.Millisecond)
+
+	if err := kb.SelectAllScript(); err != nil {
+		slog.Debug("captureText: SelectAllScript not available", "error", err)
+		return "", false, captureViaScript, nil
+	}
+	time.Sleep(150 * time.Millisecond)
+
+	if err := kb.CopyScript(); err != nil {
+		slog.Debug("captureText: CopyScript not available", "error", err)
+		return "", false, captureViaScript, nil
+	}
+	time.Sleep(200 * time.Millisecond)
+
+	text, err = cb.Read()
+	if err != nil {
+		return "", false, captureViaScript, fmt.Errorf("read clipboard (script fallback): %w", err)
+	}
+	if text != "" {
+		slog.Info("captureText: got text via osascript fallback", "len", len(text))
 	} else {
-		slog.Debug("captureText: AX keystroke fallback also returned empty")
+		slog.Debug("captureText: osascript fallback also returned empty")
 	}
 
-	return text, false, captureViaAXKeystroke, nil
+	return text, false, captureViaScript, nil
 }
 
 // processMode captures text from the active window, sends it through the LLM
@@ -264,10 +298,9 @@ func processMode(
 		slog.Debug("Result written to clipboard", "mode", modeName, "result_len", len(result))
 		time.Sleep(50 * time.Millisecond)
 
-		if capMethod == captureViaAXKeystroke {
-			// Strategy 3: AX keystroke paste — for Chrome/browsers where CGEventPost
-			// keystrokes don't reach the content area. Use the same AX routing
-			// that successfully captured the text.
+		switch capMethod {
+		case captureViaAXKeystroke:
+			// Strategy 3: AX keystroke paste.
 			if !hadSelection {
 				if err := kb.SelectAllAX(); err != nil {
 					slog.Error("SelectAllAX (paste prep) failed", "mode", modeName, "error", err)
@@ -279,7 +312,20 @@ func processMode(
 				cb.Restore()
 				return
 			}
-		} else {
+		case captureViaScript:
+			// Strategy 4: osascript paste.
+			if !hadSelection {
+				if err := kb.SelectAllScript(); err != nil {
+					slog.Error("SelectAllScript (paste prep) failed", "mode", modeName, "error", err)
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+			if err := kb.PasteScript(); err != nil {
+				slog.Error("PasteScript failed", "mode", modeName, "error", err)
+				cb.Restore()
+				return
+			}
+		default:
 			// Strategy 2: CGEventPost paste — for native apps.
 			if !hadSelection {
 				if err := kb.SelectAll(); err != nil {

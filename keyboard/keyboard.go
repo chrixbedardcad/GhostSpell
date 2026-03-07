@@ -46,4 +46,14 @@ type Simulator interface {
 
 	// PasteAX sends Cmd+V via AXUIElementPostKeyboardEvent.
 	PasteAX() error
+
+	// SelectAllScript sends Cmd+A via osascript / System Events.
+	// Last-resort fallback when both CGEventPost and AXUIElementPostKeyboardEvent fail.
+	SelectAllScript() error
+
+	// CopyScript sends Cmd+C via osascript / System Events.
+	CopyScript() error
+
+	// PasteScript sends Cmd+V via osascript / System Events.
+	PasteScript() error
 }

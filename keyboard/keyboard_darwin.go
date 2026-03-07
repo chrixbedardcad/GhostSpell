@@ -186,18 +186,29 @@ CFStringRef getFrontAppName(void) {
 }
 
 // getFrontPid returns the PID of the frontmost application.
+// Tries AX focused element first, falls back to Carbon GetFrontProcess.
+// The AX path fails for Chrome (focused element not accessible), but
+// Carbon's GetFrontProcess always returns the frontmost app's PID.
 // Returns -1 on failure.
 pid_t getFrontPid(void) {
+	// Try AX first — works for most apps.
 	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
 	AXUIElementRef focused = NULL;
 	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
 	CFRelease(systemWide);
-	if (err != kAXErrorSuccess || !focused) return -1;
+	if (err == kAXErrorSuccess && focused) {
+		pid_t pid;
+		err = AXUIElementGetPid(focused, &pid);
+		CFRelease(focused);
+		if (err == kAXErrorSuccess) return pid;
+	}
 
+	// Fallback: Carbon GetFrontProcess — works even when AX can't find
+	// the focused element (e.g. Chrome's web content area).
+	ProcessSerialNumber psn;
+	if (GetFrontProcess(&psn) != noErr) return -1;
 	pid_t pid;
-	err = AXUIElementGetPid(focused, &pid);
-	CFRelease(focused);
-	if (err != kAXErrorSuccess) return -1;
+	if (GetProcessPID(&psn, &pid) != noErr) return -1;
 	return pid;
 }
 
@@ -223,6 +234,23 @@ int sendCmdKeyViaAX(CGKeyCode key, CGCharCode ch) {
 	CFRelease(app);
 	return (e1 == kAXErrorSuccess && e2 == kAXErrorSuccess &&
 	        e3 == kAXErrorSuccess && e4 == kAXErrorSuccess) ? 0 : -1;
+}
+
+// sendCmdKeystrokeViaScript sends a Cmd+key combo using osascript / System Events.
+// This is a last-resort fallback that uses yet another routing mechanism.
+// Returns 0 on success, -1 on failure.
+int sendCmdKeystrokeViaScript(const char *key) {
+	char script[256];
+	snprintf(script, sizeof(script),
+		"tell application \"System Events\" to keystroke \"%s\" using command down", key);
+	int ret = 0;
+	FILE *fp = popen("/usr/bin/osascript -e '' 2>/dev/null", "r");
+	if (fp) pclose(fp); // just test osascript exists
+
+	char cmd[512];
+	snprintf(cmd, sizeof(cmd), "/usr/bin/osascript -e '%s' 2>/dev/null", script);
+	ret = system(cmd);
+	return (ret == 0) ? 0 : -1;
 }
 
 // sendKeyComboWithChar posts a Cmd+key event with an explicit Unicode character.
@@ -480,6 +508,39 @@ func (s *DarwinSimulator) PasteAX() error {
 		return fmt.Errorf("AXUIElementPostKeyboardEvent failed for Paste")
 	}
 	time.Sleep(10 * time.Millisecond)
+	return nil
+}
+
+func (s *DarwinSimulator) SelectAllScript() error {
+	slog.Debug("[keyboard] SelectAllScript (osascript)")
+	cKey := C.CString("a")
+	defer C.free(unsafe.Pointer(cKey))
+	if ret := C.sendCmdKeystrokeViaScript(cKey); ret != 0 {
+		return fmt.Errorf("osascript keystroke failed for SelectAll")
+	}
+	time.Sleep(50 * time.Millisecond)
+	return nil
+}
+
+func (s *DarwinSimulator) CopyScript() error {
+	slog.Debug("[keyboard] CopyScript (osascript)")
+	cKey := C.CString("c")
+	defer C.free(unsafe.Pointer(cKey))
+	if ret := C.sendCmdKeystrokeViaScript(cKey); ret != 0 {
+		return fmt.Errorf("osascript keystroke failed for Copy")
+	}
+	time.Sleep(50 * time.Millisecond)
+	return nil
+}
+
+func (s *DarwinSimulator) PasteScript() error {
+	slog.Debug("[keyboard] PasteScript (osascript)")
+	cKey := C.CString("v")
+	defer C.free(unsafe.Pointer(cKey))
+	if ret := C.sendCmdKeystrokeViaScript(cKey); ret != 0 {
+		return fmt.Errorf("osascript keystroke failed for Paste")
+	}
+	time.Sleep(50 * time.Millisecond)
 	return nil
 }
 

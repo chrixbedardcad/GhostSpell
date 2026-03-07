@@ -97,6 +97,9 @@ func (s *WindowsSimulator) FrontAppName() string             { return "" }
 func (s *WindowsSimulator) SelectAllAX() error               { return fmt.Errorf("not supported") }
 func (s *WindowsSimulator) CopyAX() error                    { return fmt.Errorf("not supported") }
 func (s *WindowsSimulator) PasteAX() error                   { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) SelectAllScript() error           { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) CopyScript() error                { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) PasteScript() error               { return fmt.Errorf("not supported") }
 
 func (s *WindowsSimulator) SelectAll() error {
 	return sendKeyCombo(vkControl, vkA)

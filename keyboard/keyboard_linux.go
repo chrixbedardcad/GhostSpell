@@ -26,6 +26,9 @@ func (s *LinuxSimulator) FrontAppName() string             { return "" }
 func (s *LinuxSimulator) SelectAllAX() error               { return fmt.Errorf("not supported") }
 func (s *LinuxSimulator) CopyAX() error                    { return fmt.Errorf("not supported") }
 func (s *LinuxSimulator) PasteAX() error                   { return fmt.Errorf("not supported") }
+func (s *LinuxSimulator) SelectAllScript() error           { return fmt.Errorf("not supported") }
+func (s *LinuxSimulator) CopyScript() error                { return fmt.Errorf("not supported") }
+func (s *LinuxSimulator) PasteScript() error               { return fmt.Errorf("not supported") }
 
 func (s *LinuxSimulator) SelectAll() error {
 	return xdotoolKey("ctrl+a")
