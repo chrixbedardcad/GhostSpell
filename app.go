@@ -391,6 +391,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	var registeredHotkeys config.Hotkeys
 	var hotkeyReady bool
 	var refreshHotkeys func()
+	var reRegisterHotkeys func() // force re-register (after tray menu disrupts Carbon events)
 
 	// Active mode state — determines what the action hotkey (Ctrl+G) does.
 	// Protected by mu. Can be changed at runtime (e.g., from tray menu).
@@ -477,11 +478,22 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	// the LLM client and router are ready.
 	wizardDone := make(chan struct{})
 
+	// scheduleHotkeyRecovery re-registers hotkeys after a tray menu interaction.
+	// On macOS, the Cocoa modal event loop (NSMenu popup) can break the Carbon
+	// hotkey event handler. The delay lets the modal loop finish first.
+	scheduleHotkeyRecovery := func() {
+		go func() {
+			time.Sleep(200 * time.Millisecond)
+			reRegisterHotkeys()
+		}()
+	}
+
 	trayCfg := tray.Config{
 		IconPNG:         assets.TrayIcon64,
 		TemplateIconPNG: assets.TrayIconMacOS,
 		OnModeChange: func(modeName string) {
 			setActiveMode(modeName)
+			scheduleHotkeyRecovery()
 		},
 		OnTargetSelect: func(idx int) {
 			if router == nil {
@@ -491,6 +503,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			setActiveMode("translate")
 			slog.Info("Translation target changed", "target", label)
 			fmt.Printf("Translation target: %s\n", label)
+			scheduleHotkeyRecovery()
 		},
 		OnTemplSelect: func(idx int) {
 			if router == nil {
@@ -500,6 +513,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			setActiveMode("rewrite")
 			slog.Info("Rewrite template changed", "template", name)
 			fmt.Printf("Rewrite template: %s\n", name)
+			scheduleHotkeyRecovery()
 		},
 		OnSettings: func() {
 			gui.ShowSettings(settingsSvc, cfg, configPath, func() {
@@ -526,6 +540,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			config.WriteDefault(configPath, cfg)
 			slog.Info("Default model changed", "label", label)
 			sound.PlayToggle()
+			scheduleHotkeyRecovery()
 		},
 		OnCancel: func() {
 			mu.Lock()
@@ -680,6 +695,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 		// Main action hotkey — dispatches based on active mode.
 		if err := mgr.Register("action", cfg.Hotkeys.Correct, func() {
+			slog.Debug("Hotkey callback fired")
+
 			mu.Lock()
 			currentMode := activeMode
 			mu.Unlock()
@@ -766,6 +783,31 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		hk = newHotkeyManager()
 		newMgr := hk
 		registeredHotkeys = newHotkeys
+		hkMu.Unlock()
+
+		old.Stop()
+
+		restartHotkeyListener(newMgr, func() error {
+			return doRegister(newMgr)
+		})
+	}
+
+	// reRegisterHotkeys forces a hotkey re-registration even when the config
+	// hasn't changed. On macOS, the Cocoa modal event loop (NSMenu popup from
+	// the tray) can disrupt Carbon's RegisterEventHotKey handler, causing
+	// hotkey events to stop being delivered. Re-registering restores them.
+	reRegisterHotkeys = func() {
+		hkMu.Lock()
+		if !hotkeyReady {
+			hkMu.Unlock()
+			return
+		}
+
+		slog.Debug("Force re-registering hotkeys (post-menu recovery)")
+
+		old := hk
+		hk = newHotkeyManager()
+		newMgr := hk
 		hkMu.Unlock()
 
 		old.Stop()
