@@ -850,12 +850,13 @@ async function loadModels(selectId, provider) {
   const raw = await goCall('getKnownModels', provider);
   formModelList = [];
   if (raw) { try { formModelList = JSON.parse(raw); } catch(e) {} }
-  // Select first model by default.
-  if (formModelList.length > 0) {
-    const first = typeof formModelList[0] === 'string' ? formModelList[0] : formModelList[0].name;
-    document.getElementById('form-model').value = first;
-    document.getElementById('form-model-label').textContent = first;
+  // Default to the "recommended" model, or first if none tagged.
+  let pick = formModelList.length > 0 ? (typeof formModelList[0] === 'string' ? formModelList[0] : formModelList[0].name) : '';
+  for (const m of formModelList) {
+    if (typeof m === 'object' && m.tag === 'recommended') { pick = m.name; break; }
   }
+  document.getElementById('form-model').value = pick;
+  document.getElementById('form-model-label').textContent = pick;
   renderFormModelDD();
 }
 

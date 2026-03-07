@@ -367,6 +367,13 @@ let ollamaModel = '';    // selected ollama model name
 const returnTo = new URLSearchParams(window.location.search).get('returnTo');
 
 // ==================== PROVIDER METADATA ====================
+const PROVIDER_ICONS = {
+  gemini:    '<svg width="22" height="22" viewBox="0 0 28 28" style="vertical-align:middle;margin-right:6px"><defs><linearGradient id="gm2" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset=".33" stop-color="#9B72CB"/><stop offset=".66" stop-color="#D96570"/><stop offset="1" stop-color="#F9AB00"/></linearGradient></defs><path d="M14 0C14 7.732 7.732 14 0 14c7.732 0 14 6.268 14 14 0-7.732 6.268-14 14-14C20.268 14 14 7.732 14 0z" fill="url(#gm2)"/></svg>',
+  xai:       '<svg width="22" height="22" viewBox="0 0 28 28" style="vertical-align:middle;margin-right:6px"><text x="4" y="22" font-family="Arial,sans-serif" font-weight="900" font-size="24" fill="#cdd6f4">X</text></svg>',
+  anthropic: '<svg width="22" height="22" viewBox="0 0 28 28" style="vertical-align:middle;margin-right:6px"><path d="M15.5 4L23 24h-4.2L14 12.5 9.2 24H5L12.5 4z" fill="#D4A574"/></svg>',
+  openai:    '<svg width="22" height="22" viewBox="0 0 28 28" style="vertical-align:middle;margin-right:6px"><polygon points="14,2 24.4,8 24.4,20 14,26 3.6,20 3.6,8" fill="none" stroke="#10A37F" stroke-width="2" stroke-linejoin="round"/><circle cx="14" cy="14" r="4.5" fill="#10A37F"/></svg>',
+};
+
 const PROVIDERS = {
   gemini:    { label: 'gemini',    name: 'Google Gemini',    keyUrl: 'https://aistudio.google.com/apikey' },
   xai:      { label: 'xai',       name: 'xAI Grok',        keyUrl: 'https://console.x.ai/' },
@@ -438,7 +445,8 @@ function selectCloudProvider(provider) {
 
 function setupCloudForm() {
   const p = PROVIDERS[cloudProvider];
-  document.getElementById('step3-title').textContent = 'Configure ' + p.name;
+  const icon = PROVIDER_ICONS[cloudProvider] || '';
+  document.getElementById('step3-title').innerHTML = icon + 'Configure ' + esc(p.name);
   document.getElementById('cfg-apikey').value = '';
   clearStatus('step3-status');
   loadCloudModels();
@@ -457,12 +465,13 @@ async function loadCloudModels() {
   const raw = await goCall('getKnownModels', cloudProvider);
   modelList = [];
   if (raw) { try { modelList = JSON.parse(raw); } catch(e) {} }
-  // Select first model by default.
-  if (modelList.length > 0) {
-    const first = typeof modelList[0] === 'string' ? modelList[0] : modelList[0].name;
-    document.getElementById('cfg-model').value = first;
-    document.getElementById('cfg-model-label').textContent = first;
+  // Default to the "recommended" model, or first if none tagged.
+  let pick = modelList.length > 0 ? (typeof modelList[0] === 'string' ? modelList[0] : modelList[0].name) : '';
+  for (const m of modelList) {
+    if (typeof m === 'object' && m.tag === 'recommended') { pick = m.name; break; }
   }
+  document.getElementById('cfg-model').value = pick;
+  document.getElementById('cfg-model-label').textContent = pick;
   renderModelDropdown();
 }
 
