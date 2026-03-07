@@ -77,6 +77,19 @@ $Shortcut.IconLocation = "$ExePath,0"
 $Shortcut.Description = "GhostType - AI-powered text correction"
 $Shortcut.Save()
 
+# --- Startup shortcut (auto-start on login) ---------------------------------
+
+$StartupDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup"
+$StartupShortcut = Join-Path $StartupDir "GhostType.lnk"
+
+Write-Info "Adding GhostType to Windows startup..."
+$WshStartup = New-Object -ComObject WScript.Shell
+$Startup = $WshStartup.CreateShortcut($StartupShortcut)
+$Startup.TargetPath = $ExePath
+$Startup.WorkingDirectory = $InstallDir
+$Startup.Description = "GhostType - AI-powered text correction"
+$Startup.Save()
+
 # --- Done -------------------------------------------------------------------
 
 Write-Ok ""

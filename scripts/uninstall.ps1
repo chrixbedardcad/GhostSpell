@@ -45,6 +45,14 @@ if (Test-Path $ShortcutPath) {
     Remove-Item -Force $ShortcutPath
 }
 
+# --- Remove Startup shortcut -----------------------------------------------
+
+$StartupShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\GhostType.lnk"
+if (Test-Path $StartupShortcut) {
+    Write-Info "Removing Startup shortcut..."
+    Remove-Item -Force $StartupShortcut
+}
+
 # --- Remove from PATH -------------------------------------------------------
 
 $UserPath = [Environment]::GetEnvironmentVariable("PATH", "User")
