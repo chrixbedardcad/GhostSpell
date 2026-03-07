@@ -25,6 +25,14 @@ type Simulator interface {
 	// ReadAllText reads all text from the focused UI element.
 	ReadAllText() string
 
+	// WriteSelectedText replaces the selected text in the focused UI element.
+	// Returns true on success. Falls back to false for apps that don't support it.
+	WriteSelectedText(text string) bool
+
+	// WriteAllText replaces all text in the focused UI element.
+	// Returns true on success.
+	WriteAllText(text string) bool
+
 	// FrontAppName returns the name of the frontmost application.
 	FrontAppName() string
 }

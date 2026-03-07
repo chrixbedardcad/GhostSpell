@@ -130,6 +130,34 @@ CFStringRef getAllTextAX(void) {
 	return (CFStringRef)value;
 }
 
+// setSelectedTextAX replaces the selected text in the focused UI element.
+// Returns 0 on success, -1 on failure.
+int setSelectedTextAX(CFStringRef text) {
+	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+	AXUIElementRef focused = NULL;
+	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
+	CFRelease(systemWide);
+	if (err != kAXErrorSuccess || !focused) return -1;
+
+	err = AXUIElementSetAttributeValue(focused, kAXSelectedTextAttribute, text);
+	CFRelease(focused);
+	return (err == kAXErrorSuccess) ? 0 : -1;
+}
+
+// setAllTextAX replaces all text in the focused UI element.
+// Returns 0 on success, -1 on failure.
+int setAllTextAX(CFStringRef text) {
+	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+	AXUIElementRef focused = NULL;
+	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
+	CFRelease(systemWide);
+	if (err != kAXErrorSuccess || !focused) return -1;
+
+	err = AXUIElementSetAttributeValue(focused, kAXValueAttribute, text);
+	CFRelease(focused);
+	return (err == kAXErrorSuccess) ? 0 : -1;
+}
+
 // getFrontAppName returns the name of the frontmost application.
 // The caller must CFRelease the returned string.
 CFStringRef getFrontAppName(void) {
@@ -346,6 +374,34 @@ func (s *DarwinSimulator) ReadSelectedText() string {
 // macOS Accessibility API (kAXValueAttribute).
 func (s *DarwinSimulator) ReadAllText() string {
 	return cfStringToGo(C.getAllTextAX())
+}
+
+// WriteSelectedText replaces the selected text in the focused UI element
+// using the macOS Accessibility API (kAXSelectedTextAttribute).
+// Returns true on success, false if the app doesn't support it.
+func (s *DarwinSimulator) WriteSelectedText(text string) bool {
+	cStr := C.CString(text)
+	defer C.free(unsafe.Pointer(cStr))
+	cfStr := C.CFStringCreateWithCString(0, cStr, C.kCFStringEncodingUTF8)
+	if cfStr == 0 {
+		return false
+	}
+	defer C.CFRelease(C.CFTypeRef(cfStr))
+	return C.setSelectedTextAX(cfStr) == 0
+}
+
+// WriteAllText replaces all text in the focused UI element
+// using the macOS Accessibility API (kAXValueAttribute).
+// Returns true on success, false if the app doesn't support it.
+func (s *DarwinSimulator) WriteAllText(text string) bool {
+	cStr := C.CString(text)
+	defer C.free(unsafe.Pointer(cStr))
+	cfStr := C.CFStringCreateWithCString(0, cStr, C.kCFStringEncodingUTF8)
+	if cfStr == 0 {
+		return false
+	}
+	defer C.CFRelease(C.CFTypeRef(cfStr))
+	return C.setAllTextAX(cfStr) == 0
 }
 
 // FrontAppName returns the name of the frontmost application.
