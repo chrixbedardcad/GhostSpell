@@ -133,15 +133,21 @@ int sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
 	CGEventKeyboardSetUnicodeString(keyDown, 1, &ch);
 	CGEventKeyboardSetUnicodeString(keyUp, 1, &ch);
 
-	// Post with small inter-event delays so the target app's run loop
-	// has time to process each event before the next arrives.
-	CGEventPost(kCGHIDEventTap, modDown);
+	// Post to kCGSessionEventTap (session level) instead of kCGHIDEventTap
+	// (HID level). HID-level events get merged with hardware modifier state,
+	// so if the user's Ctrl key is still physically held from the hotkey
+	// trigger, our Cmd+A becomes Ctrl+Cmd+A — even with explicit flags.
+	// Session-level events bypass HID state merging entirely. This is the
+	// same approach used by Hammerspoon (the most popular macOS automation
+	// tool). Combined with WaitForModifierRelease and explicit flags, this
+	// provides robust keyboard simulation from hotkey callbacks.
+	CGEventPost(kCGSessionEventTap, modDown);
 	usleep(2000); // 2ms
-	CGEventPost(kCGHIDEventTap, keyDown);
+	CGEventPost(kCGSessionEventTap, keyDown);
 	usleep(2000);
-	CGEventPost(kCGHIDEventTap, keyUp);
+	CGEventPost(kCGSessionEventTap, keyUp);
 	usleep(2000);
-	CGEventPost(kCGHIDEventTap, modUp);
+	CGEventPost(kCGSessionEventTap, modUp);
 
 	CFRelease(modDown);
 	CFRelease(keyDown);
