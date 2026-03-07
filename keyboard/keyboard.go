@@ -11,4 +11,10 @@ type Simulator interface {
 
 	// Paste simulates Ctrl+V (or Cmd+V on macOS).
 	Paste() error
+
+	// WaitForModifierRelease waits for all physical modifier keys to be released.
+	// On macOS, this prevents hotkey modifiers (e.g. Ctrl from Ctrl+G) from
+	// leaking into subsequent synthetic Cmd+A/C/V events via CGEventPost's
+	// HID-level hardware state merging.
+	WaitForModifierRelease()
 }

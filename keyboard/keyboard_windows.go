@@ -88,6 +88,8 @@ func sendKeyCombo(modifier, key uint16) error {
 	return nil
 }
 
+func (s *WindowsSimulator) WaitForModifierRelease() {}
+
 func (s *WindowsSimulator) SelectAll() error {
 	return sendKeyCombo(vkControl, vkA)
 }

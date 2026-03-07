@@ -34,6 +34,11 @@ func captureText(
 	cb *clipboard.Clipboard,
 	kb keyboard.Simulator,
 ) (text string, hadSelection bool, err error) {
+	// Wait for the user to release hotkey modifier keys (e.g. Ctrl from Ctrl+G).
+	// On macOS, CGEventPost at kCGHIDEventTap merges with hardware state —
+	// if Ctrl is still held, our Cmd+A/C/V become Ctrl+Cmd+A/C/V which apps ignore.
+	kb.WaitForModifierRelease()
+
 	// Clear clipboard so we can detect whether Ctrl+C actually grabbed something.
 	slog.Debug("captureText: clearing clipboard...")
 	if err := cb.Clear(); err != nil {

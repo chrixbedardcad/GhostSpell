@@ -54,6 +54,36 @@ CGKeyCode keyCodeForChar(UniChar c) {
 	return UINT16_MAX;
 }
 
+// waitForModifierRelease polls CGEventSourceKeyState for all modifier keys
+// (Control, Shift, Option, Command) and waits until none are physically pressed.
+// Returns the number of milliseconds waited. Max wait is maxWaitMs.
+// This is critical when triggered from a hotkey: the user's hotkey modifier
+// (e.g. Ctrl from Ctrl+G) may still be physically held when we need to send
+// synthetic Cmd+A/C/V events. CGEventPost at kCGHIDEventTap merges with
+// hardware state, so held modifiers leak into our synthetic events.
+int waitForModifierRelease(int maxWaitMs) {
+	// Left/Right: Control, Shift, Option, Command
+	CGKeyCode modKeys[] = {0x3B, 0x3E, 0x38, 0x3C, 0x3A, 0x3D, 0x37, 0x36};
+	int numKeys = sizeof(modKeys) / sizeof(modKeys[0]);
+	int waitedUs = 0;
+	int intervalUs = 5000; // 5ms poll interval
+	int maxUs = maxWaitMs * 1000;
+
+	while (waitedUs < maxUs) {
+		bool anyPressed = false;
+		for (int i = 0; i < numKeys; i++) {
+			if (CGEventSourceKeyState(kCGEventSourceStateCombinedSessionState, modKeys[i])) {
+				anyPressed = true;
+				break;
+			}
+		}
+		if (!anyPressed) break;
+		usleep(intervalUs);
+		waitedUs += intervalUs;
+	}
+	return waitedUs / 1000;
+}
+
 // sendKeyComboWithChar posts a Cmd+key event with an explicit Unicode character.
 // The key code is layout-resolved (correct for Cocoa apps), and the Unicode
 // string is set explicitly (correct for non-Cocoa apps like Firestorm that
@@ -201,6 +231,13 @@ type DarwinSimulator struct{}
 
 func NewDarwinSimulator() *DarwinSimulator {
 	return &DarwinSimulator{}
+}
+
+func (s *DarwinSimulator) WaitForModifierRelease() {
+	waited := int(C.waitForModifierRelease(C.int(500))) // max 500ms
+	if waited > 0 {
+		slog.Debug("[keyboard] Waited for modifier release", "ms", waited)
+	}
 }
 
 func (s *DarwinSimulator) SelectAll() error {

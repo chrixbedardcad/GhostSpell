@@ -17,6 +17,8 @@ func NewLinuxSimulator() *LinuxSimulator {
 	return &LinuxSimulator{}
 }
 
+func (s *LinuxSimulator) WaitForModifierRelease() {}
+
 func (s *LinuxSimulator) SelectAll() error {
 	return xdotoolKey("ctrl+a")
 }
