@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -194,10 +193,11 @@ func captureText(
 	return text, false, captureViaScript, nil
 }
 
-// lastTriggerMs is the Unix-millisecond timestamp of the last processMode call.
-// Used to debounce rapid hotkey re-fires (macOS Carbon can send multiple Keydown
-// events for a single press, launching parallel goroutines that corrupt state).
-var lastTriggerMs atomic.Int64
+// processingGuard prevents concurrent processMode execution.
+// macOS Carbon RegisterEventHotKey can send multiple Keydown events for a
+// single press, launching parallel goroutines that corrupt clipboard state.
+// TryLock rejects duplicates; Unlock happens when the current call finishes.
+var processingGuard sync.Mutex
 
 // processMode captures text from the active window, sends it through the LLM
 // with the given mode, and pastes the result back. This is the shared workflow
@@ -212,12 +212,11 @@ func processMode(
 	mu *sync.Mutex,
 	cancelLLM *context.CancelFunc,
 ) {
-	// Debounce: ignore if triggered within 500ms of the last call.
-	now := time.Now().UnixMilli()
-	if prev := lastTriggerMs.Swap(now); now-prev < 500 {
-		slog.Debug("Hotkey debounced (duplicate fire ignored)", "ms_since_last", now-prev)
+	if !processingGuard.TryLock() {
+		slog.Debug("Hotkey ignored (already processing)")
 		return
 	}
+	defer processingGuard.Unlock()
 	slog.Info(modeName + " triggered")
 	slog.Debug("Playing working sound...")
 	sound.PlayWorking()
