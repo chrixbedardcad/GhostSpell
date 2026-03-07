@@ -374,6 +374,31 @@ func (s *SettingsService) OllamaDownloadInstaller() string {
 	return "ok"
 }
 
+// --- Prompt management (correction & translation) --------------------------
+
+// SavePrompt updates the system prompt for a given mode.
+// Supported modes: "correct", "translate", "translate_single".
+func (s *SettingsService) SavePrompt(mode, prompt string) string {
+	guiLog("[GUI] JS called: SavePrompt(mode=%s)", mode)
+	if prompt == "" {
+		return "error: prompt cannot be empty"
+	}
+	switch mode {
+	case "correct":
+		s.cfgCopy.Prompts.Correct = prompt
+	case "translate":
+		s.cfgCopy.Prompts.Translate = prompt
+	case "translate_single":
+		s.cfgCopy.Prompts.TranslateSingle = prompt
+	default:
+		return "error: unknown prompt mode"
+	}
+	if err := s.clearLegacyAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // --- Template management ---------------------------------------------------
 
 // SaveTemplate updates an existing template at the given index, or appends if index == -1.

@@ -371,6 +371,45 @@
 
   <!-- ============ TEMPLATES TAB ============ -->
   <div id="tab-templates" class="tab-panel">
+    <!-- Correction Prompt -->
+    <div class="section">
+      <h2>Correction Prompt</h2>
+      <p style="font-size:0.82em;color:#6c7086;margin-bottom:8px">System prompt sent when correcting text. Use <code style="color:#89b4fa">{languages}</code> for configured language names.</p>
+      <div class="form-group" style="margin-bottom:8px">
+        <textarea id="prompt-correct" rows="3"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn btn-primary btn-sm" onclick="savePromptField('correct')">Save</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetPromptField('correct')">Reset to Default</button>
+      </div>
+      <div class="status" id="prompt-correct-status"></div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Translation Prompts -->
+    <div class="section">
+      <h2>Translation Prompts</h2>
+      <p style="font-size:0.82em;color:#6c7086;margin-bottom:8px">Pair mode (e.g. English ↔ French): use <code style="color:#89b4fa">{language_a}</code> and <code style="color:#89b4fa">{language_b}</code>.</p>
+      <div class="form-group" style="margin-bottom:8px">
+        <label for="prompt-translate">Pair Translation</label>
+        <textarea id="prompt-translate" rows="3"></textarea>
+      </div>
+      <p style="font-size:0.82em;color:#6c7086;margin-bottom:8px">Single target mode (e.g. → Spanish): use <code style="color:#89b4fa">{target_language}</code>.</p>
+      <div class="form-group" style="margin-bottom:8px">
+        <label for="prompt-translate-single">Single Target Translation</label>
+        <textarea id="prompt-translate-single" rows="3"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn btn-primary btn-sm" onclick="saveTranslatePrompts()">Save</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetPromptField('translate')">Reset to Default</button>
+      </div>
+      <div class="status" id="prompt-translate-status"></div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Rewrite Templates -->
     <div class="toolbar">
       <h2 style="margin-bottom:0">Rewrite Templates</h2>
       <button class="btn btn-primary btn-sm" onclick="showAddTemplate()">+ Add Template</button>
@@ -634,7 +673,7 @@ function switchTab(name) {
     if (b.textContent.toLowerCase() === name) b.classList.add('active');
   });
   // Refresh tab data
-  if (name === 'templates') renderTemplates();
+  if (name === 'templates') { renderPrompts(); renderTemplates(); }
   if (name === 'languages') renderLanguages();
   if (name === 'hotkeys') renderGeneral();
   if (name === 'general') { renderGeneral(); onCheckPermissions(); }
@@ -963,7 +1002,66 @@ function ollamaSetFormModel(name) {
 }
 
 // ===========================================================================
-// TEMPLATES TAB
+// TEMPLATES TAB — Correction & Translation Prompts
+// ===========================================================================
+
+const DEFAULT_PROMPTS = {
+  correct: 'Detect the language of the following text ({languages}). Fix all spelling and grammar errors while preserving the original meaning and language. Return ONLY the corrected text with no explanation.',
+  translate: 'The two configured languages are {language_a} and {language_b}. Detect the language of the following text and translate it to the OTHER language. If it is {language_a}, translate to {language_b}. If it is {language_b}, translate to {language_a}. Preserve the tone and intent. Return ONLY the translation with no explanation.',
+  translate_single: 'Translate the following text to {target_language}. Preserve the tone and intent. Return ONLY the translation with no explanation.',
+};
+
+async function renderPrompts() {
+  await reloadConfig();
+  const prompts = configData.prompts || {};
+  document.getElementById('prompt-correct').value = prompts.correct || DEFAULT_PROMPTS.correct;
+  document.getElementById('prompt-translate').value = prompts.translate || DEFAULT_PROMPTS.translate;
+  document.getElementById('prompt-translate-single').value = prompts.translate_single || DEFAULT_PROMPTS.translate_single;
+}
+
+async function savePromptField(mode) {
+  const el = document.getElementById('prompt-' + mode);
+  const statusId = 'prompt-' + mode + '-status';
+  const result = await goCall('savePrompt', mode, el.value.trim());
+  if (result && result.startsWith('ok')) {
+    setStatus(statusId, 'success', 'Saved');
+  } else {
+    setStatus(statusId, 'error', result || 'Save failed');
+  }
+}
+
+async function saveTranslatePrompts() {
+  const pair = document.getElementById('prompt-translate').value.trim();
+  const single = document.getElementById('prompt-translate-single').value.trim();
+  const statusId = 'prompt-translate-status';
+  let ok = true;
+  if (pair) {
+    const r = await goCall('savePrompt', 'translate', pair);
+    if (!r || !r.startsWith('ok')) { setStatus(statusId, 'error', r || 'Save failed'); ok = false; }
+  }
+  if (single && ok) {
+    const r = await goCall('savePrompt', 'translate_single', single);
+    if (!r || !r.startsWith('ok')) { setStatus(statusId, 'error', r || 'Save failed'); ok = false; }
+  }
+  if (ok) setStatus(statusId, 'success', 'Saved');
+}
+
+async function resetPromptField(mode) {
+  if (mode === 'correct') {
+    document.getElementById('prompt-correct').value = DEFAULT_PROMPTS.correct;
+    await goCall('savePrompt', 'correct', DEFAULT_PROMPTS.correct);
+    setStatus('prompt-correct-status', 'success', 'Reset to default');
+  } else if (mode === 'translate') {
+    document.getElementById('prompt-translate').value = DEFAULT_PROMPTS.translate;
+    document.getElementById('prompt-translate-single').value = DEFAULT_PROMPTS.translate_single;
+    await goCall('savePrompt', 'translate', DEFAULT_PROMPTS.translate);
+    await goCall('savePrompt', 'translate_single', DEFAULT_PROMPTS.translate_single);
+    setStatus('prompt-translate-status', 'success', 'Reset to default');
+  }
+}
+
+// ===========================================================================
+// TEMPLATES TAB — Rewrite Templates
 // ===========================================================================
 
 async function renderTemplates() {
