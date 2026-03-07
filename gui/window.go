@@ -183,7 +183,7 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 	guiLog("[GUI] Creating standalone Wails app for first-launch settings...")
 	app := application.New(application.Options{
 		Name: "GhostType Settings",
-		Icon: assets.TrayIcon64,
+		Icon: assets.AppIcon512,
 		Services: []application.Service{
 			application.NewService(svc),
 		},
