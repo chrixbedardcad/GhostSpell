@@ -487,18 +487,24 @@ func (w *windowsWebviewWindow) run() {
 			w32.SWP_FRAMECHANGED)
 	}
 
-	// Icon
+	// Icon — set both ICON_BIG and ICON_SMALL for crisp taskbar/Start Menu/Alt-Tab icons.
 	if !options.Windows.DisableIcon {
-		// App icon ID is 3
-		icon, err := NewIconFromResource(w32.GetModuleHandle(""), uint16(3))
-		if err != nil {
-			// Try loading from the given icon
-			if globalApplication.options.Icon != nil {
-				icon, _ = w32.CreateLargeHIconFromImage(globalApplication.options.Icon)
+		iconData := globalApplication.options.Icon
+		if iconData != nil {
+			bigIcon, _ := w32.CreateLargeHIconFromImage(iconData)
+			smallIcon, _ := w32.CreateSmallHIconFromImage(iconData)
+			if bigIcon != 0 {
+				w32.SendMessage(w.hwnd, w32.WM_SETICON, w32.ICON_BIG, uintptr(bigIcon))
+			}
+			if smallIcon != 0 {
+				w32.SendMessage(w.hwnd, w32.WM_SETICON, w32.ICON_SMALL, uintptr(smallIcon))
 			}
 		}
-		if icon != 0 {
-			w.setIcon(icon)
+		if iconData == nil {
+			icon, err := NewIconFromResource(w32.GetModuleHandle(""), uint16(3))
+			if err == nil && icon != 0 {
+				w.setIcon(icon)
+			}
 		}
 	} else {
 		w.disableIcon()
