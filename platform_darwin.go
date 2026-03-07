@@ -7,10 +7,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/chrixbedardcad/GhostType/assets"
 	"github.com/chrixbedardcad/GhostType/clipboard"
 	"github.com/chrixbedardcad/GhostType/hotkey"
 	"github.com/chrixbedardcad/GhostType/keyboard"
 )
+
+// appIcon returns the 512px PNG on macOS.
+func appIcon() []byte { return assets.AppIcon512 }
 
 func newClipboard() *clipboard.Clipboard  { return clipboard.NewDarwinClipboard() }
 func newKeyboard() keyboard.Simulator     { return keyboard.NewDarwinSimulator() }

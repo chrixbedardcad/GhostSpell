@@ -8,10 +8,14 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/chrixbedardcad/GhostType/assets"
 	"github.com/chrixbedardcad/GhostType/clipboard"
 	"github.com/chrixbedardcad/GhostType/hotkey"
 	"github.com/chrixbedardcad/GhostType/keyboard"
 )
+
+// appIcon returns the multi-resolution .ico on Windows for crisp taskbar/Start Menu icons.
+func appIcon() []byte { return assets.AppIconICO }
 
 func newClipboard() *clipboard.Clipboard  { return clipboard.NewWindowsClipboard() }
 func newKeyboard() keyboard.Simulator     { return keyboard.NewWindowsSimulator() }

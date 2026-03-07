@@ -16,3 +16,6 @@ var TrayIcon64 []byte
 
 //go:embed GhostType_tray_64_macOS.png
 var TrayIconMacOS []byte
+
+//go:embed ghosttype.ico
+var AppIconICO []byte

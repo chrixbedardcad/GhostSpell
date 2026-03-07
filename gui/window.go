@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"io/fs"
+	"runtime"
 	"sync"
 
 	"github.com/chrixbedardcad/GhostType/assets"
@@ -10,6 +11,15 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
+
+// windowAppIcon returns the best icon bytes for the current platform.
+// On Windows, the multi-resolution .ico gives crisp taskbar/Start Menu icons.
+func windowAppIcon() []byte {
+	if runtime.GOOS == "windows" {
+		return assets.AppIconICO
+	}
+	return assets.AppIcon512
+}
 
 // settingsGuard prevents multiple settings windows.
 var (
@@ -183,7 +193,7 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 	guiLog("[GUI] Creating standalone Wails app for first-launch settings...")
 	app := application.New(application.Options{
 		Name: "GhostType Settings",
-		Icon: assets.AppIcon512,
+		Icon: windowAppIcon(),
 		Services: []application.Service{
 			application.NewService(svc),
 		},
