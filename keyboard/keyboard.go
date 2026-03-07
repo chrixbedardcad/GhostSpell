@@ -17,4 +17,14 @@ type Simulator interface {
 	// leaking into subsequent synthetic Cmd+A/C/V events via CGEventPost's
 	// HID-level hardware state merging.
 	WaitForModifierRelease()
+
+	// ReadSelectedText reads the selected text from the focused UI element
+	// using the platform's accessibility API. Returns empty if unavailable.
+	ReadSelectedText() string
+
+	// ReadAllText reads all text from the focused UI element.
+	ReadAllText() string
+
+	// FrontAppName returns the name of the frontmost application.
+	FrontAppName() string
 }

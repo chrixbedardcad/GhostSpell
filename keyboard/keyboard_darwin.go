@@ -3,9 +3,10 @@
 package keyboard
 
 /*
-#cgo LDFLAGS: -framework CoreGraphics -framework CoreFoundation -framework Carbon
+#cgo LDFLAGS: -framework CoreGraphics -framework CoreFoundation -framework Carbon -framework ApplicationServices
 #include <CoreGraphics/CoreGraphics.h>
 #include <Carbon/Carbon.h>
+#include <ApplicationServices/ApplicationServices.h>
 #include <unistd.h>
 
 // keyCodeForChar finds the key code that produces the given character
@@ -84,6 +85,78 @@ int waitForModifierRelease(int maxWaitMs) {
 	return waitedUs / 1000;
 }
 
+// getSelectedTextAX reads the selected text from the focused UI element using
+// the macOS Accessibility API. Returns NULL if no text is selected or if the
+// focused element doesn't support kAXSelectedTextAttribute.
+// The caller must CFRelease the returned string.
+CFStringRef getSelectedTextAX(void) {
+	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+	AXUIElementRef focused = NULL;
+	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
+	CFRelease(systemWide);
+	if (err != kAXErrorSuccess || !focused) return NULL;
+
+	CFTypeRef selectedText = NULL;
+	err = AXUIElementCopyAttributeValue(focused, kAXSelectedTextAttribute, &selectedText);
+	CFRelease(focused);
+	if (err != kAXErrorSuccess || !selectedText) return NULL;
+
+	if (CFGetTypeID(selectedText) != CFStringGetTypeID()) {
+		CFRelease(selectedText);
+		return NULL;
+	}
+	return (CFStringRef)selectedText;
+}
+
+// getAllTextAX reads all text from the focused UI element using the
+// macOS Accessibility API (kAXValueAttribute).
+// The caller must CFRelease the returned string.
+CFStringRef getAllTextAX(void) {
+	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+	AXUIElementRef focused = NULL;
+	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
+	CFRelease(systemWide);
+	if (err != kAXErrorSuccess || !focused) return NULL;
+
+	CFTypeRef value = NULL;
+	err = AXUIElementCopyAttributeValue(focused, kAXValueAttribute, &value);
+	CFRelease(focused);
+	if (err != kAXErrorSuccess || !value) return NULL;
+
+	if (CFGetTypeID(value) != CFStringGetTypeID()) {
+		CFRelease(value);
+		return NULL;
+	}
+	return (CFStringRef)value;
+}
+
+// getFrontAppName returns the name of the frontmost application.
+// The caller must CFRelease the returned string.
+CFStringRef getFrontAppName(void) {
+	AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+	AXUIElementRef focused = NULL;
+	AXError err = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focused);
+	CFRelease(systemWide);
+	if (err != kAXErrorSuccess || !focused) return NULL;
+
+	pid_t pid;
+	err = AXUIElementGetPid(focused, &pid);
+	CFRelease(focused);
+	if (err != kAXErrorSuccess) return NULL;
+
+	AXUIElementRef app = AXUIElementCreateApplication(pid);
+	CFTypeRef title = NULL;
+	err = AXUIElementCopyAttributeValue(app, kAXTitleAttribute, &title);
+	CFRelease(app);
+	if (err != kAXErrorSuccess || !title) return NULL;
+
+	if (CFGetTypeID(title) != CFStringGetTypeID()) {
+		CFRelease(title);
+		return NULL;
+	}
+	return (CFStringRef)title;
+}
+
 // sendKeyComboWithChar posts a Cmd+key event with an explicit Unicode character.
 // The key code is layout-resolved (correct for Cocoa apps), and the Unicode
 // string is set explicitly (correct for non-Cocoa apps like Firestorm that
@@ -133,21 +206,17 @@ int sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
 	CGEventKeyboardSetUnicodeString(keyDown, 1, &ch);
 	CGEventKeyboardSetUnicodeString(keyUp, 1, &ch);
 
-	// Post to kCGSessionEventTap (session level) instead of kCGHIDEventTap
-	// (HID level). HID-level events get merged with hardware modifier state,
-	// so if the user's Ctrl key is still physically held from the hotkey
-	// trigger, our Cmd+A becomes Ctrl+Cmd+A — even with explicit flags.
-	// Session-level events bypass HID state merging entirely. This is the
-	// same approach used by Hammerspoon (the most popular macOS automation
-	// tool). Combined with WaitForModifierRelease and explicit flags, this
-	// provides robust keyboard simulation from hotkey callbacks.
-	CGEventPost(kCGSessionEventTap, modDown);
+	// Post to kCGHIDEventTap. WaitForModifierRelease must be called before
+	// this function to ensure no physical modifier keys are held — HID-level
+	// events merge with hardware state. kCGSessionEventTap was tested but
+	// does not reliably deliver keyboard events on macOS Ventura 13.7.
+	CGEventPost(kCGHIDEventTap, modDown);
 	usleep(2000); // 2ms
-	CGEventPost(kCGSessionEventTap, keyDown);
+	CGEventPost(kCGHIDEventTap, keyDown);
 	usleep(2000);
-	CGEventPost(kCGSessionEventTap, keyUp);
+	CGEventPost(kCGHIDEventTap, keyUp);
 	usleep(2000);
-	CGEventPost(kCGSessionEventTap, modUp);
+	CGEventPost(kCGHIDEventTap, modUp);
 
 	CFRelease(modDown);
 	CFRelease(keyDown);
@@ -163,6 +232,7 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // macOS virtual key codes — ANSI/QWERTY fallbacks if layout lookup fails.
@@ -244,6 +314,47 @@ func (s *DarwinSimulator) WaitForModifierRelease() {
 	if waited > 0 {
 		slog.Debug("[keyboard] Waited for modifier release", "ms", waited)
 	}
+}
+
+// cfStringToGo converts a CFStringRef to a Go string and releases it.
+func cfStringToGo(cfStr C.CFStringRef) string {
+	if cfStr == 0 {
+		return ""
+	}
+	defer C.CFRelease(C.CFTypeRef(cfStr))
+	length := C.CFStringGetLength(cfStr)
+	if length == 0 {
+		return ""
+	}
+	bufSize := length*4 + 1 // UTF-8 worst case + null terminator
+	buf := C.malloc(C.size_t(bufSize))
+	defer C.free(buf)
+	if C.CFStringGetCString(cfStr, (*C.char)(buf), C.CFIndex(bufSize), C.kCFStringEncodingUTF8) == 0 {
+		return ""
+	}
+	return C.GoString((*C.char)(buf))
+}
+
+// ReadSelectedText reads the selected text from the focused UI element
+// using the macOS Accessibility API (kAXSelectedTextAttribute).
+// Returns empty string if no selection or if the element doesn't support it.
+func (s *DarwinSimulator) ReadSelectedText() string {
+	return cfStringToGo(C.getSelectedTextAX())
+}
+
+// ReadAllText reads all text from the focused UI element using the
+// macOS Accessibility API (kAXValueAttribute).
+func (s *DarwinSimulator) ReadAllText() string {
+	return cfStringToGo(C.getAllTextAX())
+}
+
+// FrontAppName returns the name of the frontmost application.
+func (s *DarwinSimulator) FrontAppName() string {
+	name := cfStringToGo(C.getFrontAppName())
+	if name == "" {
+		return "(unknown)"
+	}
+	return name
 }
 
 func (s *DarwinSimulator) SelectAll() error {

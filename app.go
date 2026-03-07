@@ -25,9 +25,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-// captureText detects whether the user has an active text selection. It clears
-// the clipboard, copies, and checks. If text was copied the user had a selection.
-// Otherwise it falls back to select-all + copy.
+// captureText reads text from the focused UI element.
+// Strategy:
+//  1. Try macOS Accessibility API (kAXSelectedTextAttribute / kAXValueAttribute)
+//     — instant, no clipboard pollution, no keyboard simulation needed.
+//  2. Fall back to Cmd+C / Cmd+A+Cmd+C clipboard approach.
+//
 // Returns the captured text, whether the user had an active selection, and any error.
 func captureText(
 	modeName string,
@@ -39,6 +42,25 @@ func captureText(
 	// if Ctrl is still held, our Cmd+A/C/V become Ctrl+Cmd+A/C/V which apps ignore.
 	kb.WaitForModifierRelease()
 
+	// Log the frontmost app for diagnostics.
+	if appName := kb.FrontAppName(); appName != "" {
+		slog.Debug("captureText: frontmost app", "app", appName)
+	}
+
+	// --- Strategy 1: Accessibility API (macOS) ---
+	// Try reading selected text directly — no keyboard simulation, no clipboard.
+	if selected := kb.ReadSelectedText(); selected != "" {
+		slog.Info("captureText: got selection via Accessibility API", "len", len(selected))
+		return selected, true, nil
+	}
+	// No selection — try reading all text from the focused element.
+	if allText := kb.ReadAllText(); allText != "" {
+		slog.Info("captureText: got all text via Accessibility API", "len", len(allText))
+		return allText, false, nil
+	}
+	slog.Debug("captureText: Accessibility API returned no text, falling back to clipboard")
+
+	// --- Strategy 2: Clipboard (Cmd+C / Cmd+A+Cmd+C) ---
 	// Clear clipboard so we can detect whether Ctrl+C actually grabbed something.
 	slog.Debug("captureText: clearing clipboard...")
 	if err := cb.Clear(); err != nil {

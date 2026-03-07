@@ -89,6 +89,9 @@ func sendKeyCombo(modifier, key uint16) error {
 }
 
 func (s *WindowsSimulator) WaitForModifierRelease() {}
+func (s *WindowsSimulator) ReadSelectedText() string { return "" }
+func (s *WindowsSimulator) ReadAllText() string       { return "" }
+func (s *WindowsSimulator) FrontAppName() string      { return "" }
 
 func (s *WindowsSimulator) SelectAll() error {
 	return sendKeyCombo(vkControl, vkA)

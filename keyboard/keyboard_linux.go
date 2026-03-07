@@ -18,6 +18,9 @@ func NewLinuxSimulator() *LinuxSimulator {
 }
 
 func (s *LinuxSimulator) WaitForModifierRelease() {}
+func (s *LinuxSimulator) ReadSelectedText() string { return "" }
+func (s *LinuxSimulator) ReadAllText() string       { return "" }
+func (s *LinuxSimulator) FrontAppName() string      { return "" }
 
 func (s *LinuxSimulator) SelectAll() error {
 	return xdotoolKey("ctrl+a")
