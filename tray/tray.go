@@ -61,8 +61,6 @@ func Start(cfg Config, app *application.App) (run func() error, stop func()) {
 	slog.Info("[tray] Start() called",
 		"os", runtime.GOOS,
 		"icon_bytes", len(cfg.IconPNG),
-		"target_labels", len(cfg.TargetLabels),
-		"template_names", len(cfg.TemplateNames),
 	)
 	fmt.Printf("[tray] Start() called on %s, icon=%d bytes\n", runtime.GOOS, len(cfg.IconPNG))
 
