@@ -88,8 +88,24 @@ jobs:
           else
             go build -tags "$TAGS" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           fi
+      - name: Import signing certificate
+        if: matrix.goos == 'darwin' && env.APPLE_CERTIFICATE_BASE64 != ''
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > cert.p12
+          KEYCHAIN="build.keychain"
+          security create-keychain -p "" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security import cert.p12 -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" "$KEYCHAIN"
+          rm cert.p12
       - name: Bundle macOS .app
         if: matrix.goos == 'darwin'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           chmod +x scripts/bundle-macos.sh
           ./scripts/bundle-macos.sh ghosttype-${{ matrix.goos }}-${{ matrix.goarch }} ${{ matrix.goarch }}

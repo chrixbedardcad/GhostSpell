@@ -88,6 +88,24 @@ PLIST
 
 echo "Info.plist written"
 
+# Code sign the .app bundle.
+# If APPLE_SIGNING_IDENTITY is set (e.g., "Developer ID Application: ..."),
+# use it for proper code signing. Otherwise, fall back to ad-hoc signing
+# which at least gives a consistent signature within the same build.
+SIGN_ID="${APPLE_SIGNING_IDENTITY:--}"
+if [ "$SIGN_ID" != "-" ]; then
+    echo "Signing with: ${SIGN_ID}"
+    codesign --force --deep --options runtime \
+        --sign "${SIGN_ID}" \
+        --entitlements scripts/entitlements.plist \
+        "${APP_NAME}"
+    echo "Code signed with Developer ID"
+else
+    echo "No APPLE_SIGNING_IDENTITY set — using ad-hoc signing"
+    codesign --force --deep -s - "${APP_NAME}"
+    echo "Ad-hoc signed"
+fi
+
 # Create .dmg disk image with drag-to-Applications layout.
 DMG_NAME="GhostType-darwin-${ARCH}.dmg"
 DMG_STAGING="dmg_contents"

@@ -57,11 +57,23 @@ CGKeyCode keyCodeForChar(UniChar c) {
 // The key code is layout-resolved (correct for Cocoa apps), and the Unicode
 // string is set explicitly (correct for non-Cocoa apps like Firestorm that
 // interpret key codes using QWERTY mapping regardless of layout).
-void sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
+// Returns 0 on success, -1 if event creation failed (permission denied).
+int sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
 	CGEventRef modDown = CGEventCreateKeyboardEvent(NULL, modifier, true);
 	CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, key, true);
 	CGEventRef keyUp   = CGEventCreateKeyboardEvent(NULL, key, false);
 	CGEventRef modUp   = CGEventCreateKeyboardEvent(NULL, modifier, false);
+
+	// CGEventCreateKeyboardEvent returns NULL when the process lacks
+	// Accessibility permission (macOS 10.15+). Detect and report this
+	// instead of crashing on CFRelease(NULL).
+	if (!modDown || !keyDown || !keyUp || !modUp) {
+		if (modDown) CFRelease(modDown);
+		if (keyDown) CFRelease(keyDown);
+		if (keyUp)   CFRelease(keyUp);
+		if (modUp)   CFRelease(modUp);
+		return -1;
+	}
 
 	CGEventSetFlags(keyDown, CGEventGetFlags(modDown));
 	CGEventSetFlags(keyUp, CGEventGetFlags(modDown));
@@ -80,6 +92,7 @@ void sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
 	CFRelease(keyDown);
 	CFRelease(keyUp);
 	CFRelease(modUp);
+	return 0;
 }
 */
 import "C"
@@ -168,7 +181,11 @@ func NewDarwinSimulator() *DarwinSimulator {
 func (s *DarwinSimulator) SelectAll() error {
 	resolveKeys()
 	slog.Debug("[keyboard] SelectAll (Cmd+A)", "keyCode", fmt.Sprintf("0x%02X", keyA))
-	C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyA, C.UniChar('a'))
+	if ret := C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyA, C.UniChar('a')); ret != 0 {
+		slog.Error("[keyboard] CGEventCreate returned NULL — Accessibility permission revoked or stale",
+			"action", "SelectAll")
+		return fmt.Errorf("CGEventCreate failed for SelectAll — Accessibility permission likely revoked (toggle OFF/ON in System Settings)")
+	}
 	time.Sleep(10 * time.Millisecond)
 	return nil
 }
@@ -176,7 +193,11 @@ func (s *DarwinSimulator) SelectAll() error {
 func (s *DarwinSimulator) Copy() error {
 	resolveKeys()
 	slog.Debug("[keyboard] Copy (Cmd+C)", "keyCode", fmt.Sprintf("0x%02X", keyC))
-	C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyC, C.UniChar('c'))
+	if ret := C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyC, C.UniChar('c')); ret != 0 {
+		slog.Error("[keyboard] CGEventCreate returned NULL — Accessibility permission revoked or stale",
+			"action", "Copy")
+		return fmt.Errorf("CGEventCreate failed for Copy — Accessibility permission likely revoked (toggle OFF/ON in System Settings)")
+	}
 	time.Sleep(10 * time.Millisecond)
 	return nil
 }
@@ -184,7 +205,11 @@ func (s *DarwinSimulator) Copy() error {
 func (s *DarwinSimulator) Paste() error {
 	resolveKeys()
 	slog.Debug("[keyboard] Paste (Cmd+V)", "keyCode", fmt.Sprintf("0x%02X", keyV))
-	C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyV, C.UniChar('v'))
+	if ret := C.sendKeyComboWithChar(C.CGKeyCode(kVK_Command), keyV, C.UniChar('v')); ret != 0 {
+		slog.Error("[keyboard] CGEventCreate returned NULL — Accessibility permission revoked or stale",
+			"action", "Paste")
+		return fmt.Errorf("CGEventCreate failed for Paste — Accessibility permission likely revoked (toggle OFF/ON in System Settings)")
+	}
 	time.Sleep(10 * time.Millisecond)
 	return nil
 }

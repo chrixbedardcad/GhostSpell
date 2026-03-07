@@ -254,6 +254,13 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		settingsSvc.DebugTailFn = debugState.Tail
 	}
 
+	// Wire permission callbacks for the Settings GUI.
+	settingsSvc.CheckAccessibilityFn = checkAccessibility
+	settingsSvc.CheckPostEventAccessFn = checkPostEventAccess
+	settingsSvc.OpenPermissionsFn = openAccessibilitySettings
+	settingsSvc.OpenAccessibilityPaneFn = openAccessibilityPane
+	settingsSvc.OpenInputMonitoringPaneFn = openInputMonitoringPane
+
 	subFS, err := gui.FrontendSubFS()
 	if err != nil {
 		slog.Error("Failed to load frontend assets", "error", err)
@@ -624,53 +631,27 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		<-wizardDone
 
-		// On macOS, GhostType needs two permissions:
-		//   1. Accessibility — for CGEventPost (keyboard simulation)
-		//   2. Input Monitoring — for RegisterEventHotKey (global hotkeys)
-		// Only Accessibility can be checked via AXIsProcessTrusted(). There is
-		// no reliable public API for Input Monitoring, so we poll Accessibility
-		// and always remind about Input Monitoring.
+		// On macOS, GhostType needs Accessibility + Input Monitoring.
+		// We check and log — but don't block. The user can check permission
+		// status in Settings > General and fix it manually.
 		axOK := checkAccessibility()
-		slog.Info("Permission check", "accessibility", axOK)
-		fmt.Printf("Accessibility permission: %v\n", axOK)
+		postOK := checkPostEventAccess()
+		slog.Info("Permission check", "accessibility", axOK, "postEventAccess", postOK)
+		fmt.Printf("Accessibility: %v | PostEvent: %v\n", axOK, postOK)
 
-		if !axOK {
+		if !axOK || !postOK {
 			fmt.Println("")
-			fmt.Println("  GhostType needs two macOS permissions to work:")
-			fmt.Println("  1. Accessibility     — for keyboard simulation (Cmd+A, Cmd+C, Cmd+V)")
-			fmt.Println("  2. Input Monitoring  — for global hotkeys (Cmd+G)")
-			fmt.Println("")
-			fmt.Println("  System Settings > Privacy & Security > grant BOTH permissions.")
-			fmt.Println("  Click '+', add GhostType.app, and toggle ON in both panes.")
-			fmt.Println("")
-			fmt.Println("  If GhostType already appears checked but isn't working,")
-			fmt.Println("  toggle the checkbox OFF then ON again (required after updates).")
-			fmt.Println("")
-			slog.Info("Opening permission settings panes")
-			openAccessibilitySettings()
-
-			pollCount := 0
-			for !checkAccessibility() {
-				time.Sleep(2 * time.Second)
-				pollCount++
-				if pollCount%5 == 0 {
-					slog.Info("Still waiting for Accessibility permission", "polls", pollCount)
-					fmt.Printf("Waiting for Accessibility permission... (poll #%d)\n", pollCount)
-				}
-				if pollCount == 30 {
-					fmt.Println("")
-					fmt.Println("  Still waiting... If GhostType is already checked in Accessibility,")
-					fmt.Println("  try toggling it OFF then ON (macOS invalidates after updates).")
-					fmt.Println("")
-				}
+			if axOK && !postOK {
+				fmt.Println("  WARNING: Accessibility is checked but event posting is BLOCKED.")
+				fmt.Println("  Fix: toggle GhostType OFF then ON in Accessibility settings.")
+				slog.Warn("Stale TCC: AXIsProcessTrusted=true but CGPreflightPostEventAccess=false")
+			} else {
+				fmt.Println("  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
 			}
-			fmt.Println("Accessibility permission granted!")
-			slog.Info("Accessibility permission granted after polling", "polls", pollCount)
+			fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.")
+			fmt.Println("  Check permission status in GhostType Settings > General.")
+			fmt.Println("")
 		}
-
-		// Always remind about Input Monitoring — we can't check it
-		// programmatically, and hotkeys silently fail without it.
-		remindInputMonitoring()
 
 		fmt.Println("GhostType is ready. Waiting for hotkey input...")
 		fmt.Println("Press Ctrl+C to exit.")

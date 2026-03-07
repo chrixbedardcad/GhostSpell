@@ -31,6 +31,10 @@ func TestSettingsServiceHasAllMethods(t *testing.T) {
 		"OllamaDownloadInstaller",
 		"CheckForUpdate",
 		"UpdateNow",
+		"CheckPermissions",
+		"OpenPermissions",
+		"OpenAccessibilityPane",
+		"OpenInputMonitoringPane",
 	}
 
 	svcType := reflect.TypeOf(svc)

@@ -41,6 +41,13 @@ type SettingsService struct {
 	DebugEnabledFn func() bool
 	DebugLogPathFn func() string
 	DebugTailFn    func() (string, error)
+
+	// Permission callbacks — set by app.go for macOS permission checks.
+	CheckAccessibilityFn      func() bool
+	CheckPostEventAccessFn    func() bool
+	OpenPermissionsFn         func()
+	OpenAccessibilityPaneFn   func()
+	OpenInputMonitoringPaneFn func()
 }
 
 // Reset reinitializes the service for a new settings session. Called each time
@@ -718,6 +725,55 @@ func (s *SettingsService) TailDebugLog() string {
 		return fmt.Sprintf("error: %v", err)
 	}
 	return tail
+}
+
+// CheckPermissions returns a JSON object with macOS permission status.
+// On non-macOS platforms, all permissions return true.
+func (s *SettingsService) CheckPermissions() string {
+	guiLog("[GUI] JS called: CheckPermissions")
+	ax := true
+	post := true
+	if s.CheckAccessibilityFn != nil {
+		ax = s.CheckAccessibilityFn()
+	}
+	if s.CheckPostEventAccessFn != nil {
+		post = s.CheckPostEventAccessFn()
+	}
+	result := map[string]bool{
+		"accessibility": ax,
+		"postEvent":     post,
+		"isMac":         runtime.GOOS == "darwin",
+	}
+	data, _ := json.Marshal(result)
+	slog.Info("Permission check from GUI", "accessibility", ax, "postEvent", post)
+	return string(data)
+}
+
+// OpenPermissions opens both macOS System Settings permission panes.
+func (s *SettingsService) OpenPermissions() string {
+	guiLog("[GUI] JS called: OpenPermissions")
+	if s.OpenPermissionsFn != nil {
+		s.OpenPermissionsFn()
+	}
+	return "ok"
+}
+
+// OpenAccessibilityPane opens the macOS Accessibility privacy pane.
+func (s *SettingsService) OpenAccessibilityPane() string {
+	guiLog("[GUI] JS called: OpenAccessibilityPane")
+	if s.OpenAccessibilityPaneFn != nil {
+		s.OpenAccessibilityPaneFn()
+	}
+	return "ok"
+}
+
+// OpenInputMonitoringPane opens the macOS Input Monitoring privacy pane.
+func (s *SettingsService) OpenInputMonitoringPane() string {
+	guiLog("[GUI] JS called: OpenInputMonitoringPane")
+	if s.OpenInputMonitoringPaneFn != nil {
+		s.OpenInputMonitoringPaneFn()
+	}
+	return "ok"
 }
 
 // splitTarget splits "en|fr" into ["en", "fr"] or "es" into ["es"].

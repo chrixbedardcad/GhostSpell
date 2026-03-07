@@ -4,11 +4,20 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework ApplicationServices
+#cgo LDFLAGS: -framework ApplicationServices -framework CoreGraphics
 #include <ApplicationServices/ApplicationServices.h>
+#include <CoreGraphics/CoreGraphics.h>
 
 int axIsTrusted() {
     return AXIsProcessTrusted();
+}
+
+// cgPostEventAllowed uses CGPreflightPostEventAccess (macOS 10.15+) to check
+// whether the process can actually post synthetic keyboard/mouse events via
+// CGEventPost. This is more accurate than AXIsProcessTrusted() for detecting
+// stale TCC entries after binary updates.
+int cgPostEventAllowed() {
+    return CGPreflightPostEventAccess();
 }
 */
 import "C"
@@ -28,11 +37,30 @@ func checkAccessibility() bool {
 	return C.axIsTrusted() != 0
 }
 
+// checkPostEventAccess returns true if CGEventPost will actually deliver events.
+// This uses CGPreflightPostEventAccess (macOS 10.15+) which is more accurate
+// than AXIsProcessTrusted() — it catches stale TCC entries where the checkbox
+// appears ON in System Settings but the permission is revoked due to a binary
+// signature change (common after updates without code signing).
+func checkPostEventAccess() bool {
+	return C.cgPostEventAllowed() != 0
+}
+
 // openAccessibilitySettings opens the macOS System Settings to the
 // Accessibility and Input Monitoring privacy panes so the user can grant
 // both permissions GhostType needs.
 func openAccessibilitySettings() {
 	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Start()
+	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent").Start()
+}
+
+// openAccessibilityPane opens only the Accessibility privacy pane.
+func openAccessibilityPane() {
+	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Start()
+}
+
+// openInputMonitoringPane opens only the Input Monitoring privacy pane.
+func openInputMonitoringPane() {
 	exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent").Start()
 }
 

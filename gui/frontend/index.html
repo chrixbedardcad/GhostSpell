@@ -451,13 +451,42 @@
   <div id="tab-general" class="tab-panel">
     <div class="section" id="macos-perms-section" style="display:none">
       <h2>macOS Permissions</h2>
-      <div style="font-size:0.82em;color:#bac2de;line-height:1.5;padding:10px 14px;background:#313244;border-radius:6px;margin-bottom:8px">
-        GhostType requires <strong>Accessibility</strong> and <strong>Input Monitoring</strong> permissions.
-        After each update, macOS invalidates old permission entries &mdash; you must remove and re-add
-        GhostType in both panes.
-        <div style="margin-top:8px">
-          <a href="#" onclick="openPermLink('accessibility')" style="color:#89b4fa;text-decoration:none;margin-right:12px">Accessibility guide</a>
-          <a href="#" onclick="openPermLink('input')" style="color:#89b4fa;text-decoration:none">Input Monitoring guide</a>
+      <div style="padding:10px 14px;background:#313244;border-radius:6px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="perm-ax-icon" style="font-size:1.1em">--</span>
+            <div>
+              <div style="font-size:0.85em"><strong>Accessibility</strong></div>
+              <div style="font-size:0.75em;color:#6c7086">Keyboard simulation (Cmd+A, Cmd+C, Cmd+V)</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="goCall('openAccessibilityPane')">Open</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="perm-post-icon" style="font-size:1.1em">--</span>
+            <div>
+              <div style="font-size:0.85em"><strong>PostEvent Access</strong></div>
+              <div style="font-size:0.75em;color:#6c7086">Synthetic key events reach other apps</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="perm-input-icon" style="font-size:1.1em">--</span>
+            <div>
+              <div style="font-size:0.85em"><strong>Input Monitoring</strong></div>
+              <div style="font-size:0.75em;color:#6c7086">Global hotkeys (cannot be checked programmatically)</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="goCall('openInputMonitoringPane')">Open</button>
+        </div>
+        <div id="perm-warning" style="display:none;font-size:0.8em;color:#fab387;line-height:1.4;margin-bottom:10px;padding:8px;background:#45475a;border-radius:4px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="onCheckPermissions()">Check Permissions</button>
+        </div>
+        <div style="font-size:0.75em;color:#6c7086;margin-top:8px">
+          After updates, toggle GhostType OFF then ON in both panes.
         </div>
       </div>
     </div>
@@ -569,7 +598,7 @@ function switchTab(name) {
   if (name === 'templates') renderTemplates();
   if (name === 'languages') renderLanguages();
   if (name === 'hotkeys') renderGeneral();
-  if (name === 'general') renderGeneral();
+  if (name === 'general') { renderGeneral(); onCheckPermissions(); }
 }
 
 // ---- Init ----
@@ -584,10 +613,15 @@ async function init() {
   renderProviderList();
   initHotkeyCapture();
 
-  // Show macOS permissions note only on macOS.
-  if (navigator.platform && navigator.platform.toLowerCase().includes('mac')) {
-    const sec = document.getElementById('macos-perms-section');
-    if (sec) sec.style.display = 'block';
+  // Show macOS permissions section and check status.
+  const permsResult = await goCall('checkPermissions');
+  if (permsResult) {
+    const perms = JSON.parse(permsResult);
+    if (perms.isMac) {
+      const sec = document.getElementById('macos-perms-section');
+      if (sec) sec.style.display = 'block';
+      renderPermissions(perms);
+    }
   }
 }
 
@@ -1064,6 +1098,37 @@ async function renderGeneral() {
 function openPermLink(type) {
   if (type === 'accessibility') wails.Browser.OpenURL('https://support.apple.com/guide/mac-help/mh43185/mac');
   else wails.Browser.OpenURL('https://support.apple.com/guide/mac-help/mchl4cedafb6/mac');
+}
+
+function renderPermissions(perms) {
+  const ok = '\u2705';   // green check
+  const no = '\u274C';   // red X
+  document.getElementById('perm-ax-icon').textContent = perms.accessibility ? ok : no;
+  document.getElementById('perm-post-icon').textContent = perms.postEvent ? ok : no;
+  // Input Monitoring can't be checked — show info icon
+  document.getElementById('perm-input-icon').textContent = '\u2139\uFE0F';
+
+  const warn = document.getElementById('perm-warning');
+  if (perms.accessibility && !perms.postEvent) {
+    warn.style.display = 'block';
+    warn.innerHTML = '<strong>Stale permission detected:</strong> Accessibility is checked but event posting is blocked. '
+      + 'This happens after updates. Toggle GhostType <strong>OFF then ON</strong> in Accessibility settings, '
+      + 'or remove and re-add it.';
+  } else if (!perms.accessibility) {
+    warn.style.display = 'block';
+    warn.textContent = 'Accessibility is not granted. Add GhostType in System Settings > Privacy & Security > Accessibility.';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+async function onCheckPermissions() {
+  const result = await goCall('checkPermissions');
+  if (result) renderPermissions(JSON.parse(result));
+}
+
+async function onOpenPermissions() {
+  await goCall('openPermissions');
 }
 
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }

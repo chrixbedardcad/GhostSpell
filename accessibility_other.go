@@ -8,8 +8,19 @@ func checkAccessibility() bool {
 	return true
 }
 
+// checkPostEventAccess is a no-op on non-macOS platforms.
+func checkPostEventAccess() bool {
+	return true
+}
+
 // openAccessibilitySettings is a no-op on non-macOS platforms.
 func openAccessibilitySettings() {}
+
+// openAccessibilityPane is a no-op on non-macOS platforms.
+func openAccessibilityPane() {}
+
+// openInputMonitoringPane is a no-op on non-macOS platforms.
+func openInputMonitoringPane() {}
 
 // remindInputMonitoring is a no-op on non-macOS platforms.
 func remindInputMonitoring() {}
