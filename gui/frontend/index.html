@@ -265,6 +265,7 @@
   <button onclick="switchTab('languages')">Languages</button>
   <button onclick="switchTab('hotkeys')">Hotkeys</button>
   <button onclick="switchTab('general')">General</button>
+  <button onclick="switchTab('debug')">Debug</button>
   <button onclick="switchTab('about')">About</button>
 </div>
 
@@ -515,10 +516,12 @@
       </div>
     </div>
 
-    <hr class="section-divider">
+  </div>
 
+  <!-- ============ DEBUG TAB ============ -->
+  <div id="tab-debug" class="tab-panel">
     <div class="section">
-      <h2>Logging</h2>
+      <h2>Log Level</h2>
       <div class="form-group">
         <label for="pref-loglevel">Log Level</label>
         <select id="pref-loglevel" onchange="onLogLevelChange(this.value)">
@@ -529,6 +532,10 @@
           <option value="debug">Debug</option>
         </select>
       </div>
+    </div>
+
+    <div class="section">
+      <h2>Debug Session</h2>
       <div class="toggle-row">
         <div>
           <div class="label">Debug Logging</div>
@@ -541,12 +548,20 @@
       </div>
       <div id="debug-log-path" style="font-size:0.78em;color:#6c7086;margin-bottom:8px;display:none"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" onclick="onOpenConfigFile()">Open config.json</button>
         <button class="btn btn-secondary btn-sm" onclick="onOpenLogFile()">Open Log File</button>
         <button class="btn btn-secondary btn-sm" onclick="onCopyLog()">Copy Log to Clipboard</button>
         <button class="btn btn-secondary btn-sm" onclick="onClearLog()">Clear Log</button>
       </div>
       <div class="status" id="debug-status"></div>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="section">
+      <h2>Config</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="onOpenConfigFile()">Open config.json</button>
+      </div>
     </div>
   </div>
 
@@ -599,6 +614,7 @@ function switchTab(name) {
   if (name === 'languages') renderLanguages();
   if (name === 'hotkeys') renderGeneral();
   if (name === 'general') { renderGeneral(); onCheckPermissions(); }
+  if (name === 'debug') renderDebug();
 }
 
 // ---- Init ----
@@ -1076,15 +1092,6 @@ async function renderGeneral() {
   await reloadConfig();
   document.getElementById('pref-sound').checked = configData.sound_enabled !== false && configData.sound_enabled !== null;
   document.getElementById('pref-clipboard').checked = configData.preserve_clipboard !== false;
-  document.getElementById('pref-loglevel').value = configData.log_level || '';
-
-  // Debug toggle state
-  const debugOn = await goCall('getDebugEnabled');
-  document.getElementById('pref-debug').checked = !!debugOn;
-  const logPath = await goCall('getDebugLogPath');
-  const pathEl = document.getElementById('debug-log-path');
-  if (logPath) { pathEl.textContent = 'Log: ' + logPath; pathEl.style.display = 'block'; }
-  else { pathEl.style.display = 'none'; }
 
   // Hotkeys
   const hk = configData.hotkeys || {};
@@ -1093,6 +1100,18 @@ async function renderGeneral() {
   document.getElementById('hk-toggle_language').value = hk.toggle_language || '';
   document.getElementById('hk-rewrite').value = hk.rewrite || '';
   document.getElementById('hk-cycle_template').value = hk.cycle_template || '';
+}
+
+async function renderDebug() {
+  await reloadConfig();
+  document.getElementById('pref-loglevel').value = configData.log_level || '';
+
+  const debugOn = await goCall('getDebugEnabled');
+  document.getElementById('pref-debug').checked = !!debugOn;
+  const logPath = await goCall('getDebugLogPath');
+  const pathEl = document.getElementById('debug-log-path');
+  if (logPath) { pathEl.textContent = 'Log: ' + logPath; pathEl.style.display = 'block'; }
+  else { pathEl.style.display = 'none'; }
 }
 
 function openPermLink(type) {
