@@ -312,8 +312,8 @@ func TestRouter_TimeoutForPrompt(t *testing.T) {
 		t.Errorf("expected timeout 120000 for prompt 1, got %d", timeout)
 	}
 
-	// Out-of-range uses global timeout
-	if timeout := router.TimeoutForPrompt(99); timeout != 30000 {
-		t.Errorf("expected global timeout 30000 for invalid index, got %d", timeout)
+	// Out-of-range falls back to default LLM's timeout (claude → 15000)
+	if timeout := router.TimeoutForPrompt(99); timeout != 15000 {
+		t.Errorf("expected default LLM timeout 15000 for invalid index, got %d", timeout)
 	}
 }
