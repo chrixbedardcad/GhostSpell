@@ -10,16 +10,14 @@ package hotkey
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Cocoa -framework Carbon
+#cgo LDFLAGS: -framework Cocoa -framework CoreGraphics
 #include <stdint.h>
-#import <Cocoa/Cocoa.h>
-#import <Carbon/Carbon.h>
 
 extern void keydownCallback(uintptr_t handle);
 extern void keyupCallback(uintptr_t handle);
-int registerHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref);
-int unregisterHotKey(EventHotKeyRef ref);
-int reregisterHotKey(int mod, int key, uintptr_t handle, EventHotKeyRef* ref);
+int registerHotKey(int mod, int key, uintptr_t handle);
+int unregisterHotKey(uintptr_t handle);
+int reregisterHotKey(int mod, int key, uintptr_t handle);
 */
 import "C"
 import (
@@ -28,12 +26,12 @@ import (
 	"sync"
 )
 
-// Hotkey is a combination of modifiers and key to trigger an event
+// platformHotkey holds macOS-specific state for a hotkey.
+// Uses CGEventTap (Quartz) for event monitoring — survives NSMenu modal loops.
 type platformHotkey struct {
 	mu         sync.Mutex
 	registered bool
-	hkref      C.EventHotKeyRef
-	handle     cgo.Handle // saved for reregister()
+	handle     cgo.Handle // saved for unregister() and reregister()
 }
 
 func (hk *Hotkey) register() error {
@@ -54,7 +52,7 @@ func (hk *Hotkey) register() error {
 		mod += m
 	}
 
-	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h), &hk.hkref)
+	ret := C.registerHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(h))
 	if ret == C.int(-1) {
 		return errors.New("failed to register the hotkey")
 	}
@@ -70,7 +68,7 @@ func (hk *Hotkey) unregister() error {
 		return errors.New("hotkey is not registered")
 	}
 
-	ret := C.unregisterHotKey(hk.hkref)
+	ret := C.unregisterHotKey(C.uintptr_t(hk.handle))
 	if ret == C.int(-1) {
 		return errors.New("failed to unregister the current hotkey")
 	}
@@ -78,9 +76,9 @@ func (hk *Hotkey) unregister() error {
 	return nil
 }
 
-// reregister unregisters and re-registers the Carbon hotkey without touching
-// Go channels or installing new event handlers. This is used to recover from
-// the macOS NSMenu modal event loop disrupting Carbon event dispatch.
+// reregister re-enables the CGEventTap if the system disabled it.
+// With kCFRunLoopCommonModes the tap survives NSMenu modal loops, so this
+// is only a safety net (timeout, permission revocation, etc.).
 func (hk *Hotkey) reregister() error {
 	hk.mu.Lock()
 	defer hk.mu.Unlock()
@@ -93,7 +91,7 @@ func (hk *Hotkey) reregister() error {
 		mod += m
 	}
 
-	ret := C.reregisterHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(hk.handle), &hk.hkref)
+	ret := C.reregisterHotKey(C.int(mod), C.int(hk.key), C.uintptr_t(hk.handle))
 	if ret == C.int(-1) {
 		return errors.New("failed to re-register the hotkey")
 	}
@@ -113,6 +111,7 @@ func keyupCallback(h uintptr) {
 }
 
 // Modifier represents a modifier.
+// Values are Carbon modifier constants, translated to CGEventFlags in the C layer.
 // See: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/Headers/Events.h
 type Modifier uint32
 
@@ -125,6 +124,7 @@ const (
 )
 
 // Key represents a key.
+// Virtual key codes — same values for both Carbon and CoreGraphics.
 // See: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/Headers/Events.h
 type Key uint8
 
