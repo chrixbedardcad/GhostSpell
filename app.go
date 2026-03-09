@@ -288,6 +288,10 @@ func processMode(
 		return
 	}
 
+	// Result received — kill the working sound immediately so
+	// the user perceives instant feedback while we paste.
+	sound.StopWorkingLoop()
+
 	// --- Write result back ---
 	written := false
 
@@ -371,7 +375,6 @@ func processMode(
 	// Restore original clipboard.
 	cb.Restore()
 
-	sound.StopWorkingLoop()
 	sound.PlaySuccess()
 	slog.Info(promptName+" complete", "result", result)
 	fmt.Printf("[%s] Result: %q\n", promptName, result)
