@@ -257,6 +257,8 @@ func processMode(
 	// Check input length limit.
 	if cfg.MaxInputChars > 0 && len([]rune(text)) > cfg.MaxInputChars {
 		slog.Warn("Text exceeds max input limit", "prompt", promptName, "chars", len([]rune(text)), "limit", cfg.MaxInputChars)
+		// Stop working loop first so it doesn't kill the error sound.
+		sound.StopWorkingLoop()
 		// Collapse selection to end (Right arrow) so text is preserved,
 		// then paste the warning indicator after the text.
 		kb.PressRight()
