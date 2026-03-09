@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	activeCmd    *exec.Cmd
-	activeTmp    string
-	activeCmdMu  sync.Mutex
+	workingCmd   *exec.Cmd
+	workingTmp   string
+	workingCmdMu sync.Mutex
 )
 
+// playWAV plays a WAV sound (fire-and-forget). Blocks until done.
 func playWAV(data []byte) {
 	f, err := os.CreateTemp("", "ghosttype-*.wav")
 	if err != nil {
@@ -32,31 +33,54 @@ func playWAV(data []byte) {
 		os.Remove(tmpPath)
 		return
 	}
+	cmd.Wait()
+	os.Remove(tmpPath)
+}
 
-	activeCmdMu.Lock()
-	activeCmd = cmd
-	activeTmp = tmpPath
-	activeCmdMu.Unlock()
+// playWAVLoop is like playWAV but tracks the process so it can be killed.
+func playWAVLoop(data []byte) {
+	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	if err != nil {
+		return
+	}
+	tmpPath := f.Name()
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return
+	}
+	f.Close()
+
+	cmd := exec.Command("afplay", tmpPath)
+	if err := cmd.Start(); err != nil {
+		os.Remove(tmpPath)
+		return
+	}
+
+	workingCmdMu.Lock()
+	workingCmd = cmd
+	workingTmp = tmpPath
+	workingCmdMu.Unlock()
 
 	cmd.Wait()
 
-	activeCmdMu.Lock()
-	if activeCmd == cmd {
-		activeCmd = nil
+	workingCmdMu.Lock()
+	if workingCmd == cmd {
+		workingCmd = nil
 	}
-	activeCmdMu.Unlock()
+	workingCmdMu.Unlock()
 
 	os.Remove(tmpPath)
 }
 
-// stopPlayback kills the currently playing sound process.
+// stopPlayback kills the working loop's sound process.
 func stopPlayback() {
-	activeCmdMu.Lock()
-	cmd := activeCmd
-	tmp := activeTmp
-	activeCmd = nil
-	activeTmp = ""
-	activeCmdMu.Unlock()
+	workingCmdMu.Lock()
+	cmd := workingCmd
+	tmp := workingTmp
+	workingCmd = nil
+	workingTmp = ""
+	workingCmdMu.Unlock()
 
 	if cmd != nil && cmd.Process != nil {
 		cmd.Process.Kill()

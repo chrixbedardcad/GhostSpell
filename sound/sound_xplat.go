@@ -74,7 +74,7 @@ func StartWorkingLoop() {
 
 	go func() {
 		for {
-			playWAV(workingWAV) // blocks until sound finishes
+			playWAVLoop(workingWAV) // blocks until sound finishes; trackable for kill
 			select {
 			case <-stop:
 				return

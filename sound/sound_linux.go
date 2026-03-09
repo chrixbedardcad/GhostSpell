@@ -9,20 +9,52 @@ import (
 )
 
 var (
-	activeCmd   *exec.Cmd
-	activeTmp   string
-	activeCmdMu sync.Mutex
+	workingCmd   *exec.Cmd
+	workingTmp   string
+	workingCmdMu sync.Mutex
 )
 
-func playWAV(data []byte) {
-	// Try paplay (PulseAudio) first, then aplay (ALSA).
-	var player string
+// findPlayer returns the first available audio player.
+func findPlayer() string {
 	for _, p := range []string{"paplay", "aplay"} {
 		if path, err := exec.LookPath(p); err == nil {
-			player = path
-			break
+			return path
 		}
 	}
+	return ""
+}
+
+// playWAV plays a WAV sound (fire-and-forget). Blocks until done.
+func playWAV(data []byte) {
+	player := findPlayer()
+	if player == "" {
+		return
+	}
+
+	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	if err != nil {
+		return
+	}
+	tmpPath := f.Name()
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		os.Remove(tmpPath)
+		return
+	}
+	f.Close()
+
+	cmd := exec.Command(player, tmpPath)
+	if err := cmd.Start(); err != nil {
+		os.Remove(tmpPath)
+		return
+	}
+	cmd.Wait()
+	os.Remove(tmpPath)
+}
+
+// playWAVLoop is like playWAV but tracks the process so it can be killed.
+func playWAVLoop(data []byte) {
+	player := findPlayer()
 	if player == "" {
 		return
 	}
@@ -45,30 +77,30 @@ func playWAV(data []byte) {
 		return
 	}
 
-	activeCmdMu.Lock()
-	activeCmd = cmd
-	activeTmp = tmpPath
-	activeCmdMu.Unlock()
+	workingCmdMu.Lock()
+	workingCmd = cmd
+	workingTmp = tmpPath
+	workingCmdMu.Unlock()
 
 	cmd.Wait()
 
-	activeCmdMu.Lock()
-	if activeCmd == cmd {
-		activeCmd = nil
+	workingCmdMu.Lock()
+	if workingCmd == cmd {
+		workingCmd = nil
 	}
-	activeCmdMu.Unlock()
+	workingCmdMu.Unlock()
 
 	os.Remove(tmpPath)
 }
 
-// stopPlayback kills the currently playing sound process.
+// stopPlayback kills the working loop's sound process.
 func stopPlayback() {
-	activeCmdMu.Lock()
-	cmd := activeCmd
-	tmp := activeTmp
-	activeCmd = nil
-	activeTmp = ""
-	activeCmdMu.Unlock()
+	workingCmdMu.Lock()
+	cmd := workingCmd
+	tmp := workingTmp
+	workingCmd = nil
+	workingTmp = ""
+	workingCmdMu.Unlock()
 
 	if cmd != nil && cmd.Process != nil {
 		cmd.Process.Kill()
