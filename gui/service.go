@@ -470,6 +470,19 @@ func (s *SettingsService) SetPreserveClipboard(enabled bool) string {
 	return "ok"
 }
 
+// SetMaxInputChars updates the max input character limit.
+func (s *SettingsService) SetMaxInputChars(limit int) string {
+	guiLog("[GUI] JS called: SetMaxInputChars(%d)", limit)
+	if limit < 0 {
+		limit = 0
+	}
+	s.cfgCopy.MaxInputChars = limit
+	if err := s.clearLegacyAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // SetHotkey updates a named hotkey binding.
 func (s *SettingsService) SetHotkey(name, binding string) string {
 	guiLog("[GUI] JS called: SetHotkey(%s, %s)", name, binding)

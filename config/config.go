@@ -62,6 +62,7 @@ type Config struct {
 
 	MaxTokens         int    `json:"max_tokens"`
 	TimeoutMs         int    `json:"timeout_ms"`
+	MaxInputChars     int    `json:"max_input_chars"`
 	PreserveClipboard bool   `json:"preserve_clipboard"`
 	SoundEnabled      *bool  `json:"sound_enabled"`
 	LogLevel          string `json:"log_level"`
@@ -111,6 +112,7 @@ func DefaultConfig() Config {
 		},
 		MaxTokens:         256,
 		TimeoutMs:         30000,
+		MaxInputChars:     2000,
 		PreserveClipboard: true,
 		SoundEnabled:      boolPtr(true),
 		LogLevel:          "info",
