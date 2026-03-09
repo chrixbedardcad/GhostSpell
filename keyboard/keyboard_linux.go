@@ -42,6 +42,10 @@ func (s *LinuxSimulator) Paste() error {
 	return xdotoolKey("ctrl+v")
 }
 
+func (s *LinuxSimulator) PressRight() error {
+	return xdotoolKey("Right")
+}
+
 func xdotoolKey(keys string) error {
 	path, err := exec.LookPath("xdotool")
 	if err != nil {

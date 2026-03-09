@@ -12,6 +12,10 @@ type Simulator interface {
 	// Paste simulates Ctrl+V (or Cmd+V on macOS).
 	Paste() error
 
+	// PressRight simulates pressing the Right arrow key once.
+	// Used to collapse a selection to the end without deleting text.
+	PressRight() error
+
 	// WaitForModifierRelease waits for all physical modifier keys to be released.
 	// On macOS, this prevents hotkey modifiers (e.g. Ctrl from Ctrl+G) from
 	// leaking into subsequent synthetic Cmd+A/C/V events via CGEventPost's

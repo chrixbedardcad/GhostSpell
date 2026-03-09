@@ -320,6 +320,32 @@ int sendKeyComboWithChar(CGKeyCode modifier, CGKeyCode key, UniChar ch) {
 	CFRelease(modUp);
 	return 0;
 }
+
+// sendSingleKey posts a bare key press (no modifiers).
+// Returns 0 on success, -1 if event creation failed.
+int sendSingleKey(CGKeyCode key) {
+	CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateCombinedSessionState);
+	if (!source) {
+		source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+	}
+	CGEventRef keyDown = CGEventCreateKeyboardEvent(source, key, true);
+	CGEventRef keyUp   = CGEventCreateKeyboardEvent(source, key, false);
+	if (source) CFRelease(source);
+	if (!keyDown || !keyUp) {
+		if (keyDown) CFRelease(keyDown);
+		if (keyUp)   CFRelease(keyUp);
+		return -1;
+	}
+	// Clear all modifier flags so hardware state doesn't leak in.
+	CGEventSetFlags(keyDown, (CGEventFlags)0);
+	CGEventSetFlags(keyUp, (CGEventFlags)0);
+	CGEventPost(kCGHIDEventTap, keyDown);
+	usleep(2000);
+	CGEventPost(kCGHIDEventTap, keyUp);
+	CFRelease(keyDown);
+	CFRelease(keyUp);
+	return 0;
+}
 */
 import "C"
 
@@ -333,10 +359,11 @@ import (
 
 // macOS virtual key codes — ANSI/QWERTY fallbacks if layout lookup fails.
 const (
-	kVK_Command = 0x37
-	kVK_ANSI_A  = 0x00
-	kVK_ANSI_C  = 0x08
-	kVK_ANSI_V  = 0x09
+	kVK_Command    = 0x37
+	kVK_ANSI_A     = 0x00
+	kVK_ANSI_C     = 0x08
+	kVK_ANSI_V     = 0x09
+	kVK_RightArrow = 0x7C
 )
 
 var (
@@ -582,6 +609,15 @@ func (s *DarwinSimulator) Paste() error {
 		slog.Error("[keyboard] CGEventCreate returned NULL — Accessibility permission revoked or stale",
 			"action", "Paste")
 		return fmt.Errorf("CGEventCreate failed for Paste — Accessibility permission likely revoked (toggle OFF/ON in System Settings)")
+	}
+	time.Sleep(10 * time.Millisecond)
+	return nil
+}
+
+func (s *DarwinSimulator) PressRight() error {
+	slog.Debug("[keyboard] PressRight (Right Arrow)", "keyCode", fmt.Sprintf("0x%02X", kVK_RightArrow))
+	if ret := C.sendSingleKey(C.CGKeyCode(kVK_RightArrow)); ret != 0 {
+		return fmt.Errorf("CGEventCreate failed for PressRight")
 	}
 	time.Sleep(10 * time.Millisecond)
 	return nil

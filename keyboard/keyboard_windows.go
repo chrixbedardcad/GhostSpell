@@ -22,6 +22,7 @@ const (
 	vkA       = 0x41
 	vkC       = 0x43
 	vkV       = 0x56
+	vkRight   = 0x27
 )
 
 // keybdInput is the KEYBDINPUT structure for SendInput.
@@ -111,4 +112,12 @@ func (s *WindowsSimulator) Copy() error {
 
 func (s *WindowsSimulator) Paste() error {
 	return sendKeyCombo(vkControl, vkV)
+}
+
+func (s *WindowsSimulator) PressRight() error {
+	if err := sendKey(vkRight, true); err != nil {
+		return err
+	}
+	time.Sleep(10 * time.Millisecond)
+	return sendKey(vkRight, false)
 }
