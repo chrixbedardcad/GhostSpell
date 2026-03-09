@@ -25,6 +25,8 @@ func (m *mockClient) Provider() string {
 	return "mock"
 }
 
+func (m *mockClient) Close() {}
+
 func newTestConfig() *config.Config {
 	return &config.Config{
 		LLMProvider: "anthropic",
