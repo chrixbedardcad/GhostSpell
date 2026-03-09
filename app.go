@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -245,12 +246,24 @@ func processMode(
 	text, hadSelection, capMethod, err := captureText(promptName, cb, kb)
 	if err != nil {
 		slog.Error("Failed to capture text", "prompt", promptName, "error", err)
+		sound.StopWorkingLoop()
+		if werr := cb.Write("\U0001F47B\u274C"); werr == nil { // 👻❌
+			kb.Paste()
+			time.Sleep(300 * time.Millisecond)
+		}
 		cb.Restore()
+		sound.PlayError()
 		return
 	}
 	if text == "" {
 		slog.Warn("Nothing to process (empty text)", "prompt", promptName)
+		sound.StopWorkingLoop()
+		if werr := cb.Write("\U0001F47B\U0001FAE5"); werr == nil { // 👻🫥
+			kb.Paste()
+			time.Sleep(300 * time.Millisecond)
+		}
 		cb.Restore()
+		sound.PlayError()
 		return
 	}
 
@@ -296,22 +309,40 @@ func processMode(
 	result, err := router.Process(ctx, promptIdx, text)
 	if err != nil {
 		slog.Error("LLM processing failed", "prompt", promptName, "error", err)
-		// Paste error indicator so the user sees something went wrong
-		// directly in their text. They can Ctrl+Z to undo.
-		if werr := cb.Write("\U0001F47B\u274C"); werr != nil { // 👻❌
+		sound.StopWorkingLoop()
+		// Distinguish timeout from other errors.
+		indicator := "\U0001F47B\u274C" // 👻❌ (generic error)
+		if ctx.Err() == context.DeadlineExceeded || strings.Contains(err.Error(), "deadline exceeded") {
+			indicator = "\U0001F47B\u23F3" // 👻⏳ (timeout)
+		}
+		if werr := cb.Write(indicator); werr != nil {
 			slog.Error("Failed to write error indicator to clipboard", "error", werr)
 		}
 		kb.Paste()
 		time.Sleep(300 * time.Millisecond)
 		cb.Restore()
-		sound.StopWorkingLoop()
 		sound.PlayError()
 		return
 	}
 
-	// Result received — play success immediately so the user
-	// gets instant audio feedback while we paste.
+	// Result received — stop working loop.
 	sound.StopWorkingLoop()
+
+	// If the LLM returned identical text, signal "no changes needed"
+	// instead of replacing with the same content.
+	if strings.TrimSpace(result) == strings.TrimSpace(text) {
+		slog.Info("LLM returned identical text (no changes needed)", "prompt", promptName)
+		kb.PressRight()
+		time.Sleep(50 * time.Millisecond)
+		if werr := cb.Write("\U0001F47B\u2705"); werr == nil { // 👻✅
+			kb.Paste()
+			time.Sleep(300 * time.Millisecond)
+		}
+		cb.Restore()
+		sound.PlaySuccess()
+		return
+	}
+
 	sound.PlaySuccess()
 
 	// --- Write result back ---
