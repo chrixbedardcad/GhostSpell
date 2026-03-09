@@ -1,0 +1,199 @@
+time=2026-03-08T23:07:45.177-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:07:45.177-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:07:45.177-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:07:45.177-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:07:45.191-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:07:45.191-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:07:45.191-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:07:45.191-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:07:45.191-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:07:45.242-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:07:45.354-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:07:45.354-04:00 level=DEBUG msg="captureText: clipboard read" len=0 empty=true
+time=2026-03-08T23:07:45.354-04:00 level=DEBUG msg="No selection detected, falling back to select-all" prompt=Polish
+time=2026-03-08T23:07:45.418-04:00 level=DEBUG msg="captureText: sending Copy after select-all..."
+time=2026-03-08T23:07:45.529-04:00 level=DEBUG msg="captureText: reading clipboard after select-all..."
+time=2026-03-08T23:07:45.529-04:00 level=DEBUG msg="captureText: final clipboard read" len=54
+time=2026-03-08T23:07:45.529-04:00 level=INFO msg="Captured text" prompt=Polish len=54 selection=false method=1 text="here is a testis your laude code version up to date É"
+time=2026-03-08T23:07:45.529-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=54
+time=2026-03-08T23:07:45.529-04:00 level=DEBUG msg="processing text" prompt=Polish llm=anthropic prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=54
+time=2026-03-08T23:07:45.529-04:00 level=DEBUG msg="anthropic: sending request" model=claude-sonnet-4-6 endpoint=https://api.anthropic.com/v1/messages body_len=475
+time=2026-03-08T23:07:46.756-04:00 level=DEBUG msg="anthropic: response received" status=200
+time=2026-03-08T23:07:46.756-04:00 level=DEBUG msg="LLM response received" provider=anthropic model=claude-sonnet-4-6 llm=anthropic response_len=55
+time=2026-03-08T23:07:46.756-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=55
+time=2026-03-08T23:07:47.184-04:00 level=INFO msg="Polish complete" result="Here is a test: is your Lauded code version up to date?"
+time=2026-03-08T23:07:58.864-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:07.973-04:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:08:07.983-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:08:07.983-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:08:08.034-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:08:08.148-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:08:08.148-04:00 level=DEBUG msg="captureText: clipboard read" len=0 empty=true
+time=2026-03-08T23:08:08.148-04:00 level=DEBUG msg="No selection detected, falling back to select-all" prompt=Polish
+time=2026-03-08T23:08:08.211-04:00 level=DEBUG msg="captureText: sending Copy after select-all..."
+time=2026-03-08T23:08:08.325-04:00 level=DEBUG msg="captureText: reading clipboard after select-all..."
+time=2026-03-08T23:08:08.325-04:00 level=DEBUG msg="captureText: final clipboard read" len=48
+time=2026-03-08T23:08:08.325-04:00 level=INFO msg="Captured text" prompt=Polish len=48 selection=false method=1 text="Here is a test: is your code version up to date?"
+time=2026-03-08T23:08:08.325-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=48
+time=2026-03-08T23:08:08.325-04:00 level=DEBUG msg="processing text" prompt=Polish llm=anthropic prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=48
+time=2026-03-08T23:08:08.325-04:00 level=DEBUG msg="anthropic: sending request" model=claude-sonnet-4-6 endpoint=https://api.anthropic.com/v1/messages body_len=469
+time=2026-03-08T23:08:08.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:08:09.183-04:00 level=DEBUG msg="anthropic: response received" status=200
+time=2026-03-08T23:08:09.185-04:00 level=DEBUG msg="LLM response received" provider=anthropic model=claude-sonnet-4-6 llm=anthropic response_len=48
+time=2026-03-08T23:08:09.185-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=48
+time=2026-03-08T23:08:09.612-04:00 level=INFO msg="Polish complete" result="Here is a test: is your code version up to date?"
+time=2026-03-08T23:08:16.062-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:17.557-04:00 level=INFO msg="Default model changed" label=gemini
+time=2026-03-08T23:08:17.557-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:19.792-04:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:08:19.799-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:08:19.799-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:08:19.850-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:08:19.962-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:08:19.962-04:00 level=DEBUG msg="captureText: clipboard read" len=0 empty=true
+time=2026-03-08T23:08:19.962-04:00 level=DEBUG msg="No selection detected, falling back to select-all" prompt=Polish
+time=2026-03-08T23:08:20.026-04:00 level=DEBUG msg="captureText: sending Copy after select-all..."
+time=2026-03-08T23:08:20.138-04:00 level=DEBUG msg="captureText: reading clipboard after select-all..."
+time=2026-03-08T23:08:20.138-04:00 level=DEBUG msg="captureText: final clipboard read" len=48
+time=2026-03-08T23:08:20.138-04:00 level=INFO msg="Captured text" prompt=Polish len=48 selection=false method=1 text="Here is a test: is your code version up to date?"
+time=2026-03-08T23:08:20.138-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=48
+time=2026-03-08T23:08:20.138-04:00 level=DEBUG msg="processing text" prompt=Polish llm=gemini prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=48
+time=2026-03-08T23:08:20.138-04:00 level=DEBUG msg="gemini: sending request" model=gemini-2.5-flash-lite endpoint=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions body_len=474
+time=2026-03-08T23:08:20.683-04:00 level=DEBUG msg="gemini: response received" status=200
+time=2026-03-08T23:08:20.693-04:00 level=DEBUG msg="gemini: raw response body" body="{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"message\":{\"content\":\"Is your code up to date?\",\"role\":\"assistant\"}}],\"created\":1773025700,\"id\":\"pDmuadqZDfqQjrEP5rTikQg\",\"model\":\"gemini-2.5-flash-lite\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":7,\"prompt_tokens\":74,\"total_tokens\":81}}"
+time=2026-03-08T23:08:20.695-04:00 level=DEBUG msg="gemini: parsed response" text_len=24 choices=1
+time=2026-03-08T23:08:20.695-04:00 level=DEBUG msg="LLM response received" provider=gemini model=gemini-2.5-flash-lite llm=gemini response_len=24
+time=2026-03-08T23:08:20.695-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=24
+time=2026-03-08T23:08:21.120-04:00 level=INFO msg="Polish complete" result="Is your code up to date?"
+time=2026-03-08T23:08:24.972-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:26.211-04:00 level=INFO msg="Default model changed" label=openai
+time=2026-03-08T23:08:26.212-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:30.270-04:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-03-08T23:08:30.270-04:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-03-08T23:08:30.270-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:08:30.270-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:08:30.270-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:08:30.270-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:08:30.280-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:08:30.280-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:08:30.280-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:08:30.280-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:08:30.280-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:08:30.330-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:08:30.445-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:08:30.446-04:00 level=DEBUG msg="captureText: clipboard read" len=48 empty=false
+time=2026-03-08T23:08:30.446-04:00 level=INFO msg="Selection detected" prompt=Polish len=48
+time=2026-03-08T23:08:30.446-04:00 level=INFO msg="Captured text" prompt=Polish len=48 selection=true method=1 text="Here is a test: is your code version up to date?"
+time=2026-03-08T23:08:30.446-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=48
+time=2026-03-08T23:08:30.446-04:00 level=DEBUG msg="processing text" prompt=Polish llm=openai prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=48
+time=2026-03-08T23:08:30.446-04:00 level=DEBUG msg="openai: sending request" model=gpt-4.1-mini endpoint=https://api.openai.com/v1/chat/completions body_len=476
+time=2026-03-08T23:08:31.968-04:00 level=DEBUG msg="openai: response received" status=200
+time=2026-03-08T23:08:31.983-04:00 level=DEBUG msg="openai: raw response body" body="{\n  \"id\": \"chatcmpl-DHLGpRVKIXrfLpTRovuEnLgUyPMIT\",\n  \"object\": \"chat.completion\",\n  \"created\": 1773025711,\n  \"model\": \"gpt-4.1-mini-2025-04-14\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Aquí tienes una prueba: ¿está tu versión de código actualizada?\",\n        \"refusal\": null,\n        \"annotations\": []\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 80,\n    \"completion_tokens\": 15,\n    \"total_tokens\": 95,\n    \"prompt_tokens_details\": {\n      \"cached_tokens\": 0,\n      \"audio_tokens\": 0\n    },\n    \"completion_tokens_details\": {\n      \"reasoning_tokens\": 0,\n      \"audio_tokens\": 0,\n      \"accepted_prediction_tokens\": 0,\n      \"rejected_prediction_tokens\": 0\n    }\n  },\n  \"service_tier\": \"default\",\n  \"system_fingerprint\": \"fp_aa231582d2\"\n}\n"
+time=2026-03-08T23:08:31.983-04:00 level=DEBUG msg="openai: parsed response" text_len=68 choices=1
+time=2026-03-08T23:08:31.983-04:00 level=DEBUG msg="LLM response received" provider=openai model=gpt-4.1-mini llm=openai response_len=68
+time=2026-03-08T23:08:31.983-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=68
+time=2026-03-08T23:08:32.347-04:00 level=INFO msg="Polish complete" result="Aquí tienes una prueba: ¿está tu versión de código actualizada?"
+time=2026-03-08T23:08:36.336-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:38.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:08:41.858-04:00 level=INFO msg="Default model changed" label=xai
+time=2026-03-08T23:08:41.861-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:08:46.240-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:08:46.240-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:08:46.290-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:08:46.403-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:08:46.403-04:00 level=DEBUG msg="captureText: clipboard read" len=0 empty=true
+time=2026-03-08T23:08:46.403-04:00 level=DEBUG msg="No selection detected, falling back to select-all" prompt=Polish
+time=2026-03-08T23:08:46.465-04:00 level=DEBUG msg="captureText: sending Copy after select-all..."
+time=2026-03-08T23:08:46.580-04:00 level=DEBUG msg="captureText: reading clipboard after select-all..."
+time=2026-03-08T23:08:46.580-04:00 level=DEBUG msg="captureText: final clipboard read" len=48
+time=2026-03-08T23:08:46.580-04:00 level=INFO msg="Captured text" prompt=Polish len=48 selection=false method=1 text="Here is a test: is your code version up to date?"
+time=2026-03-08T23:08:46.580-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=48
+time=2026-03-08T23:08:46.580-04:00 level=DEBUG msg="processing text" prompt=Polish llm=xai prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=48
+time=2026-03-08T23:08:46.580-04:00 level=DEBUG msg="xai: sending request" model=grok-3-mini endpoint=https://api.x.ai/v1/chat/completions body_len=463
+time=2026-03-08T23:08:53.827-04:00 level=DEBUG msg="xai: response received" status=200
+time=2026-03-08T23:08:53.827-04:00 level=DEBUG msg="xai: raw response body" body="{\"id\":\"abca6ab4-cd26-97fa-bba2-9d4467dae056\",\"object\":\"chat.completion\",\"created\":1773025726,\"model\":\"grok-3-mini\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"Here's a test: Is your code version up to date?\",\"reasoning_content\":\"First, the user wants me to improve the text: \\\"Here is a test: is your code version up to date?\\\"\\n\\nI need to make it clearer, more natural, and better structured while preserving the original meaning. Use proper grammar, punctuation, and phrasing. Keep it in the original language, which is English, so no translation.\\n\\nThe original text is already in English, so that's fine. Return ONLY the polished text with no explanation. That means my response should just be the improved version, nothing else.\\n\\nOriginal text: \\\"Here is a test: is your code version up to date?\\\"\\n\\nBreaking it down:\\n\\n- It's phrased as a question within a statement.\\n\\n- \\\"Here is a test:\\\" introduces something, and then the question follows.\\n\\n- The question is: \\\"is your code version up to date?\\\"\\n\\nThis seems informal. Maybe it's meant to be a straightforward question or a prompt.\\n\\nTo improve it:\\n\\n- Make it clearer: Ensure the sentence flows logically.\\n\\n- More natural: Make it sound like natural English.\\n\\n- Better structured: Perhaps rephrase for better readability.\\n\\nPossible improvements:\\n\\n- The phrase \\\"Here is a test:\\\" might be awkward. It could be rephrased to something like \\\"Let's check:\\\" or integrated better.\\n\\n- The question \\\"is your code version up to date?\\\" could be made more polite or clear, like \\\"Is your code version up to date?\\\"\\n\\n- Combining them: The original has a colon, which separates the introduction from the question.\\n\\nA more natural way: \\\"Here's a quick test: Is your code version up to date?\\\"\\n\\nOr: \\\"Let me test this: Is your code version up to date?\\\"\\n\\nTo keep the original meaning, it's essentially asking if the code version is current.\\n\\nPreserve the original meaning: It's presenting a test in the form of a question.\\n\\nPolished version: \\\"Here's a test: Is your code version up to date?\\\"\\n\\nI changed \\\"Here is\\\" to \\\"Here's\\\" for contraction, which is more natural.\\n\\nCapitalized the first letter of the question for proper punctuation.\\n\\nEnsure it's a complete sentence.\\n\\nOriginal: \\\"Here is a test: is your code version up to date?\\\"\\n\\nIn the original, the question starts with a lowercase \\\"is\\\", which is incorrect. It should be capitalized.\\n\\nSo, minimally, fix that: \\\"Here is a test: Is your code version up to date?\\\"\\n\\nTo make it more natural: \\\"Let me ask you this as a test: Is your code version up to date?\\\"\\n\\nBut that might alter it slightly. Stick close to the original.\\n\\nAnother option: \\\"This is a test: Is your code version up to date?\\\"\\n\\nThe user said \\\"improve to make it clearer, more natural, and better structured,\\\" so enhancing the flow is okay.\\n\\nFinal polished text: \\\"Here's a simple test: Is your code version up to date?\\\"\\n\\nThat adds \\\"simple\\\" for clarity, but maybe that's adding too much. The original doesn't have it, so perhaps not.\\n\\nTo preserve exactly: Just fix the capitalization and make it natural.\\n\\nI think \\\"Here's a test: Is your code version up to date?\\\" is a good improvement.\",\"refusal\":null},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":79,\"completion_tokens\":12,\"total_tokens\":725,\"prompt_tokens_details\":{\"text_tokens\":79,\"audio_tokens\":0,\"image_tokens\":0,\"cached_tokens\":2},\"completion_tokens_details\":{\"reasoning_tokens\":634,\"audio_tokens\":0,\"accepted_prediction_tokens\":0,\"rejected_prediction_tokens\":0},\"num_sources_used\":0,\"cost_in_usd_ticks\":3462500},\"system_fingerprint\":\"fp_ae63ac6afc\"}"
+time=2026-03-08T23:08:53.827-04:00 level=DEBUG msg="xai: parsed response" text_len=47 choices=1
+time=2026-03-08T23:08:53.827-04:00 level=DEBUG msg="LLM response received" provider=xai model=grok-3-mini llm=xai response_len=47
+time=2026-03-08T23:08:53.827-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=47
+time=2026-03-08T23:08:54.253-04:00 level=INFO msg="Polish complete" result="Here's a test: Is your code version up to date?"
+time=2026-03-08T23:08:56.721-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:09:08.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:09:38.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:09:48.280-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:09:49.696-04:00 level=INFO msg="Default model changed" label=gemini
+time=2026-03-08T23:09:49.696-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg=GetMessage msg=0x0312 wParam=0x1 lParam=0x470002
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="WM_HOTKEY received" id=1
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Dispatching hotkey handler" name=action id=1
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Hotkey callback fired"
+time=2026-03-08T23:09:53.855-04:00 level=INFO msg="Polish triggered"
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Playing working sound..."
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Saving clipboard..."
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Clipboard saved"
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="Capturing text..."
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="captureText: Accessibility API returned no text, falling back to clipboard"
+time=2026-03-08T23:09:53.855-04:00 level=DEBUG msg="captureText: clearing clipboard..."
+time=2026-03-08T23:09:53.905-04:00 level=DEBUG msg="captureText: sending Copy keystroke..."
+time=2026-03-08T23:09:54.019-04:00 level=DEBUG msg="captureText: reading clipboard..."
+time=2026-03-08T23:09:54.019-04:00 level=DEBUG msg="captureText: clipboard read" len=0 empty=true
+time=2026-03-08T23:09:54.019-04:00 level=DEBUG msg="No selection detected, falling back to select-all" prompt=Polish
+time=2026-03-08T23:09:54.083-04:00 level=DEBUG msg="captureText: sending Copy after select-all..."
+time=2026-03-08T23:09:54.197-04:00 level=DEBUG msg="captureText: reading clipboard after select-all..."
+time=2026-03-08T23:09:54.197-04:00 level=DEBUG msg="captureText: final clipboard read" len=48
+time=2026-03-08T23:09:54.197-04:00 level=INFO msg="Captured text" prompt=Polish len=48 selection=false method=1 text="Here is a test: is your code version up to date?"
+time=2026-03-08T23:09:54.197-04:00 level=DEBUG msg="Sending to LLM..." prompt=Polish text_len=48
+time=2026-03-08T23:09:54.197-04:00 level=DEBUG msg="processing text" prompt=Polish llm=gemini prompt_text="Improve the following text to make it clearer, more natural, and better structur..." input_len=48
+time=2026-03-08T23:09:54.197-04:00 level=DEBUG msg="gemini: sending request" model=gemini-2.5-flash-lite endpoint=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions body_len=474
+time=2026-03-08T23:09:54.639-04:00 level=DEBUG msg="gemini: response received" status=200
+time=2026-03-08T23:09:54.648-04:00 level=DEBUG msg="gemini: raw response body" body="{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"message\":{\"content\":\"Is your code version up to date?\",\"role\":\"assistant\"}}],\"created\":1773025794,\"id\":\"AjquafzyCvbm-8YP2vCF4Qo\",\"model\":\"gemini-2.5-flash-lite\",\"object\":\"chat.completion\",\"usage\":{\"completion_tokens\":8,\"prompt_tokens\":74,\"total_tokens\":82}}"
+time=2026-03-08T23:09:54.649-04:00 level=DEBUG msg="gemini: parsed response" text_len=32 choices=1
+time=2026-03-08T23:09:54.649-04:00 level=DEBUG msg="LLM response received" provider=gemini model=gemini-2.5-flash-lite llm=gemini response_len=32
+time=2026-03-08T23:09:54.649-04:00 level=DEBUG msg="Result written to clipboard" prompt=Polish result_len=32
+time=2026-03-08T23:09:55.075-04:00 level=INFO msg="Polish complete" result="Is your code version up to date?"
+time=2026-03-08T23:10:01.250-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:02.647-04:00 level=INFO msg="Default model changed" label=openai
+time=2026-03-08T23:10:02.647-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:08.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:10:14.457-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:15.673-04:00 level=INFO msg="Default model changed" label=anthropic
+time=2026-03-08T23:10:15.673-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:22.397-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:23.879-04:00 level=INFO msg="Default model changed" label=openai
+time=2026-03-08T23:10:23.879-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:34.753-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=1 prompts=3 models=4
+time=2026-03-08T23:10:35.908-04:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-08T23:10:35.908-04:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-08T23:10:35.910-04:00 level=INFO msg="[WebView2] Environment created successfully"
+time=2026-03-08T23:10:36.068-04:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-08T23:10:36.126-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-08T23:10:36.131-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-08T23:10:36.131-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-08T23:10:36.131-04:00 level=INFO msg="Permission check from GUI" accessibility=true postEvent=true
+time=2026-03-08T23:10:37.558-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-08T23:10:38.431-04:00 level=DEBUG msg="Hotkey listener heartbeat" threadID=8680 registered=1 names=[action]
+time=2026-03-08T23:10:39.266-04:00 level=INFO msg="[GUI] JS called: TailDebugLog"
