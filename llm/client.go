@@ -28,6 +28,9 @@ type Client interface {
 
 	// Provider returns the name of the provider.
 	Provider() string
+
+	// Close releases resources (HTTP connections) held by the client.
+	Close()
 }
 
 // NewClient creates an LLM client based on the config.

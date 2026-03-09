@@ -230,6 +230,7 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 		guiLog("[GUI] TestConnection: NewClientFromDef failed: %v", err)
 		return fmt.Sprintf("error: %v", err)
 	}
+	defer client.Close()
 
 	guiLog("[GUI] TestConnection: sending test request (timeout=%s)...", timeout)
 	tctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -278,6 +279,7 @@ func (s *SettingsService) TestProvider(label string) string {
 		guiLog("[GUI] TestProvider: NewClientFromDef failed: %v", err)
 		return fmt.Sprintf("error: %v", err)
 	}
+	defer client.Close()
 
 	guiLog("[GUI] TestProvider: sending test request (timeout=%s)...", timeout)
 	tctx, cancel := context.WithTimeout(context.Background(), timeout)

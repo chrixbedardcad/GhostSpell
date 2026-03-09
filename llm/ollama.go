@@ -85,6 +85,10 @@ func (c *OllamaClient) Provider() string {
 	return "ollama"
 }
 
+func (c *OllamaClient) Close() {
+	c.httpClient.CloseIdleConnections()
+}
+
 // ollamaRequest is the request body for the Ollama generate API.
 type ollamaRequest struct {
 	Model   string         `json:"model"`

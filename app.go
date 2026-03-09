@@ -224,12 +224,13 @@ func processMode(
 	}
 	processingActive.Store(true)
 	defer func() {
+		sound.StopWorkingLoop()
 		processingActive.Store(false)
 		processingGuard.Unlock()
 	}()
 	slog.Info(promptName + " triggered")
-	slog.Debug("Playing working sound...")
-	sound.PlayWorking()
+	slog.Debug("Playing working sound loop...")
+	sound.StartWorkingLoop()
 
 	// Save original clipboard.
 	slog.Debug("Saving clipboard...")
@@ -282,6 +283,7 @@ func processMode(
 		kb.Paste()
 		time.Sleep(300 * time.Millisecond)
 		cb.Restore()
+		sound.StopWorkingLoop()
 		sound.PlayError()
 		return
 	}
@@ -369,6 +371,7 @@ func processMode(
 	// Restore original clipboard.
 	cb.Restore()
 
+	sound.StopWorkingLoop()
 	sound.PlaySuccess()
 	slog.Info(promptName+" complete", "result", result)
 	fmt.Printf("[%s] Result: %q\n", promptName, result)

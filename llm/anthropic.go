@@ -71,6 +71,10 @@ func (c *AnthropicClient) Provider() string {
 	return "anthropic"
 }
 
+func (c *AnthropicClient) Close() {
+	c.httpClient.CloseIdleConnections()
+}
+
 // anthropicRequest is the request body for the Anthropic Messages API.
 type anthropicRequest struct {
 	Model     string             `json:"model"`

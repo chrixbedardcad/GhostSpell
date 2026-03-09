@@ -80,6 +80,10 @@ func (c *OpenAIClient) Provider() string {
 	return c.providerName
 }
 
+func (c *OpenAIClient) Close() {
+	c.httpClient.CloseIdleConnections()
+}
+
 // openaiRequest is the request body for the OpenAI Chat Completions API.
 // OpenAI uses max_completion_tokens (required for reasoning models like o1).
 // Gemini and xAI use the standard max_tokens field via their OpenAI-compatible

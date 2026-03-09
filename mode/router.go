@@ -74,12 +74,23 @@ func (r *Router) Process(ctx context.Context, promptIdx int, text string) (strin
 
 // ResetClients clears all cached LLM clients so that the next request
 // lazily creates fresh ones from the (possibly updated) config.
+// Closes idle HTTP connections on old clients to prevent resource leaks.
 func (r *Router) ResetClients() {
 	r.mu.Lock()
-	defer r.mu.Unlock()
+	old := r.clients
+	oldDefault := r.defaultClient
 	r.clients = make(map[string]llm.Client)
 	r.defaultClient = nil
-	slog.Debug("LLM client cache reset")
+	r.mu.Unlock()
+
+	// Close old clients outside the lock to avoid blocking.
+	for _, c := range old {
+		c.Close()
+	}
+	if oldDefault != nil {
+		oldDefault.Close()
+	}
+	slog.Debug("LLM client cache reset", "closed", len(old))
 }
 
 // resolveClient returns the LLM client for the given label.

@@ -5,6 +5,7 @@ package sound
 import (
 	_ "embed"
 	"sync"
+	"time"
 )
 
 //go:embed start.wav
@@ -25,6 +26,9 @@ var toggleWAV []byte
 var (
 	enabled bool
 	mu      sync.Mutex
+
+	workingStop chan struct{}
+	workingMu   sync.Mutex
 )
 
 // Init enables or disables sound playback.
@@ -49,6 +53,48 @@ func PlaySuccess() { play(successWAV) }
 func PlayError()   { play(errorWAV) }
 func PlayToggle()  { play(toggleWAV) }
 func PlayWorking() { play(workingWAV) }
+
+// StartWorkingLoop plays working.wav in a loop until StopWorkingLoop is called.
+func StartWorkingLoop() {
+	mu.Lock()
+	e := enabled
+	mu.Unlock()
+	if !e || len(workingWAV) == 0 {
+		return
+	}
+
+	workingMu.Lock()
+	// Stop any existing loop.
+	if workingStop != nil {
+		close(workingStop)
+	}
+	stop := make(chan struct{})
+	workingStop = stop
+	workingMu.Unlock()
+
+	go func() {
+		for {
+			playWAV(workingWAV) // blocks until sound finishes
+			select {
+			case <-stop:
+				return
+			case <-time.After(100 * time.Millisecond): // small gap between loops
+			}
+		}
+	}()
+}
+
+// StopWorkingLoop stops the looping working sound.
+func StopWorkingLoop() {
+	workingMu.Lock()
+	if workingStop != nil {
+		close(workingStop)
+		workingStop = nil
+	}
+	workingMu.Unlock()
+	// Kill any lingering playback process.
+	stopPlayback()
+}
 
 func SetEnabled(v bool) {
 	mu.Lock()
