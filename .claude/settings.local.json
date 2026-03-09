@@ -7,7 +7,21 @@
       "Bash(grep:*)",
       "Bash(wc:*)",
       "Bash(cd:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(go vet ./...)",
+      "Bash(go env GOVERSION)",
+      "Bash(git push origin main && git push origin v0.1.69)",
+      "Bash(gh run watch 22637552108 --repo chrixbedardcad/GhostType --exit-status 2>/dev/null; echo \"Exit: $?\")",
+      "Bash(gh run view 22637552108 --repo chrixbedardcad/GhostType 2>/dev/null)",
+      "Bash(gh auth switch --user chrixbedardcad 2>/dev/null && gh run view 22637552108 --repo chrixbedardcad/GhostType)",
+      "Bash(gh run list --repo chrixbedardcad/GhostType --limit 3)",
+      "Bash(xdg-open \"https://ollama.com/download\" 2>&1; echo \"exit: $?\")",
+      "Bash(git tag v0.1.70 && git push origin main && git push origin v0.1.70)",
+      "Bash(gh auth switch --user chrixbedardcad 2>/dev/null; sleep 120 && gh run list --repo chrixbedardcad/GhostType --limit 2)",
+      "Bash(sleep 30 && gh run list --repo chrixbedardcad/GhostType --limit 2)",
+      "Bash(gh auth switch --user chrixbedardcad 2>/dev/null; sleep 130 && gh run list --repo chrixbedardcad/GhostType --limit 2)",
+      "Bash(gh auth switch --user chrixbedardcad 2>/dev/null; sleep 150 && gh run list --repo chrixbedardcad/GhostType --limit 2)",
+      "Bash(gh auth switch --user chrixbedardcad 2>/dev/null; sleep 140 && gh run list --repo chrixbedardcad/GhostType --limit 2)"
     ]
   }
 }
