@@ -380,6 +380,22 @@ func (s *SettingsService) OllamaDownloadInstaller() string {
 	return "ok"
 }
 
+// --- OpenRouter OAuth -------------------------------------------------------
+
+// StartOpenRouterOAuth initiates the OpenRouter PKCE OAuth flow.
+// Opens the user's browser for authorization and returns the API key on success.
+// This is a blocking call (up to 5 minutes) — JS should call it asynchronously.
+func (s *SettingsService) StartOpenRouterOAuth() string {
+	guiLog("[GUI] JS called: StartOpenRouterOAuth")
+	key, err := startOpenRouterOAuth()
+	if err != nil {
+		guiLog("[GUI] OpenRouter OAuth failed: %v", err)
+		return fmt.Sprintf("error: %v", err)
+	}
+	guiLog("[GUI] OpenRouter OAuth succeeded, key received")
+	return "ok:" + key
+}
+
 // --- Prompt management -----------------------------------------------------
 
 // SavePrompt updates an existing prompt at the given index, or appends if index == -1.

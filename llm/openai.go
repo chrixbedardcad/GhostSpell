@@ -148,6 +148,10 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if c.providerName == "openrouter" {
+		httpReq.Header.Set("HTTP-Referer", "https://github.com/chrixbedardcad/GhostType")
+		httpReq.Header.Set("X-Title", "GhostType")
+	}
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {

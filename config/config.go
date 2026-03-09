@@ -386,8 +386,9 @@ func Validate(cfg *Config) error {
 		"openai":    true,
 		"gemini":    true,
 		"xai":       true,
-		"deepseek":  true,
-		"ollama":    true,
+		"deepseek":    true,
+		"openrouter": true,
+		"ollama":      true,
 	}
 
 	// Flat-field validation only when llm_providers was not provided directly.
