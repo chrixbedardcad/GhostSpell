@@ -311,37 +311,117 @@ mkdir -p ~/.config/GhostSpell
 cp ~/.config/GhostType/config.json ~/.config/GhostSpell/config.json
 ```
 
-**Uninstall old GhostType:**
+**Uninstall old GhostType (supercleaner):**
 
 macOS:
 ```bash
-pkill -f GhostType 2>/dev/null || true; sleep 1
-rm -rf /Applications/GhostType.app 2>/dev/null || sudo rm -rf /Applications/GhostType.app
+# Stop all GhostType processes
+pkill -9 -f GhostType 2>/dev/null || true
+pkill -9 -f ghosttype 2>/dev/null || true
+sleep 1
+
+# Remove the app bundle
+sudo rm -rf /Applications/GhostType.app
+
+# Unregister from Launch Services (removes from Launchpad/Spotlight)
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u /Applications/GhostType.app 2>/dev/null || true
+
+# Remove app data, config, preferences, caches, and saved state
 rm -rf "$HOME/Library/Application Support/GhostType"
-echo "GhostType removed. Remove GhostType from System Settings > Privacy & Security > Accessibility + Input Monitoring."
+rm -rf "$HOME/Library/Preferences/com.ghosttype.app.plist"
+rm -rf "$HOME/Library/Saved Application State/com.ghosttype.app.savedState"
+rm -rf "$HOME/Library/Caches/com.ghosttype.app"
+rm -rf "$HOME/Library/HTTPStorages/com.ghosttype.app"
+
+# Remove quarantine and Gatekeeper records
+sudo xattr -cr /Applications/GhostType.app 2>/dev/null || true
+
+# Reset Launch Services database and refresh Dock/Launchpad
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user 2>/dev/null || true
+killall Dock 2>/dev/null || true
+
+echo ""
+echo "GhostType fully removed."
+echo "Manual step: Remove GhostType from System Settings > Privacy & Security > Accessibility + Input Monitoring."
 ```
 
-Windows (PowerShell):
+Windows (PowerShell — run as Administrator for full cleanup):
 ```powershell
+# Stop all GhostType processes
 Get-Process -Name "ghosttype*" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep 1
+
+# Remove binaries
 Remove-Item -Recurse -Force "$env:LOCALAPPDATA\GhostType" -ErrorAction SilentlyContinue
+
+# Remove app data and config
 Remove-Item -Recurse -Force "$env:APPDATA\GhostType" -ErrorAction SilentlyContinue
+
+# Remove Start Menu shortcuts
 Remove-Item -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\GhostType.lnk" -ErrorAction SilentlyContinue
+
+# Remove Startup shortcut (auto-launch on boot)
 Remove-Item -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\GhostType.lnk" -ErrorAction SilentlyContinue
+
+# Remove Desktop shortcut if any
+Remove-Item -Force "$env:USERPROFILE\Desktop\GhostType.lnk" -ErrorAction SilentlyContinue
+
+# Remove from user PATH
 $p = [Environment]::GetEnvironmentVariable("PATH", "User")
 if ($p -like "*GhostType*") {
-    [Environment]::SetEnvironmentVariable("PATH", ($p -split ";" | Where-Object { $_ -notlike "*GhostType*" }) -join ";", "User")
+    $newPath = ($p -split ";" | Where-Object { $_ -notlike "*GhostType*" -and $_ -ne "" }) -join ";"
+    [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+    Write-Host "Removed GhostType from PATH." -ForegroundColor Cyan
 }
-Write-Host "GhostType removed." -ForegroundColor Green
+
+# Clean Windows registry (App Paths, Uninstall entries, Run keys)
+$regPaths = @(
+    "HKCU:\Software\GhostType",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+)
+foreach ($rp in $regPaths) {
+    if (Test-Path $rp) {
+        $props = Get-ItemProperty $rp -ErrorAction SilentlyContinue
+        if ($props.GhostType) {
+            Remove-ItemProperty -Path $rp -Name "GhostType" -ErrorAction SilentlyContinue
+            Write-Host "Removed GhostType from $rp" -ForegroundColor Cyan
+        }
+    }
+}
+Remove-Item -Path "HKCU:\Software\GhostType" -Recurse -ErrorAction SilentlyContinue
+
+# Clean temp files
+Remove-Item -Recurse -Force "$env:TEMP\ghosttype*" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "$env:TEMP\GhostType*" -ErrorAction SilentlyContinue
+
+# Remove lock file from common locations
+Remove-Item -Force "$env:LOCALAPPDATA\.ghosttype.lock" -ErrorAction SilentlyContinue
+Remove-Item -Force "$env:APPDATA\.ghosttype.lock" -ErrorAction SilentlyContinue
+
+Write-Host ""
+Write-Host "GhostType fully removed." -ForegroundColor Green
 ```
 
 Linux:
 ```bash
-pkill -f ghosttype 2>/dev/null || true; sleep 1
+# Stop all GhostType processes
+pkill -9 -f ghosttype 2>/dev/null || true
+sleep 1
+
+# Remove binary
 sudo rm -f /usr/local/bin/ghosttype
+
+# Remove config and data
 rm -rf "$HOME/.config/GhostType"
-echo "GhostType removed."
+
+# Remove lock file
+rm -f "$HOME/.ghosttype.lock"
+
+# Remove desktop entry if any
+rm -f "$HOME/.local/share/applications/ghosttype.desktop"
+
+echo "GhostType fully removed."
 ```
 
 Then install GhostSpell using the [install instructions](#install) above.
