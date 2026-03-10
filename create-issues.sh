@@ -1,11 +1,11 @@
 #!/bin/bash
-# Script to create GitHub issues 8-20 for the GhostType project.
+# Script to create GitHub issues 8-20 for the GhostSpell project.
 # Prerequisites: gh CLI authenticated (run 'gh auth login' first)
 # Usage: ./create-issues.sh
 
 set -e
 
-REPO="chrixbedardcad/GhostType"
+REPO="chrixbedardcad/GhostSpell"
 
 echo "Creating labels if they don't exist..."
 gh label create "priority-critical" --color "B60205" --description "Critical priority" --repo "$REPO" 2>/dev/null || true
@@ -91,7 +91,7 @@ gh issue create --repo "$REPO" \
   --body "$(cat <<'EOF'
 ## Description
 
-Add system tray icon so GhostType runs as a background app with a tray menu.
+Add system tray icon so GhostSpell runs as a background app with a tray menu.
 
 **Depends on:** Issue #8
 
@@ -134,7 +134,7 @@ Add Windows toast notifications to show processing status.
 ## Requirements
 
 - Use `github.com/go-toast/toast` for Windows notifications
-- Show notification when F6 is pressed: "Correcting..." with GhostType icon
+- Show notification when F6 is pressed: "Correcting..." with GhostSpell icon
 - Show notification when correction completes: "Text corrected" (auto-dismiss 2 seconds)
 - Show notification on error: "Correction failed: [reason]" (auto-dismiss 5 seconds)
 - Show notification when config is invalid on startup
@@ -163,7 +163,7 @@ Add structured logging throughout the application.
 ## Requirements
 
 - Use `log/slog` from Go stdlib
-- Log to file specified in `config.json` (default `ghosttype.log`)
+- Log to file specified in `config.json` (default `ghostspell.log`)
 - Log levels: debug, info, warn, error (configurable in `config.json`)
 - Log format: `[TIMESTAMP] [LEVEL] [MODULE] message`
 - Log on startup: config loaded, provider, model, registered hotkeys

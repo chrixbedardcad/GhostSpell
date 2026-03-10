@@ -15,7 +15,7 @@ import (
 
 const (
 	autoDisableAfter = 30 * time.Minute
-	logFileName      = "ghosttype.log"
+	logFileName      = "ghostspell.log"
 	tailLines        = 200
 )
 

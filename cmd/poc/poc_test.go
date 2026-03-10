@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/chrixbedardcad/GhostType/clipboard"
+	"github.com/chrixbedardcad/GhostSpell/clipboard"
 )
 
 // TestCorrectText verifies the simple test transformation.

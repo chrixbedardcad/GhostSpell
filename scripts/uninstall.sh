@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# GhostType uninstaller for macOS and Linux.
+# GhostSpell uninstaller for macOS and Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostType/main/scripts/uninstall.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scripts/uninstall.sh | bash
 #
 # What it does:
-#   1. Stops GhostType if it's running
-#   2. Removes the app binary (macOS: /Applications/GhostType.app, Linux: /usr/local/bin/ghosttype)
+#   1. Stops GhostSpell if it's running
+#   2. Removes the app binary (macOS: /Applications/GhostSpell.app, Linux: /usr/local/bin/ghostspell)
 #   3. Removes config, logs, and all app data
 #
 set -euo pipefail
@@ -25,8 +25,8 @@ detect_os() {
 
 # --- Stop running instance --------------------------------------------------
 
-info "Stopping GhostType if running..."
-pkill -f GhostType 2>/dev/null || pkill -f ghosttype 2>/dev/null || true
+info "Stopping GhostSpell if running..."
+pkill -f GhostSpell 2>/dev/null || pkill -f ghostspell 2>/dev/null || true
 sleep 1
 
 # --- Platform-specific removal ----------------------------------------------
@@ -35,43 +35,43 @@ os=$(detect_os)
 
 case "$os" in
     darwin)
-        info "Removing /Applications/GhostType.app..."
-        if [ -d /Applications/GhostType.app ]; then
-            rm -rf /Applications/GhostType.app 2>/dev/null || {
+        info "Removing /Applications/GhostSpell.app..."
+        if [ -d /Applications/GhostSpell.app ]; then
+            rm -rf /Applications/GhostSpell.app 2>/dev/null || {
                 info "Need admin permission..."
-                sudo rm -rf /Applications/GhostType.app
+                sudo rm -rf /Applications/GhostSpell.app
             }
         fi
 
-        info "Removing app data (~/Library/Application Support/GhostType/)..."
-        rm -rf "$HOME/Library/Application Support/GhostType"
+        info "Removing app data (~/Library/Application Support/GhostSpell/)..."
+        rm -rf "$HOME/Library/Application Support/GhostSpell"
         ;;
 
     linux)
-        info "Removing /usr/local/bin/ghosttype..."
+        info "Removing /usr/local/bin/ghostspell..."
         if [ -w /usr/local/bin ]; then
-            rm -f /usr/local/bin/ghosttype
+            rm -f /usr/local/bin/ghostspell
         else
-            sudo rm -f /usr/local/bin/ghosttype
+            sudo rm -f /usr/local/bin/ghostspell
         fi
 
-        info "Removing app data (~/.config/GhostType/)..."
-        rm -rf "$HOME/.config/GhostType"
+        info "Removing app data (~/.config/GhostSpell/)..."
+        rm -rf "$HOME/.config/GhostSpell"
         ;;
 
     *)
-        warn "Unsupported OS. Remove GhostType manually."
+        warn "Unsupported OS. Remove GhostSpell manually."
         exit 1
         ;;
 esac
 
 ok ""
-ok "GhostType has been uninstalled."
+ok "GhostSpell has been uninstalled."
 ok ""
 
 if [ "$os" = "darwin" ]; then
     warn "NOTE: macOS privacy permissions must be removed manually."
-    echo "  Open System Settings and remove GhostType from both:"
+    echo "  Open System Settings and remove GhostSpell from both:"
     echo "  1. Privacy & Security > Accessibility"
     echo "  2. Privacy & Security > Input Monitoring"
     echo ""

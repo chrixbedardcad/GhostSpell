@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GhostType Setup</title>
+<title>GhostSpell Setup</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -202,9 +202,9 @@
 <div class="container">
   <!-- Header -->
   <div class="header">
-    <img src="/ghost-icon.png" class="logo" alt="GhostType" style="width:36px;height:36px">
+    <img src="/ghost-icon.png" class="logo" alt="GhostSpell" style="width:36px;height:36px">
     <div>
-      <h1>GhostType Setup</h1>
+      <h1>GhostSpell Setup</h1>
       <div class="sub">Quick setup — takes under 1 minute</div>
     </div>
   </div>
@@ -312,7 +312,7 @@
     <div style="background:#313244;border-radius:8px;padding:16px;margin-bottom:14px">
       <div style="font-size:0.88em;color:#bac2de;line-height:1.6">
         Your browser will open to sign in with OpenAI.<br>
-        GhostType receives API access automatically &mdash; nothing to copy-paste.
+        GhostSpell receives API access automatically &mdash; nothing to copy-paste.
       </div>
     </div>
 
@@ -438,7 +438,7 @@ const PROVIDERS = {
 };
 
 // ==================== WAILS BRIDGE ====================
-const _pkg = 'github.com/chrixbedardcad/GhostType/gui';
+const _pkg = 'github.com/chrixbedardcad/GhostSpell/gui';
 async function goCall(fn, ...args) {
   try {
     const method = _pkg + '.SettingsService.' + fn.charAt(0).toUpperCase() + fn.slice(1);

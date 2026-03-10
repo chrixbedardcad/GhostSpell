@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# bundle-macos.sh — Package a bare GhostType binary into a macOS .app bundle
+# bundle-macos.sh — Package a bare GhostSpell binary into a macOS .app bundle
 # and create a .dmg disk image with a drag-to-Applications layout.
 #
 # Usage: ./scripts/bundle-macos.sh <binary-path> <arch>
-#   e.g.: ./scripts/bundle-macos.sh ghosttype-darwin-arm64 arm64
+#   e.g.: ./scripts/bundle-macos.sh ghostspell-darwin-arm64 arm64
 #
-# Produces: GhostType-darwin-<arch>.dmg
+# Produces: GhostSpell-darwin-<arch>.dmg
 set -euo pipefail
 
 BINARY="${1:?Usage: $0 <binary-path> <arch>}"
@@ -13,9 +13,9 @@ ARCH="${2:?Usage: $0 <binary-path> <arch>}"
 
 # Read version from source of truth.
 VERSION=$(grep 'const Version' internal/version/version.go | sed 's/.*"\(.*\)"/\1/')
-echo "Bundling GhostType v${VERSION} for darwin/${ARCH}"
+echo "Bundling GhostSpell v${VERSION} for darwin/${ARCH}"
 
-APP_NAME="GhostType.app"
+APP_NAME="GhostSpell.app"
 CONTENTS="${APP_NAME}/Contents"
 MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
@@ -25,15 +25,15 @@ rm -rf "${APP_NAME}"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 
 # Copy binary.
-cp "${BINARY}" "${MACOS_DIR}/GhostType"
-chmod +x "${MACOS_DIR}/GhostType"
+cp "${BINARY}" "${MACOS_DIR}/GhostSpell"
+chmod +x "${MACOS_DIR}/GhostSpell"
 
 # Generate .icns from the 1024px PNG icon using macOS built-in tools.
-ICONSET_DIR="GhostType.iconset"
+ICONSET_DIR="GhostSpell.iconset"
 rm -rf "${ICONSET_DIR}"
 mkdir -p "${ICONSET_DIR}"
 
-ICON_SRC="assets/GhostType_icon_1024.png"
+ICON_SRC="assets/GhostSpell_icon_1024.png"
 if [ -f "${ICON_SRC}" ]; then
     sips -z 16 16     "${ICON_SRC}" --out "${ICONSET_DIR}/icon_16x16.png"      >/dev/null
     sips -z 32 32     "${ICON_SRC}" --out "${ICONSET_DIR}/icon_16x16@2x.png"   >/dev/null
@@ -45,9 +45,9 @@ if [ -f "${ICON_SRC}" ]; then
     sips -z 512 512   "${ICON_SRC}" --out "${ICONSET_DIR}/icon_256x256@2x.png" >/dev/null
     sips -z 512 512   "${ICON_SRC}" --out "${ICONSET_DIR}/icon_512x512.png"    >/dev/null
     sips -z 1024 1024 "${ICON_SRC}" --out "${ICONSET_DIR}/icon_512x512@2x.png" >/dev/null
-    iconutil -c icns "${ICONSET_DIR}" -o "${RESOURCES_DIR}/GhostType.icns"
+    iconutil -c icns "${ICONSET_DIR}" -o "${RESOURCES_DIR}/GhostSpell.icns"
     rm -rf "${ICONSET_DIR}"
-    echo "Icon: GhostType.icns created"
+    echo "Icon: GhostSpell.icns created"
 else
     echo "Warning: ${ICON_SRC} not found — .app will have no icon"
 fi
@@ -59,19 +59,19 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>GhostType</string>
+    <string>GhostSpell</string>
     <key>CFBundleDisplayName</key>
-    <string>GhostType</string>
+    <string>GhostSpell</string>
     <key>CFBundleIdentifier</key>
-    <string>com.ghosttype.app</string>
+    <string>com.ghostspell.app</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
     <key>CFBundleShortVersionString</key>
     <string>${VERSION}</string>
     <key>CFBundleExecutable</key>
-    <string>GhostType</string>
+    <string>GhostSpell</string>
     <key>CFBundleIconFile</key>
-    <string>GhostType</string>
+    <string>GhostSpell</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
@@ -81,7 +81,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSAccessibilityUsageDescription</key>
-    <string>GhostType needs Accessibility access to register global hotkeys and simulate keyboard shortcuts for text correction.</string>
+    <string>GhostSpell needs Accessibility access to register global hotkeys and simulate keyboard shortcuts for text correction.</string>
 </dict>
 </plist>
 PLIST
@@ -107,14 +107,14 @@ else
 fi
 
 # Create .dmg disk image with drag-to-Applications layout.
-DMG_NAME="GhostType-darwin-${ARCH}.dmg"
+DMG_NAME="GhostSpell-darwin-${ARCH}.dmg"
 DMG_STAGING="dmg_contents"
 rm -rf "${DMG_STAGING}"
 mkdir -p "${DMG_STAGING}"
 cp -R "${APP_NAME}" "${DMG_STAGING}/"
 ln -s /Applications "${DMG_STAGING}/Applications"
 
-hdiutil create -volname "GhostType" \
+hdiutil create -volname "GhostSpell" \
     -srcfolder "${DMG_STAGING}" \
     -ov -format UDZO \
     "${DMG_NAME}"

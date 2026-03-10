@@ -10,7 +10,7 @@
 //   3. Original clipboard content is preserved and restored
 //
 // Build for Windows:
-//   go build -o ghosttype-poc.exe ./cmd/poc
+//   go build -o ghostspell-poc.exe ./cmd/poc
 //
 // Run in test mode (works on any OS, no Windows APIs):
 //   go run ./cmd/poc -test
@@ -27,12 +27,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/internal/version"
+	"github.com/chrixbedardcad/GhostSpell/internal/version"
 )
 
 var (
 	testMode = flag.Bool("test", false, "Run in test mode with simulated clipboard (no Windows APIs needed)")
-	logFile  = flag.String("log", "", "Path to debug log file (default: logs/ghosttype-poc-<timestamp>.log)")
+	logFile  = flag.String("log", "", "Path to debug log file (default: logs/ghostspell-poc-<timestamp>.log)")
 )
 
 // Log-level helper functions — conventional format: datetime LEVEL message
@@ -47,7 +47,7 @@ func main() {
 	// Generate timestamped log path if none specified
 	if *logFile == "" {
 		ts := time.Now().Format("20060102-150405")
-		*logFile = filepath.Join("logs", fmt.Sprintf("ghosttype-poc-%s.log", ts))
+		*logFile = filepath.Join("logs", fmt.Sprintf("ghostspell-poc-%s.log", ts))
 	}
 
 	// Ensure log directory exists
@@ -69,7 +69,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
 	log.Println("==============================================")
-	log.Printf("  GhostType POC v%s — Ctrl+G Clipboard Workflow", version.Version)
+	log.Printf("  GhostSpell POC v%s — Ctrl+G Clipboard Workflow", version.Version)
 	log.Println("  (No LLM — uses test message)")
 	log.Printf("  Log file: %s", *logFile)
 	log.Println("==============================================")

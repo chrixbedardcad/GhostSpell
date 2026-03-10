@@ -3,7 +3,7 @@ package llm
 import (
 	"testing"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 func TestNewClient_Anthropic(t *testing.T) {

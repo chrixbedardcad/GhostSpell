@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/clipboard"
-	"github.com/chrixbedardcad/GhostType/hotkey"
-	"github.com/chrixbedardcad/GhostType/keyboard"
+	"github.com/chrixbedardcad/GhostSpell/clipboard"
+	"github.com/chrixbedardcad/GhostSpell/hotkey"
+	"github.com/chrixbedardcad/GhostSpell/keyboard"
 )
 
 var (

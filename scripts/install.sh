@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# GhostType installer for macOS and Linux.
+# GhostSpell installer for macOS and Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostType/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scripts/install.sh | bash
 #
 # What it does:
 #   1. Detects your OS (macOS or Linux) and architecture (amd64 or arm64)
-#   2. Downloads the latest GhostType release from GitHub
-#   3. macOS: Installs GhostType.app to /Applications
+#   2. Downloads the latest GhostSpell release from GitHub
+#   3. macOS: Installs GhostSpell.app to /Applications
 #   4. Linux: Installs the binary to /usr/local/bin
 #
 set -euo pipefail
 
-REPO="chrixbedardcad/GhostType"
+REPO="chrixbedardcad/GhostSpell"
 INSTALL_DIR="/usr/local/bin"
 
 # --- Helpers ----------------------------------------------------------------
@@ -32,7 +32,7 @@ detect_os() {
     case "$(uname -s)" in
         Darwin) echo "darwin" ;;
         Linux)  echo "linux" ;;
-        *)      fail "Unsupported OS: $(uname -s). GhostType supports macOS and Linux." ;;
+        *)      fail "Unsupported OS: $(uname -s). GhostSpell supports macOS and Linux." ;;
     esac
 }
 
@@ -40,7 +40,7 @@ detect_arch() {
     case "$(uname -m)" in
         x86_64|amd64)   echo "amd64" ;;
         arm64|aarch64)  echo "arm64" ;;
-        *)              fail "Unsupported architecture: $(uname -m). GhostType supports amd64 and arm64." ;;
+        *)              fail "Unsupported architecture: $(uname -m). GhostSpell supports amd64 and arm64." ;;
     esac
 }
 
@@ -56,7 +56,7 @@ latest_version() {
 
 install_macos() {
     local arch="$1" version="$2"
-    local asset="GhostType-darwin-${arch}.dmg"
+    local asset="GhostSpell-darwin-${arch}.dmg"
     local url="https://github.com/${REPO}/releases/download/${version}/${asset}"
     local tmpdir
     tmpdir=$(mktemp -d)
@@ -74,60 +74,60 @@ install_macos() {
 
     if [ -z "$mount_point" ] || [ ! -d "$mount_point" ]; then
         # Fallback: check common mount point.
-        mount_point="/Volumes/GhostType"
+        mount_point="/Volumes/GhostSpell"
     fi
 
-    if [ ! -d "${mount_point}/GhostType.app" ]; then
+    if [ ! -d "${mount_point}/GhostSpell.app" ]; then
         hdiutil detach "$mount_point" -quiet 2>/dev/null || true
         rm -rf "$tmpdir"
-        fail "Could not find GhostType.app in DMG (mount: ${mount_point})"
+        fail "Could not find GhostSpell.app in DMG (mount: ${mount_point})"
     fi
 
-    # Kill any running GhostType before installing — otherwise macOS will
+    # Kill any running GhostSpell before installing — otherwise macOS will
     # bring the old process to the front instead of launching the new binary.
-    killall GhostType 2>/dev/null || true
+    killall GhostSpell 2>/dev/null || true
     sleep 1
 
-    info "Installing GhostType.app to /Applications..."
+    info "Installing GhostSpell.app to /Applications..."
     # Remove old version if present, then copy.
-    if [ -w /Applications ] || [ ! -d /Applications/GhostType.app ]; then
-        rm -rf /Applications/GhostType.app 2>/dev/null || true
-        cp -R "${mount_point}/GhostType.app" /Applications/ || {
+    if [ -w /Applications ] || [ ! -d /Applications/GhostSpell.app ]; then
+        rm -rf /Applications/GhostSpell.app 2>/dev/null || true
+        cp -R "${mount_point}/GhostSpell.app" /Applications/ || {
             info "Need admin permission to install to /Applications..."
-            sudo cp -R "${mount_point}/GhostType.app" /Applications/
+            sudo cp -R "${mount_point}/GhostSpell.app" /Applications/
         }
     else
         info "Need admin permission to install to /Applications..."
-        sudo rm -rf /Applications/GhostType.app
-        sudo cp -R "${mount_point}/GhostType.app" /Applications/
+        sudo rm -rf /Applications/GhostSpell.app
+        sudo cp -R "${mount_point}/GhostSpell.app" /Applications/
     fi
 
     info "Unmounting disk image..."
     hdiutil detach "$mount_point" -quiet 2>/dev/null || true
 
     # Remove quarantine so Gatekeeper doesn't block the unsigned app.
-    xattr -dr com.apple.quarantine /Applications/GhostType.app 2>/dev/null || true
+    xattr -dr com.apple.quarantine /Applications/GhostSpell.app 2>/dev/null || true
 
     # Force macOS to refresh the app icon (clears Launch Services cache).
-    touch /Applications/GhostType.app
-    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/GhostType.app 2>/dev/null || true
+    touch /Applications/GhostSpell.app
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/GhostSpell.app 2>/dev/null || true
 
     rm -rf "$tmpdir"
 
     echo ""
     echo "============================================"
-    ok "  GhostType ${version} installed successfully!"
+    ok "  GhostSpell ${version} installed successfully!"
     echo "============================================"
     echo ""
 
-    info "Launching GhostType..."
-    open /Applications/GhostType.app
+    info "Launching GhostSpell..."
+    open /Applications/GhostSpell.app
 
     echo ""
-    echo "  GhostType is running in your menu bar (top right)."
-    echo "  Look for the GhostType icon — there is no app window."
+    echo "  GhostSpell is running in your menu bar (top right)."
+    echo "  Look for the GhostSpell icon — there is no app window."
     echo ""
-    echo "  If this is your first install, GhostType needs two macOS permissions:"
+    echo "  If this is your first install, GhostSpell needs two macOS permissions:"
     echo ""
     echo "  1. ACCESSIBILITY     — for keyboard simulation (Cmd+A, Cmd+C, Cmd+V)"
     echo "  2. INPUT MONITORING  — for global hotkeys (Cmd+G)"
@@ -137,7 +137,7 @@ install_macos() {
     echo "    Accessibility:    https://support.apple.com/guide/mac-help/mh43185/mac"
     echo "    Input Monitoring: https://support.apple.com/guide/mac-help/mchl4cedafb6/mac"
     echo ""
-    info "Config is stored in: ~/Library/Application Support/GhostType/"
+    info "Config is stored in: ~/Library/Application Support/GhostSpell/"
 }
 
 # --- Linux installer --------------------------------------------------------
@@ -151,31 +151,31 @@ install_linux() {
         arch="amd64"
     fi
 
-    local asset="ghosttype-linux-${arch}"
+    local asset="ghostspell-linux-${arch}"
     local url="https://github.com/${REPO}/releases/download/${version}/${asset}"
     local tmpdir
     tmpdir=$(mktemp -d)
 
-    # Kill any running GhostType before replacing the binary.
-    killall ghosttype 2>/dev/null || true
+    # Kill any running GhostSpell before replacing the binary.
+    killall ghostspell 2>/dev/null || true
     sleep 1
 
     info "Downloading ${asset} (${version})..."
-    curl -fsSL -o "${tmpdir}/ghosttype" "$url" || fail "Download failed. Check your internet connection."
-    chmod +x "${tmpdir}/ghosttype"
+    curl -fsSL -o "${tmpdir}/ghostspell" "$url" || fail "Download failed. Check your internet connection."
+    chmod +x "${tmpdir}/ghostspell"
 
-    info "Installing to ${INSTALL_DIR}/ghosttype..."
+    info "Installing to ${INSTALL_DIR}/ghostspell..."
     if [ -w "$INSTALL_DIR" ]; then
-        mv "${tmpdir}/ghosttype" "${INSTALL_DIR}/ghosttype"
+        mv "${tmpdir}/ghostspell" "${INSTALL_DIR}/ghostspell"
     else
-        sudo mv "${tmpdir}/ghosttype" "${INSTALL_DIR}/ghosttype"
+        sudo mv "${tmpdir}/ghostspell" "${INSTALL_DIR}/ghostspell"
     fi
 
     rm -rf "$tmpdir"
 
     echo ""
     echo "============================================"
-    ok "  GhostType ${version} installed successfully!"
+    ok "  GhostSpell ${version} installed successfully!"
     echo "============================================"
     echo ""
 
@@ -193,18 +193,18 @@ install_linux() {
         echo ""
     fi
 
-    info "Config is stored in: ~/.config/GhostType/"
+    info "Config is stored in: ~/.config/GhostSpell/"
     echo ""
 
     if [ ${#missing[@]} -eq 0 ]; then
-        info "Launching GhostType..."
-        nohup ghosttype >/dev/null 2>&1 &
-        ok "GhostType is running in your system tray."
-        echo "  Look for the GhostType icon in your panel (top-right area)."
+        info "Launching GhostSpell..."
+        nohup ghostspell >/dev/null 2>&1 &
+        ok "GhostSpell is running in your system tray."
+        echo "  Look for the GhostSpell icon in your panel (top-right area)."
     fi
     echo ""
     info "To launch manually later:"
-    echo "  ghosttype"
+    echo "  ghostspell"
 }
 
 # --- Main -------------------------------------------------------------------

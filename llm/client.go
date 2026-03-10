@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 // Request represents a request to an LLM provider.

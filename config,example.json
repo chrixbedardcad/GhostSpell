@@ -56,5 +56,5 @@
   "timeout_ms": 5000,
   "preserve_clipboard": true,
   "log_level": "info",
-  "log_file": "ghosttype.log"
+  "log_file": "ghostspell.log"
 }

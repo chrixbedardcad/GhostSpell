@@ -15,8 +15,8 @@ func runLive() {
 	fmt.Println("  go run ./cmd/poc -test")
 	fmt.Println()
 	fmt.Println("On Windows, build and run:")
-	fmt.Println("  go build -o ghosttype-poc.exe ./cmd/poc")
-	fmt.Println("  ghosttype-poc.exe")
+	fmt.Println("  go build -o ghostspell-poc.exe ./cmd/poc")
+	fmt.Println("  ghostspell-poc.exe")
 	fmt.Println()
 
 	sigChan := make(chan os.Signal, 1)

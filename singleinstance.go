@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-const lockFileName = ".ghosttype.lock"
+const lockFileName = ".ghostspell.lock"
 
-// acquireSingleInstance ensures only one GhostType process runs at a time.
+// acquireSingleInstance ensures only one GhostSpell process runs at a time.
 // It writes the current PID to a lock file. If a lock file already exists,
 // it checks whether the PID inside is still alive. If alive, it exits.
 // If stale (process no longer running), it reclaims the lock.
@@ -25,8 +25,8 @@ func acquireSingleInstance(appDir string) func() {
 		pidStr := strings.TrimSpace(string(data))
 		if pid, err := strconv.Atoi(pidStr); err == nil && pid > 0 && pid != os.Getpid() {
 			if isProcessRunning(pid) {
-				fmt.Fprintf(os.Stderr, "GhostType is already running (PID %d).\n", pid)
-				fmt.Fprintln(os.Stderr, "Look for the GhostType icon in your system tray.")
+				fmt.Fprintf(os.Stderr, "GhostSpell is already running (PID %d).\n", pid)
+				fmt.Fprintln(os.Stderr, "Look for the GhostSpell icon in your system tray.")
 				os.Exit(0)
 			}
 		}

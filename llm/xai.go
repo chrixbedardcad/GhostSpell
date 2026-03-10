@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultXAIEndpoint = "https://api.x.ai/v1/chat/completions"

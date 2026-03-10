@@ -8,7 +8,7 @@ import (
 )
 
 // detachProcess gives the child its own console on Windows.
-// ghosttype.exe is built with -H windowsgui (no console), so child
+// ghostspell.exe is built with -H windowsgui (no console), so child
 // processes like PowerShell need CREATE_NEW_CONSOLE to function.
 func detachProcess(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{

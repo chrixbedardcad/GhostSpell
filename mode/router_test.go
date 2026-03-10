@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/llm"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/llm"
 )
 
 // mockClient is a test double for llm.Client.

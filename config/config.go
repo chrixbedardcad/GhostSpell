@@ -45,7 +45,7 @@ type Overlay struct {
 	FontSize           int     `json:"font_size"`
 }
 
-// Config is the top-level configuration for GhostType.
+// Config is the top-level configuration for GhostSpell.
 type Config struct {
 	// Legacy flat fields — kept for backward-compat migration only.
 	LLMProvider string `json:"llm_provider,omitempty"`
@@ -117,7 +117,7 @@ func DefaultConfig() Config {
 		PreserveClipboard: true,
 		SoundEnabled:      boolPtr(true),
 		LogLevel:          "info",
-		LogFile:           "ghosttype.log",
+		LogFile:           "ghostspell.log",
 	}
 }
 
@@ -329,7 +329,7 @@ func applyDefaults(cfg *Config) {
 	// LogLevel: empty means disabled (no logging). No default applied.
 	// LogFile: only default if logging is enabled.
 	if cfg.LogLevel != "" && cfg.LogFile == "" {
-		cfg.LogFile = "ghosttype.log"
+		cfg.LogFile = "ghostspell.log"
 	}
 	if cfg.SoundEnabled == nil {
 		cfg.SoundEnabled = boolPtr(true)

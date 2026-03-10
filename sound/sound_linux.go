@@ -31,7 +31,7 @@ func playWAV(data []byte) {
 		return
 	}
 
-	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	f, err := os.CreateTemp("", "ghostspell-*.wav")
 	if err != nil {
 		return
 	}
@@ -59,7 +59,7 @@ func playWAVLoop(data []byte) {
 		return
 	}
 
-	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	f, err := os.CreateTemp("", "ghostspell-*.wav")
 	if err != nil {
 		return
 	}

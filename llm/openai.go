@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultOpenAIEndpoint = "https://api.openai.com/v1/chat/completions"

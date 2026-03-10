@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 func TestSettingsServiceHasAllMethods(t *testing.T) {

@@ -1,6 +1,6 @@
 package gui
 
-import "github.com/chrixbedardcad/GhostType/config"
+import "github.com/chrixbedardcad/GhostSpell/config"
 
 // NeedsSetup returns true if no usable LLM provider is configured.
 func NeedsSetup(cfg *config.Config) bool {

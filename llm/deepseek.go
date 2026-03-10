@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultDeepSeekEndpoint = "https://api.deepseek.com/chat/completions"

@@ -1,4 +1,4 @@
-module github.com/chrixbedardcad/GhostType
+module github.com/chrixbedardcad/GhostSpell
 
 go 1.25
 

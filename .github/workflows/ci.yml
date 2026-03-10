@@ -66,24 +66,24 @@ jobs:
           fi
           if [ "${{ matrix.goos }}" = "windows" ]; then
             # Default exe is windowless (tray only, no console) — recommended for daily use.
-            go build -tags "$TAGS" -ldflags "-H=windowsgui" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            go build -tags "$TAGS" -ldflags "-H=windowsgui" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
             # Window exe shows a console window — useful for debugging.
-            go build -tags "$TAGS" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}-window${{ matrix.ext }}
+            go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}-window${{ matrix.ext }}
           else
-            go build -tags "$TAGS" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           fi
       - name: Bundle macOS .app
         if: matrix.goos == 'darwin'
         run: |
           chmod +x scripts/bundle-macos.sh
-          ./scripts/bundle-macos.sh ghosttype-${{ matrix.goos }}-${{ matrix.goarch }} ${{ matrix.goarch }}
+          ./scripts/bundle-macos.sh ghostspell-${{ matrix.goos }}-${{ matrix.goarch }} ${{ matrix.goarch }}
       - uses: actions/upload-artifact@v4
         if: matrix.goos != 'darwin'
         with:
-          name: ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ghosttype-*
+          name: ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ghostspell-*
       - uses: actions/upload-artifact@v4
         if: matrix.goos == 'darwin'
         with:
-          name: ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: GhostType-darwin-*.dmg
+          name: ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: GhostSpell-darwin-*.dmg

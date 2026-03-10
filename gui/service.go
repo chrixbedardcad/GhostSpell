@@ -11,9 +11,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/internal/version"
-	"github.com/chrixbedardcad/GhostType/llm"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/internal/version"
+	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -563,7 +563,7 @@ func (s *SettingsService) CheckForUpdate() string {
 		HTMLURL string `json:"html_url"`
 	}
 
-	apiURL := "https://api.github.com/repos/chrixbedardcad/GhostType/releases/latest"
+	apiURL := "https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest"
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return fmt.Sprintf(`{"current":"%s","error":"%v"}`, current, err)
@@ -603,7 +603,7 @@ func (s *SettingsService) CheckForUpdate() string {
 func (s *SettingsService) UpdateNow() string {
 	guiLog("[GUI] JS called: UpdateNow")
 
-	const repo = "chrixbedardcad/GhostType"
+	const repo = "chrixbedardcad/GhostSpell"
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {

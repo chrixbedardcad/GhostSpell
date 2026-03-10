@@ -1,4 +1,4 @@
-// ghosttype_test.go — Integration-level tests for the GhostType prototype.
+// ghostspell_test.go — Integration-level tests for the GhostSpell prototype.
 // Run with: go test -v ./...
 // These tests verify the full pipeline: config loading, LLM client creation,
 // mode routing with mock LLM, and clipboard operations.
@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/chrixbedardcad/GhostType/clipboard"
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/llm"
-	"github.com/chrixbedardcad/GhostType/mode"
+	"github.com/chrixbedardcad/GhostSpell/clipboard"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/llm"
+	"github.com/chrixbedardcad/GhostSpell/mode"
 )
 
 // TestFullCorrectionPipeline tests the complete correction workflow

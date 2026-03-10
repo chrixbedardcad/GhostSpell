@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/chrixbedardcad/GhostType/assets"
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/assets"
+	"github.com/chrixbedardcad/GhostSpell/config"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -64,7 +64,7 @@ func ShowWizardOnApp(svc *SettingsService, app *application.App, cfg *config.Con
 	svc.app = app
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "GhostType Setup",
+		Title:  "GhostSpell Setup",
 		Width:  600,
 		Height: 640,
 		URL:    "/wizard.html",
@@ -113,7 +113,7 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 
 	guiLog("[GUI] Creating settings window on running tray app...")
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "GhostType Settings",
+		Title:  "GhostSpell Settings",
 		Width:  760,
 		Height: 660,
 		URL:    "/index.html",
@@ -164,7 +164,7 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 
 	guiLog("[GUI] Creating standalone Wails app for first-launch settings...")
 	app := application.New(application.Options{
-		Name: "GhostType Settings",
+		Name: "GhostSpell Settings",
 		Icon: windowAppIcon(),
 		Services: []application.Service{
 			application.NewService(svc),
@@ -176,7 +176,7 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 	svc.app = app
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "GhostType Setup",
+		Title:  "GhostSpell Setup",
 		Width:  600,
 		Height: 640,
 		URL:    "/wizard.html",

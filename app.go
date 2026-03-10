@@ -14,16 +14,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/assets"
-	"github.com/chrixbedardcad/GhostType/clipboard"
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/gui"
-	"github.com/chrixbedardcad/GhostType/hotkey"
-	"github.com/chrixbedardcad/GhostType/keyboard"
-	"github.com/chrixbedardcad/GhostType/llm"
-	"github.com/chrixbedardcad/GhostType/mode"
-	"github.com/chrixbedardcad/GhostType/sound"
-	"github.com/chrixbedardcad/GhostType/tray"
+	"github.com/chrixbedardcad/GhostSpell/assets"
+	"github.com/chrixbedardcad/GhostSpell/clipboard"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/gui"
+	"github.com/chrixbedardcad/GhostSpell/hotkey"
+	"github.com/chrixbedardcad/GhostSpell/keyboard"
+	"github.com/chrixbedardcad/GhostSpell/llm"
+	"github.com/chrixbedardcad/GhostSpell/mode"
+	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/tray"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -494,7 +494,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		return
 	}
 	wailsApp := application.New(application.Options{
-		Name: "GhostType",
+		Name: "GhostSpell",
 		Icon: appIcon(),
 		Services: []application.Service{
 			application.NewService(settingsSvc),
@@ -594,7 +594,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		},
 		OnExit: func() {
 			slog.Info("Exit requested via tray menu")
-			fmt.Println("\nGhostType exiting (tray menu).")
+			fmt.Println("\nGhostSpell exiting (tray menu).")
 			hkMu.Lock()
 			hk.Stop()
 			hkMu.Unlock()
@@ -694,7 +694,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				sound.PlayStart()
 
 				slog.Info("Wizard: init complete, unblocking hotkeys")
-				fmt.Println("Wizard: setup complete, starting GhostType...")
+				fmt.Println("Wizard: setup complete, starting GhostSpell...")
 				close(wizardDone)
 			},
 			func() {
@@ -831,7 +831,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		<-wizardDone
 
-		// On macOS, GhostType needs Accessibility + Input Monitoring.
+		// On macOS, GhostSpell needs Accessibility + Input Monitoring.
 		// We check and log — but don't block. The user can check permission
 		// status in Settings > General and fix it manually.
 		axOK := checkAccessibility()
@@ -843,17 +843,17 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			fmt.Println("")
 			if axOK && !postOK {
 				fmt.Println("  WARNING: Accessibility is checked but event posting is BLOCKED.")
-				fmt.Println("  Fix: toggle GhostType OFF then ON in Accessibility settings.")
+				fmt.Println("  Fix: toggle GhostSpell OFF then ON in Accessibility settings.")
 				slog.Warn("Stale TCC: AXIsProcessTrusted=true but CGPreflightPostEventAccess=false")
 			} else {
 				fmt.Println("  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
 			}
 			fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.")
-			fmt.Println("  Check permission status in GhostType Settings > General.")
+			fmt.Println("  Check permission status in GhostSpell Settings > General.")
 			fmt.Println("")
 		}
 
-		fmt.Println("GhostType is ready. Waiting for hotkey input...")
+		fmt.Println("GhostSpell is ready. Waiting for hotkey input...")
 		fmt.Println("Press Ctrl+C to exit.")
 
 		if err := doRegister(hk); err != nil {
@@ -873,8 +873,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
-		fmt.Println("\nGhostType shutting down.")
-		slog.Info("GhostType shutting down (signal)")
+		fmt.Println("\nGhostSpell shutting down.")
+		slog.Info("GhostSpell shutting down (signal)")
 		stopTrayFn()
 		hkMu.Lock()
 		hk.Stop()

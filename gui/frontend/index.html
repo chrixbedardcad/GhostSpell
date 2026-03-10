@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GhostType Settings</title>
+<title>GhostSpell Settings</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -327,9 +327,9 @@
 <body>
 
 <div class="header">
-  <img src="/ghost-icon.png" class="logo" alt="GhostType" style="width:36px;height:36px">
+  <img src="/ghost-icon.png" class="logo" alt="GhostSpell" style="width:36px;height:36px">
   <div>
-    <h1>GhostType Settings</h1>
+    <h1>GhostSpell Settings</h1>
     <span class="ver" id="app-version"></span>
   </div>
 </div>
@@ -497,7 +497,7 @@
           <button class="btn btn-primary btn-sm" onclick="onCheckPermissions()">Check Permissions</button>
         </div>
         <div style="font-size:0.75em;color:#6c7086;margin-top:8px">
-          After updates, toggle GhostType OFF then ON in both panes.
+          After updates, toggle GhostSpell OFF then ON in both panes.
         </div>
       </div>
     </div>
@@ -597,7 +597,7 @@
       </div>
       <div class="help-step">
         <span class="help-step-num">3</span>
-        <span class="help-step-text">GhostType captures the text, sends it to the active AI model with the selected prompt, and replaces it with the result.</span>
+        <span class="help-step-text">GhostSpell captures the text, sends it to the active AI model with the selected prompt, and replaces it with the result.</span>
       </div>
       <div class="help-step">
         <span class="help-step-num">4</span>
@@ -607,7 +607,7 @@
 
     <div class="help-section">
       <h2>Status Indicators</h2>
-      <p>GhostType appends emoji indicators in your text to let you know what happened:</p>
+      <p>GhostSpell appends emoji indicators in your text to let you know what happened:</p>
       <table class="help-table">
         <tr><td>👻✅</td><td><strong>No changes needed</strong> — the AI returned the same text. Your text is already good!</td></tr>
         <tr><td>👻❌</td><td><strong>Error</strong> — the AI provider returned an error (bad API key, network issue, etc.).</td></tr>
@@ -652,7 +652,7 @@
 
     <div class="help-section">
       <h2>Tips</h2>
-      <p>• GhostType works in any application — browsers, editors, chat apps, email.</p>
+      <p>• GhostSpell works in any application — browsers, editors, chat apps, email.</p>
       <p>• The text is always processed in its original language (except the Translate prompt).</p>
       <p>• Clipboard contents are preserved and restored after processing.</p>
       <p>• You can set up multiple AI providers (OpenAI, Anthropic, Gemini, xAI, DeepSeek, Ollama) in the Models tab.</p>
@@ -663,8 +663,8 @@
 
   <div id="tab-about" class="tab-panel">
     <div class="about-block">
-      <img src="/ghost-icon.png" alt="GhostType" style="width:64px;height:64px;margin-bottom:8px">
-      <div class="app-name">GhostType</div>
+      <img src="/ghost-icon.png" alt="GhostSpell" style="width:64px;height:64px;margin-bottom:8px">
+      <div class="app-name">GhostSpell</div>
       <div class="app-ver" id="about-version"></div>
       <div class="desc">AI-powered text correction and rewriting.</div>
     </div>
@@ -684,7 +684,7 @@
 let configData = null;
 
 // ---- Go bridge ----
-const _bindingPkg = 'github.com/chrixbedardcad/GhostType/gui';
+const _bindingPkg = 'github.com/chrixbedardcad/GhostSpell/gui';
 async function goCall(fn, ...args) {
   try {
     const method = _bindingPkg + '.SettingsService.' + fn.charAt(0).toUpperCase() + fn.slice(1);
@@ -1294,11 +1294,11 @@ function renderPermissions(perms) {
   if (perms.accessibility && !perms.postEvent) {
     warn.style.display = 'block';
     warn.innerHTML = '<strong>Stale permission detected:</strong> Accessibility is checked but event posting is blocked. '
-      + 'This happens after updates. Toggle GhostType <strong>OFF then ON</strong> in Accessibility settings, '
+      + 'This happens after updates. Toggle GhostSpell <strong>OFF then ON</strong> in Accessibility settings, '
       + 'or remove and re-add it.';
   } else if (!perms.accessibility) {
     warn.style.display = 'block';
-    warn.textContent = 'Accessibility is not granted. Add GhostType in System Settings > Privacy & Security > Accessibility.';
+    warn.textContent = 'Accessibility is not granted. Add GhostSpell in System Settings > Privacy & Security > Accessibility.';
   } else {
     warn.style.display = 'none';
   }
@@ -1409,7 +1409,7 @@ async function saveHotkeys() {
     const result = await goCall('setHotkey', name, val);
     if (!result || !result.startsWith('ok')) { allOk = false; setStatus('hk-status', 'error', 'Failed to save ' + name + ': ' + result); return; }
   }
-  if (allOk) setStatus('hk-status', 'success', 'Hotkeys saved. Restart GhostType for changes to take effect.');
+  if (allOk) setStatus('hk-status', 'success', 'Hotkeys saved. Restart GhostSpell for changes to take effect.');
 }
 
 // ===========================================================================
@@ -1443,7 +1443,7 @@ async function checkForUpdate() {
 }
 
 async function doUpdate() {
-  setStatus('update-status', 'info', 'Updating... GhostType will restart automatically.');
+  setStatus('update-status', 'info', 'Updating... GhostSpell will restart automatically.');
   const result = await goCall('updateNow');
   if (result && result.startsWith('error')) {
     setStatus('update-status', 'error', 'Update failed: ' + result);

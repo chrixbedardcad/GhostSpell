@@ -16,7 +16,7 @@ var (
 
 // playWAV plays a WAV sound (fire-and-forget). Blocks until done.
 func playWAV(data []byte) {
-	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	f, err := os.CreateTemp("", "ghostspell-*.wav")
 	if err != nil {
 		return
 	}
@@ -39,7 +39,7 @@ func playWAV(data []byte) {
 
 // playWAVLoop is like playWAV but tracks the process so it can be killed.
 func playWAVLoop(data []byte) {
-	f, err := os.CreateTemp("", "ghosttype-*.wav")
+	f, err := os.CreateTemp("", "ghostspell-*.wav")
 	if err != nil {
 		return
 	}

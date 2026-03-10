@@ -248,8 +248,8 @@ func TestLoadLoggingEnabledSetsLogFileDefault(t *testing.T) {
 	if loaded.LogLevel != "debug" {
 		t.Errorf("expected log_level 'debug', got '%s'", loaded.LogLevel)
 	}
-	if loaded.LogFile != "ghosttype.log" {
-		t.Errorf("expected default log_file 'ghosttype.log', got '%s'", loaded.LogFile)
+	if loaded.LogFile != "ghostspell.log" {
+		t.Errorf("expected default log_file 'ghostspell.log', got '%s'", loaded.LogFile)
 	}
 }
 

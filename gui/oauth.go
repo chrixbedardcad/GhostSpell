@@ -454,7 +454,7 @@ p{color:#a6adc8;font-size:0.9em}
 </style></head><body>
 <div class="box">
 <h2>&#9989; Authorization Successful!</h2>
-<p>You can close this tab and return to GhostType.</p>
+<p>You can close this tab and return to GhostSpell.</p>
 </div>
 </body></html>`
 	}

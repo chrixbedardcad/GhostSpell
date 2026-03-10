@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/chrixbedardcad/GhostType/assets"
-	"github.com/chrixbedardcad/GhostType/clipboard"
-	"github.com/chrixbedardcad/GhostType/hotkey"
-	"github.com/chrixbedardcad/GhostType/keyboard"
+	"github.com/chrixbedardcad/GhostSpell/assets"
+	"github.com/chrixbedardcad/GhostSpell/clipboard"
+	"github.com/chrixbedardcad/GhostSpell/hotkey"
+	"github.com/chrixbedardcad/GhostSpell/keyboard"
 )
 
 // appIcon returns the 512px PNG on macOS.

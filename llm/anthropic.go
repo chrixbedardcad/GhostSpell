@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultAnthropicEndpoint = "https://api.anthropic.com/v1/messages"

@@ -20,13 +20,13 @@
   },
   "StringFileInfo": {
     "Comments": "",
-    "CompanyName": "GhostType",
-    "FileDescription": "GhostType - AI-powered text correction",
+    "CompanyName": "GhostSpell",
+    "FileDescription": "GhostSpell - AI-powered text correction",
     "FileVersion": "",
-    "InternalName": "ghosttype",
-    "LegalCopyright": "Copyright (c) GhostType contributors",
-    "OriginalFilename": "ghosttype.exe",
-    "ProductName": "GhostType",
+    "InternalName": "ghostspell",
+    "LegalCopyright": "Copyright (c) GhostSpell contributors",
+    "OriginalFilename": "ghostspell.exe",
+    "ProductName": "GhostSpell",
     "ProductVersion": ""
   },
   "VarFileInfo": {
@@ -35,5 +35,5 @@
       "CharsetID": "04B0"
     }
   },
-  "IconPath": "assets/ghosttype.ico"
+  "IconPath": "assets/ghostspell.ico"
 }

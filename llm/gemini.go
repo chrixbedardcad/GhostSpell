@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultGeminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"

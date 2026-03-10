@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"runtime"
 
-	"github.com/chrixbedardcad/GhostType/internal/version"
+	"github.com/chrixbedardcad/GhostSpell/internal/version"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -81,7 +81,7 @@ func Start(cfg Config, app *application.App) (run func() error, stop func(), dis
 		slog.Warn("[tray] No icon PNG provided!")
 		fmt.Println("[tray] WARNING: No icon PNG provided!")
 	}
-	ts.systray.SetTooltip(fmt.Sprintf("GhostType v%s", version.Version))
+	ts.systray.SetTooltip(fmt.Sprintf("GhostSpell v%s", version.Version))
 
 	// Build and set the initial menu.
 	slog.Info("[tray] Building initial menu...")
@@ -138,7 +138,7 @@ func (ts *trayState) refreshMenu() {
 	menu := application.NewMenu()
 
 	// Version header (disabled).
-	menu.Add(fmt.Sprintf("GhostType v%s", version.Version)).SetEnabled(false)
+	menu.Add(fmt.Sprintf("GhostSpell v%s", version.Version)).SetEnabled(false)
 	menu.AddSeparator()
 
 	// Prompt selection (radio group).

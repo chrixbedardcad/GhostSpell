@@ -8,27 +8,27 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/gui"
-	"github.com/chrixbedardcad/GhostType/internal/debuglog"
-	"github.com/chrixbedardcad/GhostType/internal/sysinfo"
-	"github.com/chrixbedardcad/GhostType/llm"
-	"github.com/chrixbedardcad/GhostType/mode"
-	"github.com/chrixbedardcad/GhostType/sound"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/gui"
+	"github.com/chrixbedardcad/GhostSpell/internal/debuglog"
+	"github.com/chrixbedardcad/GhostSpell/internal/sysinfo"
+	"github.com/chrixbedardcad/GhostSpell/llm"
+	"github.com/chrixbedardcad/GhostSpell/mode"
+	"github.com/chrixbedardcad/GhostSpell/sound"
 )
 
-// appDataDir returns the OS-standard directory for GhostType's config, logs,
+// appDataDir returns the OS-standard directory for GhostSpell's config, logs,
 // and other persistent data.
 //
-//	macOS:   ~/Library/Application Support/GhostType/
-//	Windows: %APPDATA%\GhostType\
-//	Linux:   ~/.config/GhostType/  (or $XDG_CONFIG_HOME/GhostType/)
+//	macOS:   ~/Library/Application Support/GhostSpell/
+//	Windows: %APPDATA%\GhostSpell\
+//	Linux:   ~/.config/GhostSpell/  (or $XDG_CONFIG_HOME/GhostSpell/)
 func appDataDir() (string, error) {
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("os.UserConfigDir: %w", err)
 	}
-	return filepath.Join(base, "GhostType"), nil
+	return filepath.Join(base, "GhostSpell"), nil
 }
 
 // migrateConfigFromExeDir checks whether a config.json exists next to the
@@ -71,7 +71,7 @@ func migrateConfigFromExeDir(newConfigPath string) {
 // logStartupError writes a fatal startup error to a crash log file next to the
 // config so that errors are visible even in windowless builds.
 func logStartupError(dir, msg string, err error) {
-	crashPath := filepath.Join(dir, "ghosttype_crash.log")
+	crashPath := filepath.Join(dir, "ghostspell_crash.log")
 	f, ferr := os.OpenFile(crashPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if ferr != nil {
 		return
@@ -89,7 +89,7 @@ var debugState *debuglog.State
 // logSysInfo writes a system information block to the log.
 func logSysInfo(cfg *config.Config) {
 	info := sysinfo.Collect()
-	slog.Info("=== GhostType Debug Session ===",
+	slog.Info("=== GhostSpell Debug Session ===",
 		"version", Version,
 		"os", info.OS,
 		"os_version", info.OSVersion,
@@ -105,7 +105,7 @@ func logSysInfo(cfg *config.Config) {
 // recoverPanic writes a crash log if a panic occurs.
 func recoverPanic(configDir string) {
 	if r := recover(); r != nil {
-		crashPath := filepath.Join(configDir, "ghosttype_crash.log")
+		crashPath := filepath.Join(configDir, "ghostspell_crash.log")
 		f, err := os.OpenFile(crashPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "PANIC: %v\n%s\n", r, debug.Stack())
@@ -114,18 +114,18 @@ func recoverPanic(configDir string) {
 		defer f.Close()
 		fmt.Fprintf(f, "=== CRASH %s (v%s) ===\n%v\n%s\n\n",
 			time.Now().Format(time.RFC3339), Version, r, debug.Stack())
-		fmt.Fprintf(os.Stderr, "GhostType crashed. Details written to: %s\n", crashPath)
+		fmt.Fprintf(os.Stderr, "GhostSpell crashed. Details written to: %s\n", crashPath)
 	}
 }
 
 func main() {
-	fmt.Printf("GhostType v%s - AI-powered multilingual auto-correction\n", Version)
+	fmt.Printf("GhostSpell v%s - AI-powered multilingual auto-correction\n", Version)
 	fmt.Println("====================================================")
 
 	// Determine the app data directory using the OS-standard location:
-	//   macOS:   ~/Library/Application Support/GhostType/
-	//   Windows: %APPDATA%\GhostType\
-	//   Linux:   ~/.config/GhostType/  (XDG_CONFIG_HOME)
+	//   macOS:   ~/Library/Application Support/GhostSpell/
+	//   Windows: %APPDATA%\GhostSpell\
+	//   Linux:   ~/.config/GhostSpell/  (XDG_CONFIG_HOME)
 	appDir, err := appDataDir()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: could not determine app data directory: %v\n", err)
@@ -136,7 +136,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Single-instance check — exit if another GhostType is already running.
+	// Single-instance check — exit if another GhostSpell is already running.
 	removeLock := acquireSingleInstance(appDir)
 	defer removeLock()
 
@@ -167,7 +167,7 @@ func main() {
 	debugState = debuglog.New(configDir)
 	debugState.InitFromConfig(cfg.LogLevel)
 
-	slog.Info("GhostType starting",
+	slog.Info("GhostSpell starting",
 		"version", Version,
 		"default_llm", cfg.DefaultLLM,
 		"llm_providers", len(cfg.LLMProviders),
@@ -213,7 +213,7 @@ func main() {
 		fmt.Println("Setup needed — wizard will open...")
 	}
 
-	slog.Info("GhostType launching",
+	slog.Info("GhostSpell launching",
 		"version", Version,
 		"needs_setup", needsSetup,
 	)

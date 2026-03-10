@@ -82,11 +82,11 @@ jobs:
           fi
           if [ "${{ matrix.goos }}" = "windows" ]; then
             # Default exe is windowless (tray only, no console) — recommended for daily use.
-            go build -tags "$TAGS" -ldflags "-H=windowsgui" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            go build -tags "$TAGS" -ldflags "-H=windowsgui" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
             # Window exe shows a console window — useful for debugging.
-            go build -tags "$TAGS" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}-window${{ matrix.ext }}
+            go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}-window${{ matrix.ext }}
           else
-            go build -tags "$TAGS" -o ghosttype-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           fi
       - name: Import signing certificate
         if: matrix.goos == 'darwin' && env.APPLE_CERTIFICATE_BASE64 != ''
@@ -108,17 +108,17 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           chmod +x scripts/bundle-macos.sh
-          ./scripts/bundle-macos.sh ghosttype-${{ matrix.goos }}-${{ matrix.goarch }} ${{ matrix.goarch }}
+          ./scripts/bundle-macos.sh ghostspell-${{ matrix.goos }}-${{ matrix.goarch }} ${{ matrix.goarch }}
       - uses: actions/upload-artifact@v4
         if: matrix.goos != 'darwin'
         with:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ghosttype-*
+          path: ghostspell-*
       - uses: actions/upload-artifact@v4
         if: matrix.goos == 'darwin'
         with:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: GhostType-darwin-*.dmg
+          path: GhostSpell-darwin-*.dmg
 
   publish:
     needs: release

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/chrixbedardcad/GhostType/config"
-	"github.com/chrixbedardcad/GhostType/llm"
+	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/llm"
 )
 
 // Router manages prompt selection and dispatches text processing to the LLM.

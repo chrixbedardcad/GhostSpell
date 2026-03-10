@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chrixbedardcad/GhostType/config"
+	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
 const defaultOllamaEndpoint = "http://localhost:11434/api/generate"
