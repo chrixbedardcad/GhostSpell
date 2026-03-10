@@ -748,12 +748,12 @@ function renderOllamaServeHint(container) {
     </div>`;
 }
 
-const TAG_BADGES = {
-  recommended: '<span class="badge badge-rec" style="margin-left:6px">RECOMMENDED</span>',
-  best:        '<span class="badge badge-paid" style="margin-left:6px">BEST</span>',
-  fast:        '<span class="badge badge-fast" style="margin-left:6px">FAST</span>',
-  cheap:       '<span class="badge badge-free" style="margin-left:6px">LIGHT</span>',
-};
+// TAG_BADGES defined above — reuse for Ollama recommend cards
+function tagBadgeHTML(tag) {
+  const b = TAG_BADGES[tag];
+  if (!b) return '';
+  return ' <span class="badge ' + b.cls + '" style="margin-left:6px">' + b.label + '</span>';
+}
 
 async function renderOllamaRecommend(container) {
   let models = [];
@@ -766,7 +766,7 @@ async function renderOllamaRecommend(container) {
 
   let html = '<div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0"><strong>No models installed yet.</strong> Pick one to download:</div>';
   for (const m of models) {
-    const badge = m.tag ? (TAG_BADGES[m.tag] || '') : '';
+    const badge = m.tag ? tagBadgeHTML(m.tag) : '';
     html += `
       <div class="model-card">
         <div class="model-info">
