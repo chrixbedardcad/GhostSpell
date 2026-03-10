@@ -13,3 +13,9 @@ func ollamaDownloadInstallerPlatform() error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Start()
 }
+
+// ollamaOpenTerminalPull opens a cmd window running "ollama pull <model>".
+func ollamaOpenTerminalPull(model string) error {
+	// /k keeps the window open after the command finishes so the user can see the result.
+	return exec.Command("cmd", "/c", "start", "cmd", "/k", "ollama pull "+model).Start()
+}

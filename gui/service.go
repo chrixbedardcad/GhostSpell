@@ -371,6 +371,15 @@ func (s *SettingsService) OllamaPullModel(model string) string {
 	return "ok"
 }
 
+// OllamaOpenPull opens a terminal window running "ollama pull <model>".
+func (s *SettingsService) OllamaOpenPull(model string) string {
+	guiLog("[GUI] JS called: OllamaOpenPull(%s)", model)
+	if err := ollamaOpenTerminalPull(model); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // OllamaDownloadInstaller downloads the Ollama installer (platform-specific).
 func (s *SettingsService) OllamaDownloadInstaller() string {
 	guiLog("[GUI] JS called: OllamaDownloadInstaller")

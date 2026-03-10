@@ -749,27 +749,36 @@ function renderOllamaServeHint(container) {
 }
 
 function renderOllamaRecommend(container) {
-  container.innerHTML = `
-    <div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0">
-      <strong>No models installed yet.</strong><br>
-      Open a terminal and pull a model with Ollama:
-    </div>
-    <div style="background:#181825;border-radius:6px;padding:12px 14px;margin:8px 0;font-family:monospace;font-size:0.85em;color:#f9e2af">
-      ollama pull qwen3.5:4b
-    </div>
-    <div style="font-size:0.82em;color:#6c7086;margin-bottom:12px">
-      Suggested models for text correction:
-    </div>
-    <div style="font-size:0.82em;color:#a6adc8;line-height:1.8;padding-left:8px">
-      <strong style="color:#a6e3a1">qwen3.5:4b</strong> &mdash; recommended, fast &amp; light (~2.5 GB)<br>
-      <strong>qwen3.5:2b</strong> &mdash; ultra-light, runs on anything (~1.5 GB)<br>
-      <strong>qwen3.5:9b</strong> &mdash; best quality, needs 6 GB RAM (~5 GB)<br>
-      <strong>mistral</strong> &mdash; proven all-rounder (~4 GB)<br>
-      <strong>llama3.2</strong> &mdash; good multilingual support (~4.7 GB)
-    </div>
-    <div style="font-size:0.78em;color:#6c7086;margin-top:12px">
-      After pulling a model, click <strong>Refresh</strong> below and it will appear here.
-    </div>`;
+  const models = [
+    { name: 'qwen3.5:4b', desc: 'Recommended \u2014 fast & light (~2.5 GB)', rec: true },
+    { name: 'qwen3.5:2b', desc: 'Ultra-light, runs on anything (~1.5 GB)' },
+    { name: 'qwen3.5:9b', desc: 'Best quality, needs 6 GB RAM (~5 GB)' },
+    { name: 'mistral',    desc: 'Proven all-rounder (~4 GB)' },
+    { name: 'llama3.2',   desc: 'Good multilingual support (~4.7 GB)' },
+  ];
+
+  let html = '<div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0"><strong>No models installed yet.</strong> Pick one to download:</div>';
+  for (const m of models) {
+    html += `
+      <div class="model-card">
+        <div class="model-info">
+          <div class="model-name">${esc(m.name)}${m.rec ? '<span class="badge badge-rec" style="margin-left:6px">RECOMMENDED</span>' : ''}</div>
+          <div class="model-meta">${esc(m.desc)}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="ollamaOpenPull('${escJS(m.name)}')">Pull</button>
+      </div>`;
+  }
+  html += '<div style="font-size:0.78em;color:#6c7086;margin-top:10px">Opens a terminal to download. When done, click <strong>Refresh</strong>.</div>';
+  container.innerHTML = html;
+}
+
+async function ollamaOpenPull(modelName) {
+  const result = await goCall('ollamaOpenPull', modelName);
+  if (!result || !result.startsWith('ok')) {
+    const statusEl = document.getElementById('ollama-action-status');
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Could not open terminal. Run manually: ollama pull ' + modelName;
+  }
 }
 
 function renderOllamaDropdown(container, models) {
