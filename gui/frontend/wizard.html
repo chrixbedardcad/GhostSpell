@@ -749,24 +749,27 @@ function renderOllamaServeHint(container) {
 }
 
 function renderOllamaRecommend(container) {
-  const models = [
-    { name: 'mistral', size: '7B', disk: '~4 GB', desc: 'Fast & accurate. Best for text correction.', rec: true },
-    { name: 'gemma2',  size: '9B', disk: '~5 GB', desc: 'Great multilingual support.' },
-    { name: 'llama3.2', size: '8B', disk: '~4.7 GB', desc: 'Good all-around model.' },
-  ];
-
-  let html = '<div style="font-size:0.88em;color:#bac2de;margin-bottom:10px">No models installed. Pick one to download:</div>';
-  for (const m of models) {
-    html += `
-      <div class="model-card">
-        <div class="model-info">
-          <div class="model-name">${esc(m.name)} (${esc(m.size)}, ${esc(m.disk)})${m.rec ? '<span class="badge badge-rec" style="margin-left:6px">RECOMMENDED</span>' : ''}</div>
-          <div class="model-meta">${esc(m.desc)}</div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="ollamaPull('${escJS(m.name)}', this)" id="pull-${esc(m.name)}">Download</button>
-      </div>`;
-  }
-  container.innerHTML = html;
+  container.innerHTML = `
+    <div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0">
+      <strong>No models installed yet.</strong><br>
+      Open a terminal and pull a model with Ollama:
+    </div>
+    <div style="background:#181825;border-radius:6px;padding:12px 14px;margin:8px 0;font-family:monospace;font-size:0.85em;color:#f9e2af">
+      ollama pull qwen3.5:4b
+    </div>
+    <div style="font-size:0.82em;color:#6c7086;margin-bottom:12px">
+      Suggested models for text correction:
+    </div>
+    <div style="font-size:0.82em;color:#a6adc8;line-height:1.8;padding-left:8px">
+      <strong style="color:#a6e3a1">qwen3.5:4b</strong> &mdash; recommended, fast &amp; light (~2.5 GB)<br>
+      <strong>qwen3.5:2b</strong> &mdash; ultra-light, runs on anything (~1.5 GB)<br>
+      <strong>qwen3.5:9b</strong> &mdash; best quality, needs 6 GB RAM (~5 GB)<br>
+      <strong>mistral</strong> &mdash; proven all-rounder (~4 GB)<br>
+      <strong>llama3.2</strong> &mdash; good multilingual support (~4.7 GB)
+    </div>
+    <div style="font-size:0.78em;color:#6c7086;margin-top:12px">
+      After pulling a model, click <strong>Refresh</strong> below and it will appear here.
+    </div>`;
 }
 
 function renderOllamaDropdown(container, models) {
@@ -778,6 +781,7 @@ function renderOllamaDropdown(container, models) {
   }
   html += '</select></div>';
   html += '<div style="margin-top:10px"><button class="btn btn-primary" onclick="ollamaFinish()">Use this model</button></div>';
+  html += '<div style="font-size:0.78em;color:#6c7086;margin-top:12px">Want more models? Run <code style="background:#313244;padding:2px 6px;border-radius:4px;color:#f9e2af">ollama pull model-name</code> in a terminal, then click <strong>Refresh</strong>.</div>';
   container.innerHTML = html;
 }
 
@@ -803,30 +807,6 @@ async function ollamaInstall() {
     }
   }
   if (btn) btn.disabled = false;
-}
-
-async function ollamaPull(modelName, btnEl) {
-  const statusEl = document.getElementById('ollama-action-status');
-  // Disable all download buttons
-  document.querySelectorAll('.model-card .btn').forEach(b => b.disabled = true);
-  if (btnEl) { btnEl.textContent = 'Downloading...'; }
-  statusEl.className = 'status info';
-  statusEl.textContent = 'Downloading ' + modelName + '... This may take a few minutes.';
-
-  const result = await goCall('ollamaPullModel', modelName);
-
-  if (result && result.startsWith('ok')) {
-    statusEl.className = 'status success';
-    statusEl.textContent = modelName + ' downloaded successfully!';
-    ollamaModel = modelName;
-    // Save and go to done
-    await saveOllamaProvider(modelName);
-  } else {
-    statusEl.className = 'status error';
-    statusEl.textContent = 'Download failed: ' + (result || 'unknown error');
-    document.querySelectorAll('.model-card .btn').forEach(b => b.disabled = false);
-    if (btnEl) { btnEl.textContent = 'Download'; }
-  }
 }
 
 async function ollamaFinish() {
