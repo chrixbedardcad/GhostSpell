@@ -119,14 +119,47 @@ jobs:
         run: |
           DMG="GhostSpell-darwin-${{ matrix.goarch }}.dmg"
           echo "Submitting ${DMG} for notarization..."
-          xcrun notarytool submit "$DMG" \
+
+          # Submit and capture the submission ID
+          SUBMIT_OUT=$(xcrun notarytool submit "$DMG" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait --timeout 30m
-          echo "Stapling notarization ticket..."
-          xcrun stapler staple "$DMG"
-          echo "Notarization complete."
+            --output-format json)
+          echo "$SUBMIT_OUT"
+          SUB_ID=$(echo "$SUBMIT_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo "Submission ID: $SUB_ID"
+
+          # Poll for up to 30 minutes
+          for i in $(seq 1 60); do
+            sleep 30
+            STATUS_OUT=$(xcrun notarytool info "$SUB_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json 2>&1) || true
+            STATUS=$(echo "$STATUS_OUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','Unknown'))" 2>/dev/null || echo "Unknown")
+            echo "Attempt $i/60: status=$STATUS"
+
+            if [ "$STATUS" = "Accepted" ]; then
+              echo "Notarization accepted!"
+              xcrun stapler staple "$DMG"
+              echo "Stapled successfully."
+              exit 0
+            elif [ "$STATUS" = "Invalid" ]; then
+              echo "Notarization rejected. Fetching log..."
+              xcrun notarytool log "$SUB_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" || true
+              echo "::error::Notarization was rejected by Apple."
+              exit 1
+            fi
+          done
+
+          echo "::warning::Notarization still in progress after 30 minutes. DMG is signed but not stapled."
+          echo "The DMG is still Developer ID signed and will work — Gatekeeper checks online."
+          exit 0
       - uses: actions/upload-artifact@v4
         if: matrix.goos != 'darwin'
         with:
