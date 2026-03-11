@@ -1,0 +1,212 @@
+time=2026-03-11T15:43:22.923-04:00 level=INFO msg="GhostSpell starting" version=0.2.7 default_llm="" llm_providers=0
+time=2026-03-11T15:43:23.156-04:00 level=INFO msg="=== GhostSpell Debug Session ===" version=0.2.7 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm="" providers=0
+time=2026-03-11T15:43:23.156-04:00 level=INFO msg="First-launch check" needs_setup=true providers=0 default_llm=""
+time=2026-03-11T15:43:23.156-04:00 level=INFO msg="GhostSpell launching" version=0.2.7 needs_setup=true
+time=2026-03-11T15:43:23.159-04:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041
+time=2026-03-11T15:43:23.159-04:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-11T15:43:23.159-04:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=0
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-11T15:43:23.160-04:00 level=INFO msg="[GUI] ShowWizardOnApp: creating wizard window on tray app"
+time=2026-03-11T15:43:23.176-04:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-11T15:43:30.996-04:00 level=INFO msg="[GUI] JS called: StartChatGPTOAuth"
+time=2026-03-11T15:43:30.996-04:00 level=INFO msg="OAuth: starting OpenAI flow" redirect=http://localhost:1455/auth/callback
+time=2026-03-11T15:43:30.996-04:00 level=INFO msg="OAuth: opening browser" url_len=336
+time=2026-03-11T15:43:31.000-04:00 level=INFO msg="OAuth: browser opened, waiting for callback..."
+time=2026-03-11T15:43:41.827-04:00 level=INFO msg="OAuth: callback received" query_keys=3
+time=2026-03-11T15:43:41.827-04:00 level=INFO msg="OAuth: received authorization code" code_len=90
+time=2026-03-11T15:43:41.827-04:00 level=INFO msg="OAuth: exchanging code for tokens"
+time=2026-03-11T15:43:42.109-04:00 level=INFO msg="OAuth: token response" status=200
+time=2026-03-11T15:43:42.109-04:00 level=INFO msg="OAuth: exchanging id_token for API key"
+time=2026-03-11T15:43:42.679-04:00 level=INFO msg="OAuth: API key exchange response" status=200
+time=2026-03-11T15:43:42.679-04:00 level=INFO msg="OAuth: complete" key_prefix=sk-proj-8uAV... has_refresh=true
+time=2026-03-11T15:43:42.679-04:00 level=INFO msg="OAuth flow succeeded"
+time=2026-03-11T15:43:43.056-04:00 level=INFO msg="[GUI] JS called: SaveProvider(chatgpt, openai)"
+time=2026-03-11T15:43:43.057-04:00 level=INFO msg="Wizard: provider saved, initialising LLM client..."
+time=2026-03-11T15:43:43.057-04:00 level=INFO msg="Wizard: init complete, unblocking hotkeys"
+time=2026-03-11T15:43:43.057-04:00 level=INFO msg="[GUI] Provider saved: label=chatgpt provider=openai"
+time=2026-03-11T15:43:43.065-04:00 level=INFO msg="[GUI] JS called: SetRefreshToken(chatgpt)"
+time=2026-03-11T15:43:43.066-04:00 level=INFO msg="Wizard: provider saved, initialising LLM client..."
+time=2026-03-11T15:43:43.066-04:00 level=INFO msg="Wizard: init complete, unblocking hotkeys"
+time=2026-03-11T15:44:04.310-04:00 level=INFO msg="GhostSpell starting" version=0.2.7 default_llm=chatgpt llm_providers=1
+time=2026-03-11T15:44:04.425-04:00 level=INFO msg="=== GhostSpell Debug Session ===" version=0.2.7 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=chatgpt providers=1
+time=2026-03-11T15:44:04.425-04:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=chatgpt
+time=2026-03-11T15:44:04.425-04:00 level=INFO msg="GhostSpell launching" version=0.2.7 needs_setup=false
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:44:04.428-04:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-11T15:44:04.452-04:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-11T15:44:04.496-04:00 level=INFO msg="Permission check" accessibility=false postEventAccess=false
+time=2026-03-11T15:44:04.496-04:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-11T15:44:04.530-04:00 level=ERROR msg="Failed to register hotkey" name=action key=Ctrl+G error="failed to register the hotkey"
+time=2026-03-11T15:44:04.531-04:00 level=ERROR msg="Failed to register action hotkey" key=Ctrl+G error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:44:04.531-04:00 level=ERROR msg="Hotkey registration failed — app remains running for diagnostics" error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:44:08.803-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:44:16.246-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:44:18.213-04:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-11T15:44:18.213-04:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-11T15:44:18.304-04:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-11T15:44:18.384-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:44:18.385-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:44:18.385-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:44:18.385-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:44:27.723-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:44:28.178-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:44:28.178-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:44:28.178-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:44:30.575-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:44:30.576-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:44:31.578-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:44:31.578-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:45:29.273-04:00 level=INFO msg="[GUI] JS called: CheckForUpdate"
+time=2026-03-11T15:45:33.739-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:45:34.405-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:45:34.405-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:45:34.405-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:45:35.642-04:00 level=INFO msg="[GUI] JS called: OpenAccessibilityPane"
+time=2026-03-11T15:46:12.424-04:00 level=INFO msg="[GUI] JS called: OpenInputMonitoringPane"
+time=2026-03-11T15:46:28.200-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:46:28.221-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:47:09.556-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:47:11.305-04:00 level=INFO msg="[GUI] JS called: EnableDebug"
+time=2026-03-11T15:47:11.306-04:00 level=INFO msg="=== Debug logging enabled ==="
+time=2026-03-11T15:47:15.017-04:00 level=INFO msg="[GUI] JS called: SetLogLevel(debug)"
+time=2026-03-11T15:47:15.019-04:00 level=DEBUG msg="LLM client cache reset" closed=1
+time=2026-03-11T15:47:15.019-04:00 level=INFO msg="Live config reloaded after settings save"
+time=2026-03-11T15:47:16.389-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:47:16.390-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:47:16.390-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:47:17.431-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:47:17.431-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:47:18.096-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:47:18.096-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:47:19.356-04:00 level=INFO msg="[GUI] JS called: OpenInputMonitoringPane"
+time=2026-03-11T15:47:25.040-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:47:27.848-04:00 level=INFO msg="[GUI] JS called: OpenLogFile"
+time=2026-03-11T15:47:51.422-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:47:53.205-04:00 level=INFO msg="Exit requested via tray menu"
+time=2026-03-11T15:48:00.544-04:00 level=INFO msg="GhostSpell starting" version=0.2.7 default_llm=chatgpt llm_providers=1
+time=2026-03-11T15:48:00.656-04:00 level=INFO msg="=== GhostSpell Debug Session ===" version=0.2.7 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=chatgpt providers=1
+time=2026-03-11T15:48:00.656-04:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=chatgpt
+time=2026-03-11T15:48:00.656-04:00 level=INFO msg="GhostSpell launching" version=0.2.7 needs_setup=false
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:48:00.660-04:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-11T15:48:00.660-04:00 level=DEBUG msg="[keyboard] Resolving layout key codes..."
+time=2026-03-11T15:48:00.682-04:00 level=DEBUG msg="[keyboard] Resolved layout key codes" a=0x00 c=0x08 v=0x09
+time=2026-03-11T15:48:00.682-04:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-11T15:48:00.710-04:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-11T15:48:00.727-04:00 level=INFO msg="Permission check" accessibility=false postEventAccess=false
+time=2026-03-11T15:48:00.727-04:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-11T15:48:00.755-04:00 level=ERROR msg="Failed to register hotkey" name=action key=Ctrl+G error="failed to register the hotkey"
+time=2026-03-11T15:48:00.755-04:00 level=ERROR msg="Failed to register action hotkey" key=Ctrl+G error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:48:00.755-04:00 level=ERROR msg="Hotkey registration failed — app remains running for diagnostics" error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:48:04.090-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:48:05.854-04:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-11T15:48:05.854-04:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-11T15:48:05.917-04:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-11T15:48:05.998-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:06.012-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:06.013-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:06.013-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:08.019-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:08.020-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:08.020-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:09.951-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:09.952-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:10.697-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:10.697-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:12.198-04:00 level=INFO msg="[GUI] JS called: OpenInputMonitoringPane"
+time=2026-03-11T15:48:28.714-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:28.714-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:29.980-04:00 level=INFO msg="[GUI] JS called: OpenAccessibilityPane"
+time=2026-03-11T15:48:35.249-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:35.270-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:36.780-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:36.780-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:41.340-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:48:42.841-04:00 level=INFO msg="Exit requested via tray menu"
+time=2026-03-11T15:48:48.996-04:00 level=INFO msg="GhostSpell starting" version=0.2.7 default_llm=chatgpt llm_providers=1
+time=2026-03-11T15:48:49.112-04:00 level=INFO msg="=== GhostSpell Debug Session ===" version=0.2.7 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=chatgpt providers=1
+time=2026-03-11T15:48:49.112-04:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=chatgpt
+time=2026-03-11T15:48:49.112-04:00 level=INFO msg="GhostSpell launching" version=0.2.7 needs_setup=false
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:48:49.115-04:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-11T15:48:49.115-04:00 level=DEBUG msg="[keyboard] Resolving layout key codes..."
+time=2026-03-11T15:48:49.135-04:00 level=DEBUG msg="[keyboard] Resolved layout key codes" a=0x00 c=0x08 v=0x09
+time=2026-03-11T15:48:49.135-04:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-11T15:48:49.162-04:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-11T15:48:49.179-04:00 level=INFO msg="Permission check" accessibility=false postEventAccess=false
+time=2026-03-11T15:48:49.179-04:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-11T15:48:49.203-04:00 level=ERROR msg="Failed to register hotkey" name=action key=Ctrl+G error="failed to register the hotkey"
+time=2026-03-11T15:48:49.204-04:00 level=ERROR msg="Failed to register action hotkey" key=Ctrl+G error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:48:49.204-04:00 level=ERROR msg="Hotkey registration failed — app remains running for diagnostics" error="failed to register hotkey 'Ctrl+G': failed to register the hotkey"
+time=2026-03-11T15:48:52.404-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:48:54.295-04:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-11T15:48:54.295-04:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-11T15:48:54.360-04:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-11T15:48:54.439-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:54.441-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:54.441-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:54.441-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:56.806-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:48:56.806-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:56.806-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:58.357-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:48:58.357-04:00 level=INFO msg="Permission check from GUI" accessibility=false postEvent=false
+time=2026-03-11T15:48:59.626-04:00 level=INFO msg="[GUI] JS called: OpenAccessibilityPane"
+time=2026-03-11T15:49:13.899-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:49:13.912-04:00 level=INFO msg="Permission check from GUI" accessibility=true postEvent=false
+time=2026-03-11T15:49:15.398-04:00 level=INFO msg="[GUI] JS called: OpenInputMonitoringPane"
+time=2026-03-11T15:49:33.776-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:49:35.456-04:00 level=INFO msg="Exit requested via tray menu"
+time=2026-03-11T15:49:38.922-04:00 level=INFO msg="GhostSpell starting" version=0.2.7 default_llm=chatgpt llm_providers=1
+time=2026-03-11T15:49:39.025-04:00 level=INFO msg="=== GhostSpell Debug Session ===" version=0.2.7 os=darwin os_version=13.7.8 arch=arm64 locale=en_CA keyboard=Canadian hotkey=Ctrl+G default_llm=chatgpt providers=1
+time=2026-03-11T15:49:39.025-04:00 level=INFO msg="First-launch check" needs_setup=false providers=1 default_llm=chatgpt
+time=2026-03-11T15:49:39.025-04:00 level=INFO msg="GhostSpell launching" version=0.2.7 needs_setup=false
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Start() called" os=darwin icon_bytes=6041
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Using provided Wails application" app_nil=false
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Creating SystemTray..."
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] SystemTray created" systray_nil=false
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] macOS template icon set" bytes=1743
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Building initial menu..."
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:49:39.028-04:00 level=INFO msg="[tray] Start() setup complete — returning run/stop/setIcon"
+time=2026-03-11T15:49:39.028-04:00 level=DEBUG msg="[keyboard] Resolving layout key codes..."
+time=2026-03-11T15:49:39.049-04:00 level=DEBUG msg="[keyboard] Resolved layout key codes" a=0x00 c=0x08 v=0x09
+time=2026-03-11T15:49:39.049-04:00 level=INFO msg="[tray] run: calling app.Run()"
+time=2026-03-11T15:49:39.080-04:00 level=DEBUG msg="Event loop ready (ApplicationStarted)"
+time=2026-03-11T15:49:39.090-04:00 level=INFO msg="Permission check" accessibility=true postEventAccess=true
+time=2026-03-11T15:49:39.090-04:00 level=INFO msg="Registering hotkeys" action=Ctrl+G
+time=2026-03-11T15:49:39.123-04:00 level=DEBUG msg="Hotkey registered" name=action key=Ctrl+G
+time=2026-03-11T15:49:39.123-04:00 level=DEBUG msg="Starting hotkey listener" registered=1
+time=2026-03-11T15:49:40.835-04:00 level=INFO msg="[tray] Menu built and set" active_prompt=0 prompts=6 models=1
+time=2026-03-11T15:49:43.231-04:00 level=INFO msg="[GUI] ShowSettings (async) called"
+time=2026-03-11T15:49:43.231-04:00 level=INFO msg="[GUI] Creating settings window on running tray app..."
+time=2026-03-11T15:49:43.298-04:00 level=INFO msg="[GUI] Settings window created on running app"
+time=2026-03-11T15:49:43.376-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:49:43.390-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:49:43.390-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:49:43.390-04:00 level=INFO msg="Permission check from GUI" accessibility=true postEvent=true
+time=2026-03-11T15:49:45.212-04:00 level=INFO msg="[GUI] JS called: GetConfig"
+time=2026-03-11T15:49:45.213-04:00 level=INFO msg="[GUI] JS called: CheckPermissions"
+time=2026-03-11T15:49:45.213-04:00 level=INFO msg="Permission check from GUI" accessibility=true postEvent=true
