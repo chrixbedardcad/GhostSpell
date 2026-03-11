@@ -335,10 +335,10 @@
 </div>
 
 <div class="tab-bar">
-  <button class="active" onclick="switchTab('models')">Models</button>
+  <button class="active" onclick="switchTab('general')">General</button>
+  <button onclick="switchTab('models')">Models</button>
   <button onclick="switchTab('prompts')">Prompts</button>
   <button onclick="switchTab('hotkeys')">Hotkeys</button>
-  <button onclick="switchTab('general')">General</button>
   <button onclick="switchTab('debug')">Debug</button>
   <button onclick="switchTab('help')">Help</button>
   <button onclick="switchTab('about')">About</button>
@@ -347,7 +347,7 @@
 <div class="tab-content">
 
   <!-- ============ MODELS TAB ============ -->
-  <div id="tab-models" class="tab-panel active">
+  <div id="tab-models" class="tab-panel">
     <div class="toolbar">
       <h2 style="margin-bottom:0">Providers</h2>
       <div style="display:flex;gap:6px">
@@ -459,7 +459,7 @@
   </div>
 
   <!-- ============ GENERAL TAB ============ -->
-  <div id="tab-general" class="tab-panel">
+  <div id="tab-general" class="tab-panel active">
     <div class="section" id="macos-perms-section" style="display:none">
       <h2>macOS Permissions</h2>
       <div style="padding:10px 14px;background:#313244;border-radius:6px;margin-bottom:8px">
