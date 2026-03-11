@@ -134,6 +134,23 @@
   .step-section { display: none; }
   .step-section.active { display: block; }
 
+  /* --- Permission indicators --- */
+  .perm-row {
+    display: flex; align-items: center; gap: 12px;
+    background: #313244; border-radius: 8px; padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .perm-icon { font-size: 1.3em; flex-shrink: 0; }
+  .perm-info { flex: 1; }
+  .perm-info .perm-title { font-weight: 600; font-size: 0.95em; margin-bottom: 2px; }
+  .perm-info .perm-desc { font-size: 0.82em; color: #a6adc8; line-height: 1.4; }
+  .perm-status {
+    font-size: 0.8em; font-weight: 600; padding: 3px 10px;
+    border-radius: 12px; flex-shrink: 0;
+  }
+  .perm-status.granted { background: #1e3a2e; color: #a6e3a1; }
+  .perm-status.denied { background: #3a1e1e; color: #f38ba8; }
+
   /* --- Done page --- */
   .done-summary {
     background: #313244; border-radius: 8px; padding: 16px;
@@ -211,6 +228,51 @@
 
   <!-- Step dots -->
   <div class="steps" id="step-dots"></div>
+
+  <!-- ============ STEP 0: macOS PERMISSIONS (shown only on macOS) ============ -->
+  <div class="step-section" id="step-permissions">
+    <h2 style="font-size:1.1em;margin-bottom:6px;color:#bac2de">macOS Permissions</h2>
+    <div style="font-size:0.82em;color:#6c7086;margin-bottom:14px;line-height:1.5">
+      GhostSpell needs two permissions to work. Grant each one, then continue.
+    </div>
+
+    <div class="perm-row">
+      <span class="perm-icon">&#9000;</span>
+      <div class="perm-info">
+        <div class="perm-title">Accessibility</div>
+        <div class="perm-desc">Lets GhostSpell select and replace text in any app (simulates Cmd+A, Cmd+C, Cmd+V).</div>
+      </div>
+      <span class="perm-status denied" id="perm-ax-status">Not granted</span>
+    </div>
+    <div style="text-align:right;margin-bottom:14px">
+      <button class="btn btn-secondary btn-sm" onclick="openAxPane()">Open Accessibility Settings</button>
+    </div>
+
+    <div class="perm-row">
+      <span class="perm-icon">&#9881;</span>
+      <div class="perm-info">
+        <div class="perm-title">Input Monitoring</div>
+        <div class="perm-desc">Lets GhostSpell listen for your hotkey (Cmd+G) so it knows when to correct text.</div>
+      </div>
+      <span class="perm-status denied" id="perm-im-status">Not granted</span>
+    </div>
+    <div style="text-align:right;margin-bottom:14px">
+      <button class="btn btn-secondary btn-sm" onclick="openImPane()">Open Input Monitoring Settings</button>
+    </div>
+
+    <div style="font-size:0.78em;color:#6c7086;line-height:1.5;margin-bottom:8px">
+      Find <strong>GhostSpell</strong> in each list and toggle it <strong>ON</strong>.<br>
+      The status above updates automatically.
+    </div>
+
+    <div class="btn-row">
+      <span></span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="#" onclick="skipPermissions();return false" style="font-size:0.82em;color:#6c7086;text-decoration:underline">Skip for now</a>
+        <button class="btn btn-primary" id="perm-next-btn" onclick="permissionsNext()">Next</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ STEP 1: WELCOME ============ -->
   <div class="step-section" id="step-1">
@@ -417,6 +479,8 @@ let totalSteps = 4;
 let category = '';       // 'cloud' or 'ollama'
 let cloudProvider = '';  // 'gemini', 'anthropic', 'openai', 'xai', 'deepseek'
 let ollamaModel = '';    // selected ollama model name
+let isMac = false;       // true if running on macOS (adds permissions step)
+let permPollTimer = null; // polling timer for permission status
 const returnTo = new URLSearchParams(window.location.search).get('returnTo');
 
 // ==================== PROVIDER METADATA ====================
@@ -461,7 +525,8 @@ function renderSteps() {
 
   // Determine which section to show
   let sectionId;
-  if (currentStep === 1) sectionId = 'step-1';
+  if (currentStep === 0) sectionId = 'step-permissions';
+  else if (currentStep === 1) sectionId = 'step-1';
   else if (currentStep === 2 && category === 'cloud') sectionId = 'step-2a';
   else if (currentStep === 2 && category === 'chatgpt') sectionId = 'step-2c';
   else if (currentStep === 2 && category === 'ollama') sectionId = 'step-2b';
@@ -470,10 +535,18 @@ function renderSteps() {
 
   if (sectionId) document.getElementById(sectionId).classList.add('active');
 
+  // Start/stop permission polling
+  if (currentStep === 0) {
+    startPermPolling();
+  } else {
+    stopPermPolling();
+  }
+
   // Update dots
+  const startStep = isMac ? 0 : 1;
   const dots = document.getElementById('step-dots');
   let html = '';
-  for (let i = 1; i <= totalSteps; i++) {
+  for (let i = startStep; i <= totalSteps; i++) {
     let cls = 'step-dot';
     if (i < currentStep) cls += ' done';
     else if (i === currentStep) cls += ' active';
@@ -895,13 +968,74 @@ function escJS(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r');
 }
 
+// ==================== macOS PERMISSIONS ====================
+async function checkPerms() {
+  const raw = await goCall('checkPermissions');
+  if (!raw) return { accessibility: true, postEvent: true, isMac: false };
+  try { return JSON.parse(raw); } catch(e) { return { accessibility: true, postEvent: true, isMac: false }; }
+}
+
+function updatePermUI(perms) {
+  const axEl = document.getElementById('perm-ax-status');
+  const imEl = document.getElementById('perm-im-status');
+  if (axEl) {
+    axEl.textContent = perms.accessibility ? 'Granted' : 'Not granted';
+    axEl.className = 'perm-status ' + (perms.accessibility ? 'granted' : 'denied');
+  }
+  if (imEl) {
+    imEl.textContent = perms.postEvent ? 'Granted' : 'Not granted';
+    imEl.className = 'perm-status ' + (perms.postEvent ? 'granted' : 'denied');
+  }
+}
+
+function startPermPolling() {
+  if (permPollTimer) return;
+  async function poll() {
+    const perms = await checkPerms();
+    updatePermUI(perms);
+  }
+  poll(); // immediate first check
+  permPollTimer = setInterval(poll, 2000);
+}
+
+function stopPermPolling() {
+  if (permPollTimer) { clearInterval(permPollTimer); permPollTimer = null; }
+}
+
+async function openAxPane() {
+  await goCall('openAccessibilityPane');
+}
+
+async function openImPane() {
+  await goCall('openInputMonitoringPane');
+}
+
+function permissionsNext() {
+  goToStep(1);
+}
+
+function skipPermissions() {
+  goToStep(1);
+}
+
 // ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   if (returnTo === 'settings') {
     document.getElementById('wizard-cancel-row').style.display = 'flex';
     document.querySelector('.header .sub').textContent = 'Add a new AI provider';
+    goToStep(1);
+    return;
   }
-  goToStep(1);
+
+  // Check platform — show permission step on macOS first launch
+  const platform = await goCall('getPlatform');
+  if (platform === 'darwin') {
+    isMac = true;
+    totalSteps = 5; // permissions + 4 provider steps
+    goToStep(0); // start with permissions
+  } else {
+    goToStep(1);
+  }
 });
 </script>
 </body>

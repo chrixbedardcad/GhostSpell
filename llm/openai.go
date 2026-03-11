@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
 )
@@ -43,7 +42,7 @@ func NewOpenAIClient(cfg *config.Config) *OpenAIClient {
 		maxTokens:    cfg.MaxTokens,
 		timeoutMs:    cfg.TimeoutMs,
 		providerName: "openai",
-		httpClient:   &http.Client{Timeout: 120 * time.Second},
+		httpClient:   newPooledHTTPClient(),
 	}
 }
 
@@ -72,7 +71,7 @@ func newOpenAIFromDef(def config.LLMProviderDef) *OpenAIClient {
 		maxTokens:    maxTokens,
 		timeoutMs:    timeoutMs,
 		providerName: "openai",
-		httpClient:   &http.Client{Timeout: 120 * time.Second},
+		httpClient:   newPooledHTTPClient(),
 	}
 }
 

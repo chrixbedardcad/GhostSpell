@@ -1,9 +1,6 @@
 package llm
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
@@ -38,6 +35,6 @@ func newGeminiFromDef(def config.LLMProviderDef) *OpenAIClient {
 		maxTokens:    maxTokens,
 		timeoutMs:    timeoutMs,
 		providerName: "gemini",
-		httpClient:   &http.Client{Timeout: 120 * time.Second},
+		httpClient:   newPooledHTTPClient(),
 	}
 }

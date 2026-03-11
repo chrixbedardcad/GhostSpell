@@ -1,9 +1,6 @@
 package llm
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/chrixbedardcad/GhostSpell/config"
 )
 
@@ -33,6 +30,6 @@ func newDeepSeekFromDef(def config.LLMProviderDef) *OpenAIClient {
 		maxTokens:    maxTokens,
 		timeoutMs:    timeoutMs,
 		providerName: "deepseek",
-		httpClient:   &http.Client{Timeout: 120 * time.Second},
+		httpClient:   newPooledHTTPClient(),
 	}
 }

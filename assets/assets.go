@@ -19,3 +19,23 @@ var TrayIconMacOS []byte
 
 //go:embed ghostspell.ico
 var AppIconICO []byte
+
+// Tray animation frames for working indicator (bobbing ghost).
+//
+//go:embed GhostSpell_tray_working_1.png
+var TrayWorking1 []byte
+
+//go:embed GhostSpell_tray_working_2.png
+var TrayWorking2 []byte
+
+//go:embed GhostSpell_tray_working_3.png
+var TrayWorking3 []byte
+
+//go:embed GhostSpell_tray_working_1_macOS.png
+var TrayWorkingMacOS1 []byte
+
+//go:embed GhostSpell_tray_working_2_macOS.png
+var TrayWorkingMacOS2 []byte
+
+//go:embed GhostSpell_tray_working_3_macOS.png
+var TrayWorkingMacOS3 []byte

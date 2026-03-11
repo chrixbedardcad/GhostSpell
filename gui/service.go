@@ -717,6 +717,11 @@ func (s *SettingsService) TailDebugLog() string {
 	return tail
 }
 
+// GetPlatform returns the current OS (darwin, windows, linux).
+func (s *SettingsService) GetPlatform() string {
+	return runtime.GOOS
+}
+
 // CheckPermissions returns a JSON object with macOS permission status.
 // On non-macOS platforms, all permissions return true.
 func (s *SettingsService) CheckPermissions() string {

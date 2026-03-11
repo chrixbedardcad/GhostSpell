@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/internal/version"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -24,6 +26,12 @@ type Config struct {
 	// TemplateIconPNG is a macOS template icon (used via SetTemplateIcon on darwin).
 	// If set and running on macOS, this takes precedence over IconPNG.
 	TemplateIconPNG []byte
+
+	// WorkingFrames holds the animation frames for the working indicator.
+	// On macOS these should be template icons (white silhouettes).
+	WorkingFrames [][]byte
+	// WorkingFramesMacOS holds macOS template variants of the working frames.
+	WorkingFramesMacOS [][]byte
 
 	// Callbacks — called on the tray thread.
 	OnPromptSelect func(idx int)
@@ -47,14 +55,18 @@ type trayState struct {
 	cfg     Config
 	app     *application.App
 	systray *application.SystemTray
+
+	// Animation state.
+	animMu   sync.Mutex
+	animStop chan struct{}
 }
 
 // Start configures the system tray icon and menu on the given Wails application.
 // It returns a run function that starts the Cocoa/GTK/Win32 event loop (blocking),
-// a stop function that quits the app, and a dismissMenu function that cancels any
-// currently tracking tray menu. The caller decides which goroutine calls run —
-// this is critical on macOS where Cocoa must run on the main thread.
-func Start(cfg Config, app *application.App) (run func() error, stop func(), dismissMenu func() bool) {
+// a stop function that quits the app, a dismissMenu function that cancels any
+// currently tracking tray menu, startAnim/stopAnim for working animation, and
+// a setTooltip function.
+func Start(cfg Config, app *application.App) (run func() error, stop func(), dismissMenu func() bool, startAnim func(), stopAnim func()) {
 	slog.Info("[tray] Start() called",
 		"os", runtime.GOOS,
 		"icon_bytes", len(cfg.IconPNG),
@@ -111,8 +123,8 @@ func Start(cfg Config, app *application.App) (run func() error, stop func(), dis
 		})
 	}
 
-	slog.Info("[tray] Start() setup complete — returning run/stop/setIcon")
-	fmt.Println("[tray] Start() setup complete — returning run/stop/setIcon")
+	slog.Info("[tray] Start() setup complete — returning run/stop/anim")
+	fmt.Println("[tray] Start() setup complete — returning run/stop/anim")
 
 	run = func() error {
 		slog.Info("[tray] run: calling app.Run()")
@@ -130,7 +142,82 @@ func Start(cfg Config, app *application.App) (run func() error, stop func(), dis
 		return ts.systray.DismissMenu()
 	}
 
-	return run, stop, dismissMenu
+	startAnim = func() { ts.StartAnimation() }
+	stopAnim = func() { ts.StopAnimation() }
+
+	return run, stop, dismissMenu, startAnim, stopAnim
+}
+
+// StartAnimation begins cycling through working animation frames.
+func (ts *trayState) StartAnimation() {
+	ts.animMu.Lock()
+	if ts.animStop != nil {
+		ts.animMu.Unlock()
+		return // already animating
+	}
+	stop := make(chan struct{})
+	ts.animStop = stop
+	ts.animMu.Unlock()
+
+	// Select the right frames for the platform.
+	var frames [][]byte
+	if runtime.GOOS == "darwin" && len(ts.cfg.WorkingFramesMacOS) > 0 {
+		frames = ts.cfg.WorkingFramesMacOS
+	} else {
+		frames = ts.cfg.WorkingFrames
+	}
+	if len(frames) == 0 {
+		return
+	}
+
+	ts.systray.SetTooltip("GhostSpell — Processing...")
+
+	go func() {
+		// Bounce pattern: 0 → 1 → 2 → 1 → 0 → 1 → ...
+		pattern := make([]int, 0, len(frames)*2-2)
+		for i := range frames {
+			pattern = append(pattern, i)
+		}
+		for i := len(frames) - 2; i > 0; i-- {
+			pattern = append(pattern, i)
+		}
+
+		idx := 0
+		ticker := time.NewTicker(250 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				fi := pattern[idx%len(pattern)]
+				if runtime.GOOS == "darwin" {
+					ts.systray.SetTemplateIcon(frames[fi])
+				} else {
+					ts.systray.SetIcon(frames[fi])
+				}
+				idx++
+			}
+		}
+	}()
+}
+
+// StopAnimation stops the icon animation and restores the default icon.
+func (ts *trayState) StopAnimation() {
+	ts.animMu.Lock()
+	if ts.animStop != nil {
+		close(ts.animStop)
+		ts.animStop = nil
+	}
+	ts.animMu.Unlock()
+
+	// Restore default icon.
+	if runtime.GOOS == "darwin" && len(ts.cfg.TemplateIconPNG) > 0 {
+		ts.systray.SetTemplateIcon(ts.cfg.TemplateIconPNG)
+	} else if len(ts.cfg.IconPNG) > 0 {
+		ts.systray.SetIcon(ts.cfg.IconPNG)
+	}
+	ts.systray.SetTooltip(fmt.Sprintf("GhostSpell v%s", version.Version))
 }
 
 // refreshMenu rebuilds the tray context menu from current state.

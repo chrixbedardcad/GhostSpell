@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
 )
@@ -38,7 +37,7 @@ func NewAnthropicClient(cfg *config.Config) *AnthropicClient {
 		endpoint:   endpoint,
 		maxTokens:  cfg.MaxTokens,
 		timeoutMs:  cfg.TimeoutMs,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		httpClient: newPooledHTTPClient(),
 	}
 }
 
@@ -63,7 +62,7 @@ func newAnthropicFromDef(def config.LLMProviderDef) *AnthropicClient {
 		endpoint:   endpoint,
 		maxTokens:  maxTokens,
 		timeoutMs:  timeoutMs,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		httpClient: newPooledHTTPClient(),
 	}
 }
 

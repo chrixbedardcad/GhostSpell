@@ -218,6 +218,8 @@ func processMode(
 	kb keyboard.Simulator,
 	mu *sync.Mutex,
 	cancelLLM *context.CancelFunc,
+	startAnim func(),
+	stopAnim func(),
 ) {
 	if !processingGuard.TryLock() {
 		// Second press while processing — cancel the active LLM request.
@@ -228,18 +230,27 @@ func processMode(
 		}
 		mu.Unlock()
 		sound.StopWorkingLoop()
+		if stopAnim != nil {
+			stopAnim()
+		}
 		sound.PlayCancel()
 		return
 	}
 	processingActive.Store(true)
 	defer func() {
 		sound.StopWorkingLoop()
+		if stopAnim != nil {
+			stopAnim()
+		}
 		processingActive.Store(false)
 		processingGuard.Unlock()
 	}()
 	slog.Info(promptName + " triggered")
 	slog.Debug("Playing working sound loop...")
 	sound.StartWorkingLoop()
+	if startAnim != nil {
+		startAnim()
+	}
 
 	// Save original clipboard.
 	slog.Debug("Saving clipboard...")
@@ -257,7 +268,7 @@ func processMode(
 		sound.StopWorkingLoop()
 		if werr := cb.Write("\U0001F47B\u274C"); werr == nil { // 👻❌
 			kb.Paste()
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		}
 		cb.Restore()
 		sound.PlayError()
@@ -268,7 +279,7 @@ func processMode(
 		sound.StopWorkingLoop()
 		if werr := cb.Write("\U0001F47B\U0001FAE5"); werr == nil { // 👻🫥
 			kb.Paste()
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		}
 		cb.Restore()
 		sound.PlayError()
@@ -288,7 +299,7 @@ func processMode(
 			slog.Error("Failed to write warning indicator to clipboard", "error", werr)
 		}
 		kb.Paste()
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 		cb.Restore()
 		sound.PlayError()
 		return
@@ -335,7 +346,7 @@ func processMode(
 			slog.Error("Failed to write error indicator to clipboard", "error", werr)
 		}
 		kb.Paste()
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 		cb.Restore()
 		sound.PlayError()
 		return
@@ -352,7 +363,7 @@ func processMode(
 		time.Sleep(50 * time.Millisecond)
 		if werr := cb.Write("\U0001F47B\u2705"); werr == nil { // 👻✅
 			kb.Paste()
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		}
 		cb.Restore()
 		sound.PlaySuccess()
@@ -438,7 +449,7 @@ func processMode(
 			}
 		}
 		// Wait for the target app to process the paste event.
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(150 * time.Millisecond)
 	}
 
 	// Restore original clipboard.
@@ -570,6 +581,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	trayCfg := tray.Config{
 		IconPNG:         assets.TrayIcon64,
 		TemplateIconPNG: assets.TrayIconMacOS,
+		WorkingFrames:   [][]byte{assets.TrayWorking1, assets.TrayWorking2, assets.TrayWorking3},
+		WorkingFramesMacOS: [][]byte{assets.TrayWorkingMacOS1, assets.TrayWorkingMacOS2, assets.TrayWorkingMacOS3},
 		IsProcessing:    func() bool { return processingActive.Load() },
 		OnPromptSelect: func(idx int) {
 			slog.Debug("OnPromptSelect callback entered", "index", idx)
@@ -651,7 +664,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	}
 
 	var dismissTrayMenu func() bool
-	trayRun, stopTrayFn, dismissTrayMenu = tray.Start(trayCfg, wailsApp)
+	var trayStartAnim func()
+	var trayStopAnim func()
+	trayRun, stopTrayFn, dismissTrayMenu, trayStartAnim, trayStopAnim = tray.Start(trayCfg, wailsApp)
 
 	// When debug auto-disables after 30min, log it.
 	if debugState != nil {
@@ -748,7 +763,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			if promptIdx >= 0 && promptIdx < len(cfg.Prompts) {
 				promptName = cfg.Prompts[promptIdx].Name
 			}
-			processMode(promptName, promptIdx, cfg, router, cb, kb, &mu, &cancelLLM)
+			processMode(promptName, promptIdx, cfg, router, cb, kb, &mu, &cancelLLM, trayStartAnim, trayStopAnim)
 		}); err != nil {
 			slog.Error("Failed to register action hotkey", "key", cfg.Hotkeys.Action, "error", err)
 			fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.Action, err)
