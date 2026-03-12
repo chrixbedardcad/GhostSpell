@@ -94,7 +94,7 @@ func (c *LocalClient) Close() {
 }
 
 func (c *LocalClient) Send(ctx context.Context, req Request) (*Response, error) {
-	if err := c.ensureRunning(); err != nil {
+	if err := c.ensureRunning(ctx); err != nil {
 		return nil, fmt.Errorf("local LLM not ready: %w", err)
 	}
 
@@ -178,7 +178,7 @@ func (c *LocalClient) Send(ctx context.Context, req Request) (*Response, error) 
 }
 
 // ensureRunning starts the llama-server subprocess if it's not already running.
-func (c *LocalClient) ensureRunning() error {
+func (c *LocalClient) ensureRunning(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -205,7 +205,6 @@ func (c *LocalClient) ensureRunning() error {
 		"--port", fmt.Sprintf("%d", port),
 		"--host", "127.0.0.1",
 		"--ctx-size", "2048",
-		"--n-gpu-layers", "-1", // auto: offload everything to GPU if available
 		"--log-disable",
 	}
 
@@ -230,7 +229,7 @@ func (c *LocalClient) ensureRunning() error {
 	}()
 
 	// Wait for the server to become healthy.
-	if err := c.waitForHealthy(localStartupTimeout); err != nil {
+	if err := c.waitForHealthy(ctx, localStartupTimeout); err != nil {
 		c.stopLocked()
 		return fmt.Errorf("llama-server failed to start: %w", err)
 	}
@@ -250,19 +249,36 @@ func (c *LocalClient) ensureRunning() error {
 	return nil
 }
 
-// waitForHealthy polls the /health endpoint until it responds OK or timeout.
-func (c *LocalClient) waitForHealthy(timeout time.Duration) error {
+// waitForHealthy polls the /health endpoint until it responds OK, timeout, or
+// the parent context is cancelled.
+func (c *LocalClient) waitForHealthy(ctx context.Context, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	url := fmt.Sprintf("http://127.0.0.1:%d/health", c.port)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(url)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		hctx, hcancel := context.WithTimeout(ctx, 2*time.Second)
+		req, err := http.NewRequestWithContext(hctx, "GET", url, nil)
+		if err != nil {
+			hcancel()
+			return err
+		}
+		resp, err := http.DefaultClient.Do(req)
+		hcancel()
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				return nil
 			}
 		}
-		time.Sleep(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(250 * time.Millisecond):
+		}
 	}
 	return fmt.Errorf("timeout after %s waiting for llama-server health", timeout)
 }
