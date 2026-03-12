@@ -1,3 +1,5 @@
+//go:build ghostai
+
 /*
  * Ghost-AI C Bridge Implementation
  *
