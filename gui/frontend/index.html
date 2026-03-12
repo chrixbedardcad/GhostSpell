@@ -1141,11 +1141,14 @@ async function onLocalRefresh() {
   let st; try { st = JSON.parse(raw); } catch(e) { bar.className = 'ollama-status-bar not-installed'; text.textContent = 'Check failed'; return; }
 
   const serverOK = st.server_installed;
+  const serverSource = st.server_source || 'none';
+  const serverVersion = st.server_version || '';
   const models = st.models || [];
   const available = st.available || [];
 
   if (serverOK && models.length > 0) {
-    bar.className = 'ollama-status-bar running'; text.textContent = 'Ready';
+    const engineLabel = serverSource === 'bundled' ? 'Engine: included (' + esc(serverVersion) + ')' : 'Engine: installed (' + esc(serverVersion) + ')';
+    bar.className = 'ollama-status-bar running'; text.textContent = 'Ready \u2014 ' + engineLabel;
     // Show installed models with select buttons
     let html = '<div style="font-size:0.78em;color:#6c7086;margin-bottom:6px">Installed models</div>';
     const formModel = document.getElementById('form-model').value;
@@ -1174,10 +1177,15 @@ async function onLocalRefresh() {
           + '</div>';
       }
     }
+    // Add update check button.
+    html += '<div style="margin-top:8px;text-align:right">'
+      + '<button class="btn btn-secondary btn-sm" onclick="localCheckUpdate()" id="local-update-btn" style="font-size:0.72em">Check for engine update</button>'
+      + '<span id="local-update-result" style="font-size:0.75em;color:#6c7086;margin-left:6px"></span>'
+      + '</div>';
     body.innerHTML = html;
     if (!formModel && models.length > 0) localSetFormModel(models[0].name);
   } else if (serverOK) {
-    bar.className = 'ollama-status-bar installed'; text.textContent = 'Engine ready — download a model';
+    bar.className = 'ollama-status-bar installed'; text.textContent = 'Engine ready \u2014 download a model';
     let html = '';
     for (const m of available) {
       const sizeMB = Math.round(m.size / 1024 / 1024);
@@ -1246,6 +1254,41 @@ async function localSetupAllSettings() {
   statusEl.className = 'status success'; statusEl.textContent = 'Setup complete!';
   localSetFormModel('qwen3-0.6b');
   onLocalRefresh();
+}
+
+async function localCheckUpdate() {
+  const btn = document.getElementById('local-update-btn');
+  const result = document.getElementById('local-update-result');
+  if (btn) btn.disabled = true;
+  if (result) result.textContent = 'Checking...';
+
+  const raw = await goCall('checkLlamaUpdate');
+  if (btn) btn.disabled = false;
+
+  let info; try { info = JSON.parse(raw); } catch(e) { if (result) result.textContent = 'Check failed'; return; }
+  if (info.error) { if (result) result.textContent = 'Error: ' + info.error; return; }
+
+  if (info.has_update) {
+    if (result) result.textContent = '';
+    const statusEl = document.getElementById('local-action-status-settings');
+    statusEl.className = 'status info';
+    statusEl.innerHTML = 'Update available: ' + esc(info.latest) + ' (current: ' + esc(info.current) + '). '
+      + '<button class="btn btn-primary btn-sm" onclick="localUpdateEngine()" style="font-size:0.75em;margin-left:4px">Update engine</button>';
+  } else {
+    if (result) result.textContent = 'Up to date (' + info.current + ')';
+  }
+}
+
+async function localUpdateEngine() {
+  const statusEl = document.getElementById('local-action-status-settings');
+  statusEl.className = 'status info'; statusEl.textContent = 'Downloading updated engine...';
+  const result = await goCall('localDownloadServer');
+  if (result && result.startsWith('ok')) {
+    statusEl.className = 'status success'; statusEl.textContent = 'Engine updated!';
+    onLocalRefresh();
+  } else {
+    statusEl.className = 'status error'; statusEl.textContent = 'Update failed: ' + (result || '');
+  }
 }
 
 // ===========================================================================

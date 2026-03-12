@@ -809,7 +809,7 @@ func (s *SettingsService) QuitForRestart() string {
 
 // --- Local AI management ---------------------------------------------------
 
-// LocalStatus returns JSON with llama-server installed status and installed models.
+// LocalStatus returns JSON with llama-server installed status, source, version, and installed models.
 func (s *SettingsService) LocalStatus() string {
 	guiLog("[GUI] JS called: LocalStatus")
 	serverInstalled := llm.LlamaServerInstalled()
@@ -821,10 +821,24 @@ func (s *SettingsService) LocalStatus() string {
 
 	result := map[string]interface{}{
 		"server_installed": serverInstalled,
+		"server_source":    llm.LlamaServerSource(),
+		"server_version":   llm.BundledLlamaCppVersion,
 		"models":           installed,
 		"available":        llm.AvailableLocalModels(),
 	}
 	data, _ := json.Marshal(result)
+	return string(data)
+}
+
+// CheckLlamaUpdate checks if a newer llama.cpp release is available.
+func (s *SettingsService) CheckLlamaUpdate() string {
+	guiLog("[GUI] JS called: CheckLlamaUpdate")
+	info, err := llm.CheckLlamaServerUpdate()
+	if err != nil {
+		guiLog("[GUI] CheckLlamaUpdate error: %v", err)
+		return fmt.Sprintf(`{"error":"%v"}`, err)
+	}
+	data, _ := json.Marshal(info)
 	return string(data)
 }
 

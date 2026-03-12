@@ -240,7 +240,7 @@ func DownloadLlamaServer(progressCb func(DownloadProgress)) error {
 		return fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 
-	// Get latest release info from GitHub API.
+	// Get pinned release info from GitHub API.
 	type ghAsset struct {
 		Name               string `json:"name"`
 		BrowserDownloadURL string `json:"browser_download_url"`
@@ -251,7 +251,7 @@ func DownloadLlamaServer(progressCb func(DownloadProgress)) error {
 		Assets  []ghAsset `json:"assets"`
 	}
 
-	apiURL := "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+	apiURL := "https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/" + BundledLlamaCppVersion
 	apiResp, err := http.Get(apiURL)
 	if err != nil {
 		return fmt.Errorf("fetch latest release: %w", err)
@@ -461,4 +461,45 @@ func extractLlamaServerFromTarGz(archivePath, destDir string) error {
 	}
 
 	return fmt.Errorf("llama-server binary not found in tar.gz archive")
+}
+
+// LlamaServerUpdateInfo holds the result of an update check.
+type LlamaServerUpdateInfo struct {
+	Current      string `json:"current"`
+	Latest       string `json:"latest"`
+	HasUpdate    bool   `json:"has_update"`
+	DownloadURL  string `json:"download_url,omitempty"`
+}
+
+// CheckLlamaServerUpdate compares the bundled version against the latest
+// llama.cpp release tag. Informational only — does not download anything.
+func CheckLlamaServerUpdate() (*LlamaServerUpdateInfo, error) {
+	type ghRelease struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+
+	apiURL := "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("fetch latest release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
+	}
+
+	var release ghRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("parse release: %w", err)
+	}
+
+	latest := release.TagName
+	return &LlamaServerUpdateInfo{
+		Current:     BundledLlamaCppVersion,
+		Latest:      latest,
+		HasUpdate:   latest != BundledLlamaCppVersion,
+		DownloadURL: release.HTMLURL,
+	}, nil
 }

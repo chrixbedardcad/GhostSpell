@@ -21,6 +21,10 @@ import (
 const (
 	localIdleTimeout    = 5 * time.Minute
 	localStartupTimeout = 60 * time.Second
+
+	// BundledLlamaCppVersion is the llama.cpp release tag shipped with GhostSpell.
+	// Single source of truth for CI downloads and runtime version checks.
+	BundledLlamaCppVersion = "b8281"
 )
 
 // LocalClient implements the Client interface using a managed llama-server
@@ -367,18 +371,53 @@ func localBinDir() (string, error) {
 }
 
 // LlamaServerPath returns the path to the llama-server binary.
+// Search order:
+//  1. User config dir (~/.config/GhostSpell/bin/) — manual upgrades take priority.
+//  2. Next to the GhostSpell executable — bundled fallback (CI-placed or macOS .app).
 func LlamaServerPath() (string, error) {
-	dir, err := localBinDir()
-	if err != nil {
-		return "", err
-	}
 	name := "llama-server"
 	if runtime.GOOS == "windows" {
 		name = "llama-server.exe"
 	}
-	path := filepath.Join(dir, name)
-	if _, err := os.Stat(path); err != nil {
-		return "", fmt.Errorf("llama-server not found at %s (download it first in Settings)", path)
+
+	// 1. User config dir.
+	if dir, err := localBinDir(); err == nil {
+		p := filepath.Join(dir, name)
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
 	}
-	return path, nil
+
+	// 2. Next to our own executable.
+	if exe, err := os.Executable(); err == nil {
+		p := filepath.Join(filepath.Dir(exe), name)
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+
+	return "", fmt.Errorf("llama-server not found (download it in Settings or reinstall GhostSpell)")
+}
+
+// LlamaServerSource returns where the llama-server binary was found.
+// Returns "user" (config dir), "bundled" (next to executable), or "none".
+func LlamaServerSource() string {
+	name := "llama-server"
+	if runtime.GOOS == "windows" {
+		name = "llama-server.exe"
+	}
+
+	if dir, err := localBinDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return "user"
+		}
+	}
+
+	if exe, err := os.Executable(); err == nil {
+		if _, err := os.Stat(filepath.Join(filepath.Dir(exe), name)); err == nil {
+			return "bundled"
+		}
+	}
+
+	return "none"
 }
