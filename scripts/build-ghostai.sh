@@ -75,9 +75,16 @@ if [ "$(uname)" = "Darwin" ]; then
     # CMAKE_ARGS+=(-DGGML_METAL=ON)
 fi
 
+# Windows (MSYS2/MinGW): use Ninja with MinGW GCC.
+case "$(uname -s)" in
+    MINGW*|MSYS*)
+        CMAKE_ARGS+=(-G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++)
+        ;;
+esac
+
 cd "$LLAMA_BUILD"
 cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -5
-cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)" 2>&1 | tail -3
+cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -3
 
 # --- Step 3: Copy headers and libraries to output ---
 
