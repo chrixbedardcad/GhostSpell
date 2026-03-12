@@ -83,8 +83,8 @@ case "$(uname -s)" in
 esac
 
 cd "$LLAMA_BUILD"
-cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -5
-cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -3
+cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -10
+cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -30
 
 # --- Step 3: Copy headers and libraries to output ---
 
