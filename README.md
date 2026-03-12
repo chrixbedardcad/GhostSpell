@@ -89,15 +89,18 @@ GhostSpell ships with 6 built-in prompts. Switch between them from the tray menu
 
 You can create custom prompts and assign per-prompt LLM overrides in **Settings > Templates**.
 
-### Local AI (Ollama)
+### Local AI
 
-No API key needed. Select **Ollama** in the setup wizard — GhostSpell detects your Ollama install, lets you pick a model, and handles everything locally.
+**Ghost-AI (built-in)** — No install needed. GhostSpell ships with an embedded llama.cpp engine. Pick a model in the wizard, download it (~400MB), and you're running local AI with zero setup.
+
+**Ollama** — If you already use Ollama, select it in the setup wizard. GhostSpell detects your install, lets you pick a model, and connects automatically.
 
 ---
 
 ## Features
 
 - **One hotkey** — Ctrl+G does everything. Optional Cycle Prompt hotkey for power users.
+- **Ghost-AI** — Built-in local AI engine (embedded llama.cpp). No account, no API key, works offline.
 - **Multi-provider** — Anthropic, OpenAI, Gemini, xAI, DeepSeek, Ollama. Use different models per prompt.
 - **ChatGPT OAuth** — Log in with your ChatGPT account, no API key needed.
 - **Settings GUI** — 5-tab settings panel: Models, Templates, General, About, Debug. No JSON editing required.
@@ -240,31 +243,40 @@ git clone https://github.com/chrixbedardcad/GhostSpell.git
 cd GhostSpell
 ```
 
-**Windows** (CGO_ENABLED=0):
+All platforms require CGO_ENABLED=1. To include the built-in Ghost-AI engine (embedded llama.cpp), first build the static libraries, then compile with the `ghostai` tag:
+
 ```bash
-go build -ldflags "-H=windowsgui" -o ghostspell.exe .     # tray only
-go build -o ghostspell-window.exe .                         # with console
+./scripts/build-ghostai.sh   # downloads llama.cpp b8281, builds static libs
 ```
 
-**Linux** (CGO_ENABLED=1):
+**Windows** (requires MinGW):
+```bash
+go build -tags "production ghostai" -ldflags "-H=windowsgui -extldflags '-static'" -o ghostspell.exe .
+go build -tags "production ghostai" -ldflags "-extldflags '-static'" -o ghostspell-window.exe .
+```
+
+**Linux**:
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev
-CGO_ENABLED=1 go build -tags webkit2_41 -o ghostspell .
+go build -tags "webkit2_41 production ghostai" -o ghostspell .
 ```
 
-**macOS** (CGO_ENABLED=1):
+**macOS**:
 ```bash
-CGO_ENABLED=1 go build -o ghostspell .
+go build -tags "production ghostai" -o ghostspell .
 ```
 
 **Tests:**
 ```bash
-go test ./...
+go test -tags webkit2_41 ./...
 ```
 
 ---
 
 ## Uninstall
+
+> [!CAUTION]
+> **This will remove GhostSpell and all its data.** Back up `config.json` first if you want to keep your settings.
 
 **macOS / Linux:**
 ```bash
@@ -275,257 +287,6 @@ curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scri
 ```cmd
 powershell -c "irm https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scripts/uninstall.ps1 | iex"
 ```
-
-> Back up `config.json` first if you want to keep your settings.
-
-### Migrating from GhostType (pre-v0.2.0)
-
-GhostSpell was previously named GhostType. If you have the old version installed, uninstall it first, then install GhostSpell.
-
-**Migrate your config (optional — do this before uninstalling):**
-
-macOS:
-```bash
-mkdir -p ~/Library/Application\ Support/GhostSpell
-cp ~/Library/Application\ Support/GhostType/config.json ~/Library/Application\ Support/GhostSpell/config.json
-```
-
-Windows (PowerShell):
-```powershell
-New-Item -ItemType Directory -Force "$env:APPDATA\GhostSpell"
-Copy-Item "$env:APPDATA\GhostType\config.json" "$env:APPDATA\GhostSpell\config.json"
-```
-
-Linux:
-```bash
-mkdir -p ~/.config/GhostSpell
-cp ~/.config/GhostType/config.json ~/.config/GhostSpell/config.json
-```
-
-<blockquote>
-<h3>:rotating_light: <span style="color:red">Uninstall old GhostType (SUPERCLEANER)</span> :rotating_light:</h3>
-</blockquote>
-
-> **Warning** — These scripts **permanently delete** all GhostType files, caches, and references. Back up `config.json` first if needed.
-
-<details>
-<summary><b style="color:red">macOS — Nuclear Supercleaner</b></summary>
-
-```bash
-#!/bin/bash
-# GhostType SUPERCLEANER for macOS — removes every trace
-set -e
-
-echo "=== GhostType Supercleaner ==="
-echo ""
-
-# 1. Kill all GhostType processes
-echo "[1/8] Killing GhostType processes..."
-pkill -9 -f GhostType 2>/dev/null || true
-pkill -9 -f ghosttype 2>/dev/null || true
-sleep 1
-
-# 2. Find and remove ALL GhostType .app bundles (everywhere)
-echo "[2/8] Removing GhostType.app from all locations..."
-sudo rm -rf /Applications/GhostType.app
-rm -rf "$HOME/Applications/GhostType.app"
-# Find any other copies via Spotlight index
-mdfind "kMDItemDisplayName == 'GhostType'" 2>/dev/null | while read -r f; do
-    echo "  Found: $f"
-    sudo rm -rf "$f"
-done
-
-# 3. Unregister from Launch Services
-echo "[3/8] Unregistering from Launch Services..."
-LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-$LSREGISTER -u /Applications/GhostType.app 2>/dev/null || true
-$LSREGISTER -u "$HOME/Applications/GhostType.app" 2>/dev/null || true
-
-# 4. Remove all app data, config, preferences, caches
-echo "[4/8] Removing app data, preferences, caches..."
-rm -rf "$HOME/Library/Application Support/GhostType"
-rm -rf "$HOME/Library/Preferences/com.ghosttype.app.plist"
-rm -rf "$HOME/Library/Preferences/com.ghosttype.plist"
-rm -rf "$HOME/Library/Saved Application State/com.ghosttype.app.savedState"
-rm -rf "$HOME/Library/Caches/com.ghosttype.app"
-rm -rf "$HOME/Library/Caches/com.ghosttype"
-rm -rf "$HOME/Library/HTTPStorages/com.ghosttype.app"
-rm -rf "$HOME/Library/HTTPStorages/com.ghosttype"
-rm -rf "$HOME/Library/WebKit/com.ghosttype.app"
-rm -rf "$HOME/Library/Logs/GhostType"
-
-# 5. Remove lock files
-echo "[5/8] Removing lock files..."
-rm -f "$HOME/.ghosttype.lock"
-find /tmp -name "*ghosttype*" -exec rm -rf {} + 2>/dev/null || true
-
-# 6. Clean Launchpad database
-echo "[6/8] Cleaning Launchpad database..."
-LPDB=$(find /private/var/folders -name "com.apple.dock.launchpad" -type d 2>/dev/null | head -1)
-if [ -n "$LPDB" ] && [ -f "$LPDB/db/db" ]; then
-    sqlite3 "$LPDB/db/db" "DELETE FROM apps WHERE title LIKE '%GhostType%';" 2>/dev/null || true
-    sqlite3 "$LPDB/db/db" "DELETE FROM apps WHERE title LIKE '%ghosttype%';" 2>/dev/null || true
-    echo "  Launchpad entries removed."
-fi
-
-# 7. Reset Launch Services database and refresh Dock
-echo "[7/8] Resetting Launch Services and Dock..."
-$LSREGISTER -kill -r -domain local -domain system -domain user 2>/dev/null || true
-killall Dock 2>/dev/null || true
-killall Finder 2>/dev/null || true
-sleep 2
-
-# 8. Verify removal
-echo "[8/8] Verifying..."
-REMAINING=$(mdfind "GhostType" -name 2>/dev/null | grep -i ghosttype || true)
-if [ -z "$REMAINING" ]; then
-    echo ""
-    echo "GhostType has been COMPLETELY removed."
-else
-    echo ""
-    echo "Some references may still exist (Spotlight may take a moment to update):"
-    echo "$REMAINING"
-fi
-
-echo ""
-echo "MANUAL STEP: Open System Settings > Privacy & Security and remove GhostType from:"
-echo "  - Accessibility"
-echo "  - Input Monitoring"
-echo ""
-echo "Done."
-```
-
-</details>
-
-<details>
-<summary><b style="color:red">Windows — Nuclear Supercleaner</b> (run as Administrator)</summary>
-
-```powershell
-# GhostType SUPERCLEANER for Windows — removes every trace
-# Run this in PowerShell as Administrator
-
-Write-Host ""
-Write-Host "=== GhostType Supercleaner ===" -ForegroundColor Red
-Write-Host ""
-
-# 1. Kill all processes
-Write-Host "[1/7] Killing GhostType processes..." -ForegroundColor Yellow
-Get-Process -Name "ghosttype*" -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep 1
-
-# 2. Remove binaries
-Write-Host "[2/7] Removing binaries..." -ForegroundColor Yellow
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\GhostType" -ErrorAction SilentlyContinue
-# Check Program Files too
-Remove-Item -Recurse -Force "$env:ProgramFiles\GhostType" -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force "${env:ProgramFiles(x86)}\GhostType" -ErrorAction SilentlyContinue
-
-# 3. Remove app data and config
-Write-Host "[3/7] Removing app data and config..." -ForegroundColor Yellow
-Remove-Item -Recurse -Force "$env:APPDATA\GhostType" -ErrorAction SilentlyContinue
-
-# 4. Remove all shortcuts
-Write-Host "[4/7] Removing shortcuts..." -ForegroundColor Yellow
-Remove-Item -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\GhostType.lnk" -ErrorAction SilentlyContinue
-Remove-Item -Force "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\GhostType.lnk" -ErrorAction SilentlyContinue
-Remove-Item -Force "$env:USERPROFILE\Desktop\GhostType.lnk" -ErrorAction SilentlyContinue
-Remove-Item -Force "$env:PUBLIC\Desktop\GhostType.lnk" -ErrorAction SilentlyContinue
-# Search Start Menu folders for any ghosttype shortcuts
-Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu" -Recurse -Filter "*ghosttype*" -ErrorAction SilentlyContinue | Remove-Item -Force
-
-# 5. Remove from PATH
-Write-Host "[5/7] Cleaning PATH..." -ForegroundColor Yellow
-$p = [Environment]::GetEnvironmentVariable("PATH", "User")
-if ($p -like "*GhostType*") {
-    $newPath = ($p -split ";" | Where-Object { $_ -notlike "*GhostType*" -and $_ -ne "" }) -join ";"
-    [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-    Write-Host "  Removed GhostType from user PATH." -ForegroundColor Cyan
-}
-$sp = [Environment]::GetEnvironmentVariable("PATH", "Machine")
-if ($sp -like "*GhostType*") {
-    $newSPath = ($sp -split ";" | Where-Object { $_ -notlike "*GhostType*" -and $_ -ne "" }) -join ";"
-    [Environment]::SetEnvironmentVariable("PATH", $newSPath, "Machine")
-    Write-Host "  Removed GhostType from system PATH." -ForegroundColor Cyan
-}
-
-# 6. Clean registry
-Write-Host "[6/7] Cleaning registry..." -ForegroundColor Yellow
-Remove-Item -Path "HKCU:\Software\GhostType" -Recurse -ErrorAction SilentlyContinue
-$runKeys = @(
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
-    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
-    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
-)
-foreach ($rk in $runKeys) {
-    if (Test-Path $rk) {
-        $props = Get-ItemProperty $rk -ErrorAction SilentlyContinue
-        foreach ($name in ($props.PSObject.Properties | Where-Object { $_.Name -like "*GhostType*" -or $_.Name -like "*ghosttype*" }).Name) {
-            Remove-ItemProperty -Path $rk -Name $name -ErrorAction SilentlyContinue
-            Write-Host "  Removed $name from $rk" -ForegroundColor Cyan
-        }
-    }
-}
-# App Paths
-Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\ghosttype.exe" -Recurse -ErrorAction SilentlyContinue
-Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\ghosttype-window.exe" -Recurse -ErrorAction SilentlyContinue
-# Uninstall entries
-Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue |
-    Where-Object { $_.GetValue("DisplayName") -like "*GhostType*" } |
-    ForEach-Object { Remove-Item $_.PSPath -Recurse -Force; Write-Host "  Removed uninstall entry: $($_.GetValue('DisplayName'))" -ForegroundColor Cyan }
-
-# 7. Clean temp and lock files
-Write-Host "[7/7] Cleaning temp and lock files..." -ForegroundColor Yellow
-Remove-Item -Recurse -Force "$env:TEMP\ghosttype*" -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force "$env:TEMP\GhostType*" -ErrorAction SilentlyContinue
-Remove-Item -Force "$env:LOCALAPPDATA\.ghosttype.lock" -ErrorAction SilentlyContinue
-Remove-Item -Force "$env:APPDATA\.ghosttype.lock" -ErrorAction SilentlyContinue
-
-Write-Host ""
-Write-Host "GhostType has been COMPLETELY removed." -ForegroundColor Green
-Write-Host ""
-```
-
-</details>
-
-<details>
-<summary><b style="color:red">Linux — Nuclear Supercleaner</b></summary>
-
-```bash
-#!/bin/bash
-# GhostType SUPERCLEANER for Linux — removes every trace
-
-echo "=== GhostType Supercleaner ==="
-echo ""
-
-# Kill all processes
-pkill -9 -f ghosttype 2>/dev/null || true
-sleep 1
-
-# Remove binary
-sudo rm -f /usr/local/bin/ghosttype
-sudo rm -f /usr/bin/ghosttype
-
-# Remove config, data, lock files
-rm -rf "$HOME/.config/GhostType"
-rm -f "$HOME/.ghosttype.lock"
-find /tmp -name "*ghosttype*" -exec rm -rf {} + 2>/dev/null || true
-
-# Remove desktop entries and icons
-rm -f "$HOME/.local/share/applications/ghosttype.desktop"
-rm -f "$HOME/.local/share/applications/GhostType.desktop"
-find "$HOME/.local/share/icons" -name "*ghosttype*" -delete 2>/dev/null || true
-
-# Update desktop database
-update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
-
-echo ""
-echo "GhostType has been COMPLETELY removed."
-```
-
-</details>
-
-Then install GhostSpell using the [install instructions](#install) above.
 
 ---
 
