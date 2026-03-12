@@ -576,11 +576,11 @@
     </div>
 
     <div class="section" id="local-keepalive-section" style="display:none">
-      <h2>GhostLocal AI Engine</h2>
+      <h2>Ghost-AI Engine</h2>
       <div class="toggle-row">
         <div>
-          <div class="label">Keep Engine Running</div>
-          <div class="sublabel">Stay on: llama-server stays running between requests (no 5-min idle shutdown). Useful for debugging.</div>
+          <div class="label">Keep Model Loaded</div>
+          <div class="sublabel">Stay on: keep the model in memory between requests (no 5-min idle unload). Uses more RAM but faster responses.</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="pref-keepalive" onchange="onToggleKeepAlive(this.checked)">
@@ -634,17 +634,6 @@
       <div class="status" id="debug-status"></div>
     </div>
 
-    <div class="section">
-      <h2>GhostLocal AI Engine Log</h2>
-      <div style="font-size:0.78em;color:#6c7086;margin-bottom:8px">llama-server stderr output (useful for diagnosing startup crashes)</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="btn btn-secondary btn-sm" onclick="onViewLocalLog()">View Log</button>
-        <button class="btn btn-secondary btn-sm" onclick="onOpenLocalLogFile()">Open Log File</button>
-        <button class="btn btn-secondary btn-sm" onclick="onCopyLocalLog()">Copy to Clipboard</button>
-      </div>
-      <div id="local-log-preview" style="display:none;max-height:200px;overflow-y:auto;background:#181825;border:1px solid #313244;border-radius:6px;padding:8px;font-family:monospace;font-size:0.75em;white-space:pre-wrap;word-break:break-all;color:#a6adc8;margin-bottom:8px"></div>
-      <div class="status" id="local-log-status"></div>
-    </div>
 
   </div>
 
@@ -1239,15 +1228,12 @@ async function onLocalRefresh() {
 
   let st; try { st = JSON.parse(raw); } catch(e) { bar.className = 'ollama-status-bar not-installed'; text.textContent = 'Check failed'; return; }
 
-  const serverOK = st.server_installed;
-  const serverSource = st.server_source || 'none';
-  const serverVersion = st.server_version || '';
+  const engineVersion = st.engine_version || '';
   const models = st.models || [];
   const available = st.available || [];
 
-  if (serverOK && models.length > 0) {
-    const engineLabel = serverSource === 'bundled' ? 'Engine: included (' + esc(serverVersion) + ')' : 'Engine: installed (' + esc(serverVersion) + ')';
-    bar.className = 'ollama-status-bar running'; text.textContent = 'Ready \u2014 ' + engineLabel;
+  if (models.length > 0) {
+    bar.className = 'ollama-status-bar running'; text.textContent = 'Ghost-AI ready \u2014 Engine ' + esc(engineVersion);
     // Show installed models with select buttons
     let html = '<div style="font-size:0.78em;color:#6c7086;margin-bottom:6px">Installed models</div>';
     const formModel = document.getElementById('form-model').value;
@@ -1276,15 +1262,10 @@ async function onLocalRefresh() {
           + '</div>';
       }
     }
-    // Add update check button.
-    html += '<div style="margin-top:8px;text-align:right">'
-      + '<button class="btn btn-secondary btn-sm" onclick="localCheckUpdate()" id="local-update-btn" style="font-size:0.72em">Check for engine update</button>'
-      + '<span id="local-update-result" style="font-size:0.75em;color:#6c7086;margin-left:6px"></span>'
-      + '</div>';
     body.innerHTML = html;
     if (!formModel && models.length > 0) localSetFormModel(models[0].name);
-  } else if (serverOK) {
-    bar.className = 'ollama-status-bar installed'; text.textContent = 'Engine ready \u2014 download a model';
+  } else {
+    bar.className = 'ollama-status-bar installed'; text.textContent = 'Ghost-AI ready \u2014 download a model';
     let html = '';
     for (const m of available) {
       const sizeMB = Math.round(m.size / 1024 / 1024);
@@ -1294,12 +1275,6 @@ async function onLocalRefresh() {
         + '</div>';
     }
     body.innerHTML = html;
-  } else {
-    bar.className = 'ollama-status-bar not-installed'; text.textContent = 'Not set up';
-    body.innerHTML = '<div style="text-align:center;padding:10px 0">'
-      + '<div style="font-size:0.85em;color:#bac2de;margin-bottom:8px">Download the AI engine and a grammar model.</div>'
-      + '<button class="btn btn-primary btn-sm" onclick="localSetupAllSettings()" id="local-setup-btn-settings">Download & Set Up</button>'
-      + '</div>';
   }
 }
 
@@ -1329,52 +1304,8 @@ async function localDeleteModelSettings(name) {
 }
 
 async function localSetupAllSettings() {
-  const btn = document.getElementById('local-setup-btn-settings');
-  const statusEl = document.getElementById('local-action-status-settings');
-  if (btn) { btn.disabled = true; btn.textContent = 'Downloading engine...'; }
-  statusEl.className = 'status info'; statusEl.textContent = 'Downloading AI engine...';
-
-  let result = await goCall('localDownloadServer');
-  if (!result || !result.startsWith('ok')) {
-    statusEl.className = 'status error'; statusEl.textContent = 'Engine download failed: ' + (result || '');
-    if (btn) { btn.disabled = false; btn.textContent = 'Download & Set Up'; }
-    return;
-  }
-
-  if (btn) btn.textContent = 'Downloading model...';
-  statusEl.textContent = 'Downloading grammar model...';
-  result = await goCall('localDownloadModel', 'qwen3-0.6b');
-  if (!result || !result.startsWith('ok')) {
-    statusEl.className = 'status error'; statusEl.textContent = 'Model download failed: ' + (result || '');
-    if (btn) { btn.disabled = false; btn.textContent = 'Download & Set Up'; }
-    return;
-  }
-
-  statusEl.className = 'status success'; statusEl.textContent = 'Setup complete!';
-  localSetFormModel('qwen3-0.6b');
-  onLocalRefresh();
-}
-
-async function localCheckUpdate() {
-  const btn = document.getElementById('local-update-btn');
-  const result = document.getElementById('local-update-result');
-  if (btn) btn.disabled = true;
-  if (result) result.textContent = 'Checking...';
-
-  const raw = await goCall('checkLlamaUpdate');
-  if (btn) btn.disabled = false;
-
-  let info; try { info = JSON.parse(raw); } catch(e) { if (result) result.textContent = 'Check failed'; return; }
-  if (info.error) { if (result) result.textContent = 'Error: ' + info.error; return; }
-
-  if (info.has_update) {
-    if (result) result.textContent = '';
-    const statusEl = document.getElementById('local-action-status-settings');
-    statusEl.className = 'status info';
-    statusEl.textContent = 'Newer engine available: ' + info.latest + ' (current: ' + info.current + '). Will be included in the next GhostSpell update.';
-  } else {
-    if (result) result.textContent = 'Up to date (' + info.current + ')';
-  }
+  // Ghost-AI engine is built-in — just download the default model.
+  await localDownloadModelSettings('qwen3-0.6b');
 }
 
 // ===========================================================================
@@ -1641,38 +1572,6 @@ async function onCopyLog() {
     setStatus('debug-status', 'success', 'Log copied to clipboard (' + tail.split('\n').length + ' lines)');
   } catch(e) {
     setStatus('debug-status', 'error', 'Copy failed: ' + e.message);
-  }
-}
-
-async function onViewLocalLog() {
-  clearStatus('local-log-status');
-  const log = await goCall('localServerLog');
-  const preview = document.getElementById('local-log-preview');
-  if (!log) {
-    preview.style.display = 'block';
-    preview.textContent = '(no log data — llama-server may not have run yet)';
-    return;
-  }
-  preview.style.display = 'block';
-  preview.textContent = log;
-  preview.scrollTop = preview.scrollHeight;
-}
-
-async function onOpenLocalLogFile() {
-  clearStatus('local-log-status');
-  const result = await goCall('openLocalServerLog');
-  if (result && result.startsWith('error')) setStatus('local-log-status', 'error', result);
-}
-
-async function onCopyLocalLog() {
-  clearStatus('local-log-status');
-  const log = await goCall('localServerLog');
-  if (!log) { setStatus('local-log-status', 'error', 'No log data'); return; }
-  try {
-    await navigator.clipboard.writeText(log);
-    setStatus('local-log-status', 'success', 'Log copied (' + log.split('\n').length + ' lines)');
-  } catch(e) {
-    setStatus('local-log-status', 'error', 'Copy failed: ' + e.message);
   }
 }
 

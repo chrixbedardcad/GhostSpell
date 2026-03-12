@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
@@ -820,10 +819,9 @@ func (s *SettingsService) GhostAIStatus() string {
 	return string(data)
 }
 
-// LocalStatus returns JSON with llama-server installed status, source, version, and installed models.
+// LocalStatus returns JSON with Ghost-AI engine status and installed models.
 func (s *SettingsService) LocalStatus() string {
 	guiLog("[GUI] JS called: LocalStatus")
-	serverInstalled := llm.LlamaServerInstalled()
 	installed, err := llm.InstalledLocalModels()
 	if err != nil {
 		guiLog("[GUI] LocalStatus: error listing models: %v", err)
@@ -831,25 +829,12 @@ func (s *SettingsService) LocalStatus() string {
 	}
 
 	result := map[string]interface{}{
-		"server_installed": serverInstalled,
-		"server_source":    llm.LlamaServerSource(),
-		"server_version":   llm.BundledLlamaCppVersion,
+		"engine_available": llm.GhostAIAvailable(),
+		"engine_version":   llm.BundledLlamaCppVersion,
 		"models":           installed,
 		"available":        llm.AvailableLocalModels(),
 	}
 	data, _ := json.Marshal(result)
-	return string(data)
-}
-
-// CheckLlamaUpdate checks if a newer llama.cpp release is available.
-func (s *SettingsService) CheckLlamaUpdate() string {
-	guiLog("[GUI] JS called: CheckLlamaUpdate")
-	info, err := llm.CheckLlamaServerUpdate()
-	if err != nil {
-		guiLog("[GUI] CheckLlamaUpdate error: %v", err)
-		return fmt.Sprintf(`{"error":"%v"}`, err)
-	}
-	data, _ := json.Marshal(info)
 	return string(data)
 }
 
@@ -869,52 +854,6 @@ func (s *SettingsService) LocalDeleteModel(name string) string {
 	if err := llm.DeleteModel(name); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
-	return "ok"
-}
-
-// LocalDownloadServer downloads the llama-server binary (blocking).
-func (s *SettingsService) LocalDownloadServer() string {
-	guiLog("[GUI] JS called: LocalDownloadServer")
-	if err := llm.DownloadLlamaServer(nil); err != nil {
-		guiLog("[GUI] LocalDownloadServer error: %v", err)
-		return fmt.Sprintf("error: %v", err)
-	}
-	return "ok"
-}
-
-// LocalServerLogPath returns the path to the llama-server log file.
-func (s *SettingsService) LocalServerLogPath() string {
-	return llm.LocalServerLogFilePath()
-}
-
-// LocalServerLog returns the last ~200 lines of the llama-server log file.
-func (s *SettingsService) LocalServerLog() string {
-	logPath := llm.LocalServerLogFilePath()
-	if logPath == "" {
-		return ""
-	}
-	data, err := os.ReadFile(logPath)
-	if err != nil {
-		return ""
-	}
-	lines := strings.Split(string(data), "\n")
-	if len(lines) > 200 {
-		lines = lines[len(lines)-200:]
-	}
-	return strings.Join(lines, "\n")
-}
-
-// OpenLocalServerLog opens the llama-server log file in the OS viewer.
-func (s *SettingsService) OpenLocalServerLog() string {
-	guiLog("[GUI] JS called: OpenLocalServerLog")
-	logPath := llm.LocalServerLogFilePath()
-	if logPath == "" {
-		return "error: no log path"
-	}
-	if _, err := os.Stat(logPath); err != nil {
-		return "error: log file not found"
-	}
-	OpenFile(logPath)
 	return "ok"
 }
 

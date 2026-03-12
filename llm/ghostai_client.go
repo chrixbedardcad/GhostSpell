@@ -68,7 +68,7 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 	return c, nil
 }
 
-func (c *GhostAIClient) Provider() string { return "ghostai" }
+func (c *GhostAIClient) Provider() string { return "local" }
 
 func (c *GhostAIClient) Send(ctx context.Context, req Request) (*Response, error) {
 	c.mu.Lock()
@@ -117,7 +117,7 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (*Response, error
 
 	return &Response{
 		Text:     text,
-		Provider: "ghostai",
+		Provider: "local",
 		Model:    c.modelName,
 	}, nil
 }
