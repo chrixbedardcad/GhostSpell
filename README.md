@@ -64,6 +64,15 @@ Updates are built in — go to **Settings > About > Check for Updates** and clic
 Scripts only download from official GitHub releases — inspect them at [`scripts/install.sh`](scripts/install.sh) and [`scripts/install.ps1`](scripts/install.ps1).
 </details>
 
+<details>
+<summary>Check latest version</summary>
+
+```bash
+gh release view --repo chrixbedardcad/GhostSpell --json tagName -q .tagName
+```
+
+</details>
+
 ---
 
 ## Quick Start
