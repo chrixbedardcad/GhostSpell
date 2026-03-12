@@ -146,6 +146,32 @@
     text-align: center; padding: 30px; color: #6c7086; font-size: 0.88em;
   }
 
+  /* --- Local AI discovery banner --- */
+  .local-ai-banner {
+    background: linear-gradient(135deg, #1e293b 0%, #1e1e2e 100%);
+    border: 1px solid #7c3aed;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .local-ai-banner .banner-icon { font-size: 1.8em; flex-shrink: 0; }
+  .local-ai-banner .banner-body { flex: 1; }
+  .local-ai-banner .banner-title { font-weight: 600; font-size: 0.92em; color: #e2e8f0; margin-bottom: 4px; }
+  .local-ai-banner .banner-desc { font-size: 0.78em; color: #94a3b8; line-height: 1.4; }
+  .local-ai-banner .banner-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .local-ai-banner .btn-setup {
+    background: #7c3aed; color: #fff; border: none; border-radius: 6px;
+    padding: 8px 16px; font-size: 0.82em; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .local-ai-banner .btn-setup:hover { background: #6d28d9; }
+  .local-ai-banner .btn-dismiss {
+    background: none; border: none; color: #6c7086; font-size: 0.78em;
+    cursor: pointer; padding: 4px 8px;
+  }
+  .local-ai-banner .btn-dismiss:hover { color: #a6adc8; }
+
   .toolbar {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 14px;
@@ -792,9 +818,26 @@ async function renderProviderList() {
   }
 
   let html = '';
+
+  // Show Local AI discovery banner if no local provider configured
+  const hasLocal = Object.values(providers).some(d => d.provider === 'local');
+  if (!hasLocal && !window._localBannerDismissed) {
+    html += `<div class="local-ai-banner">
+      <div class="banner-icon">\uD83D\uDC7B</div>
+      <div class="banner-body">
+        <div class="banner-title">Local AI is now built in</div>
+        <div class="banner-desc">Run AI offline, free, no account needed. Works out of the box with bundled engine.</div>
+      </div>
+      <div class="banner-actions">
+        <button class="btn-setup" onclick="setupLocalAI()">Set up Local AI</button>
+        <button class="btn-dismiss" onclick="dismissLocalBanner()">Dismiss</button>
+      </div>
+    </div>`;
+  }
+
   for (const [label, def] of Object.entries(providers)) {
     const isDefault = label === defaultLLM;
-    const maskedKey = def.api_key ? '****' + def.api_key.slice(-4) : (def.provider === 'ollama' ? 'local' : 'none');
+    const maskedKey = def.api_key ? '****' + def.api_key.slice(-4) : (def.provider === 'ollama' || def.provider === 'local' ? 'local' : 'none');
     html += `
       <div class="card" id="card-${esc(label)}">
         <div class="top-row">
@@ -832,6 +875,26 @@ async function onTestProvider(label) {
 
 function showAddProvider() {
   window.location.href = '/wizard.html?returnTo=settings';
+}
+
+function setupLocalAI() {
+  // Open the inline form pre-filled for Local AI
+  document.getElementById('provider-form').style.display = 'block';
+  document.getElementById('form-title').textContent = 'Add Provider';
+  document.getElementById('edit-original-label').value = '';
+  document.getElementById('form-provider').value = 'local';
+  document.getElementById('form-label').value = 'local-ai';
+  document.getElementById('form-apikey').value = '';
+  document.getElementById('form-endpoint').value = '';
+  onFormProviderChange();
+  clearStatus('form-status');
+  setTimeout(() => document.getElementById('provider-form').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function dismissLocalBanner() {
+  window._localBannerDismissed = true;
+  const banner = document.querySelector('.local-ai-banner');
+  if (banner) banner.remove();
 }
 
 function onEditProvider(label) {
