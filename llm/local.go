@@ -38,10 +38,15 @@ type LocalClient struct {
 	serverPath string // path to llama-server binary
 	port       int
 	cmd        *exec.Cmd
+	procExited chan struct{} // closed when subprocess exits
+	procError  error        // exit error (set before procExited is closed)
+	stderrBuf  *bytes.Buffer // captured stderr from llama-server
+	logFile    *os.File      // persistent log file (closed in stopLocked)
 	idleTimer  *time.Timer
 	httpClient *http.Client
 	maxTokens  int
 	timeoutMs  int
+	keepAlive  bool // if true, skip idle timer (stay-on mode)
 }
 
 // newLocalFromDef creates a LocalClient from a provider definition.
@@ -72,6 +77,7 @@ func newLocalFromDef(def LLMProviderDefCompat) (*LocalClient, error) {
 		serverPath: serverPath,
 		maxTokens:  maxTokens,
 		timeoutMs:  timeoutMs,
+		keepAlive:  def.KeepAlive,
 		httpClient: newPooledHTTPClient(),
 	}, nil
 }
@@ -83,6 +89,7 @@ type LLMProviderDefCompat struct {
 	Model     string
 	MaxTokens int
 	TimeoutMs int
+	KeepAlive bool
 }
 
 func (c *LocalClient) Provider() string { return "local" }
@@ -212,19 +219,47 @@ func (c *LocalClient) ensureRunning(ctx context.Context) error {
 	fmt.Printf("[local] Starting llama-server on port %d...\n", port)
 
 	cmd := exec.Command(c.serverPath, args...)
+
+	// Capture stderr for debugging (llama-server logs go to stderr).
+	stderrBuf := &bytes.Buffer{}
 	cmd.Stdout = nil
-	cmd.Stderr = nil
+	cmd.Stderr = stderrBuf
 	cmd.Stdin = nil
 
+	// Also write stderr to a persistent log file for the debug tab.
+	// The log file handle is stored in the struct and closed in stopLocked.
+	logPath := LocalServerLogFilePath()
+	if logFile, ferr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644); ferr == nil {
+		cmd.Stderr = io.MultiWriter(stderrBuf, logFile)
+		c.logFile = logFile
+	}
+	c.stderrBuf = stderrBuf
+
 	if err := cmd.Start(); err != nil {
+		if c.logFile != nil {
+			c.logFile.Close()
+			c.logFile = nil
+		}
 		return fmt.Errorf("start llama-server: %w", err)
 	}
 	c.cmd = cmd
 
-	// Monitor subprocess exit in background.
+	// Track subprocess exit so waitForHealthy can detect early crashes.
+	exited := make(chan struct{})
+	c.procExited = exited
+	c.procError = nil
 	go func() {
-		if err := cmd.Wait(); err != nil {
-			slog.Debug("[local] llama-server exited", "error", err)
+		err := cmd.Wait()
+		// Write procError before closing the channel — the channel close
+		// provides happens-before, so readers after <-exited see the error.
+		// No mutex needed; using the channel as synchronization.
+		c.procError = err
+		close(exited)
+		stderrStr := stderrBuf.String()
+		if err != nil {
+			slog.Error("[local] llama-server crashed", "error", err, "stderr", stderrStr)
+		} else if stderrStr != "" {
+			slog.Debug("[local] llama-server exited cleanly", "stderr", stderrStr)
 		}
 	}()
 
@@ -237,29 +272,47 @@ func (c *LocalClient) ensureRunning(ctx context.Context) error {
 	slog.Info("[local] llama-server ready", "port", port, "model", c.modelName)
 	fmt.Printf("[local] llama-server ready on port %d\n", port)
 
-	// Start idle timer.
-	c.idleTimer = time.AfterFunc(localIdleTimeout, func() {
-		slog.Info("[local] idle timeout reached, shutting down llama-server")
-		fmt.Println("[local] Idle timeout — shutting down llama-server")
-		c.mu.Lock()
-		c.stopLocked()
-		c.mu.Unlock()
-	})
+	// Start idle timer (unless keep-alive is on).
+	if !c.keepAlive {
+		c.idleTimer = time.AfterFunc(localIdleTimeout, func() {
+			slog.Info("[local] idle timeout reached, shutting down llama-server")
+			fmt.Println("[local] Idle timeout — shutting down llama-server")
+			c.mu.Lock()
+			c.stopLocked()
+			c.mu.Unlock()
+		})
+	} else {
+		slog.Info("[local] keep-alive mode — idle timer disabled")
+	}
 
 	return nil
 }
 
-// waitForHealthy polls the /health endpoint until it responds OK, timeout, or
-// the parent context is cancelled.
+// waitForHealthy polls the /health endpoint until it responds OK, the process
+// crashes, timeout expires, or the parent context is cancelled.
 func (c *LocalClient) waitForHealthy(ctx context.Context, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	url := fmt.Sprintf("http://127.0.0.1:%d/health", c.port)
+	procExited := c.procExited // snapshot under lock (caller holds c.mu)
+
 	for time.Now().Before(deadline) {
+		// Check for process crash — fails immediately instead of polling for 60s.
+		// procError is safe to read after <-procExited (channel close is happens-before).
 		select {
+		case <-procExited:
+			stderr := ""
+			if c.stderrBuf != nil {
+				stderr = c.stderrBuf.String()
+			}
+			if stderr != "" {
+				return fmt.Errorf("llama-server crashed: %v\nstderr: %s", c.procError, stderr)
+			}
+			return fmt.Errorf("llama-server crashed: %v", c.procError)
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
+
 		hctx, hcancel := context.WithTimeout(ctx, 2*time.Second)
 		req, err := http.NewRequestWithContext(hctx, "GET", url, nil)
 		if err != nil {
@@ -274,7 +327,17 @@ func (c *LocalClient) waitForHealthy(ctx context.Context, timeout time.Duration)
 				return nil
 			}
 		}
+
 		select {
+		case <-procExited:
+			stderr := ""
+			if c.stderrBuf != nil {
+				stderr = c.stderrBuf.String()
+			}
+			if stderr != "" {
+				return fmt.Errorf("llama-server crashed: %v\nstderr: %s", c.procError, stderr)
+			}
+			return fmt.Errorf("llama-server crashed: %v", c.procError)
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(250 * time.Millisecond):
@@ -314,6 +377,10 @@ func (c *LocalClient) stopLocked() {
 		slog.Info("[local] killing llama-server", "pid", c.cmd.Process.Pid)
 		c.cmd.Process.Kill()
 		c.cmd = nil
+	}
+	if c.logFile != nil {
+		c.logFile.Close()
+		c.logFile = nil
 	}
 	c.port = 0
 }
@@ -413,6 +480,15 @@ func LlamaServerPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("llama-server not found (download it in Settings or reinstall GhostSpell)")
+}
+
+// LocalServerLogFilePath returns the path to the llama-server log file.
+func LocalServerLogFilePath() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "GhostSpell", "llama-server.log")
 }
 
 // LlamaServerSource returns where the llama-server binary was found.

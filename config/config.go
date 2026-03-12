@@ -26,6 +26,7 @@ type LLMProviderDef struct {
 	MaxTokens    int    `json:"max_tokens,omitempty"`
 	TimeoutMs    int    `json:"timeout_ms,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"` // OAuth: used to auto-refresh API key
+	KeepAlive    bool   `json:"keep_alive,omitempty"`    // local: keep llama-server running (no idle timeout)
 }
 
 // Hotkeys defines the configurable hotkey bindings.

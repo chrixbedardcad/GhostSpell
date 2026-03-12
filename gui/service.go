@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
@@ -866,6 +867,57 @@ func (s *SettingsService) LocalDownloadServer() string {
 	guiLog("[GUI] JS called: LocalDownloadServer")
 	if err := llm.DownloadLlamaServer(nil); err != nil {
 		guiLog("[GUI] LocalDownloadServer error: %v", err)
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+// LocalServerLogPath returns the path to the llama-server log file.
+func (s *SettingsService) LocalServerLogPath() string {
+	return llm.LocalServerLogFilePath()
+}
+
+// LocalServerLog returns the last ~200 lines of the llama-server log file.
+func (s *SettingsService) LocalServerLog() string {
+	logPath := llm.LocalServerLogFilePath()
+	if logPath == "" {
+		return ""
+	}
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return ""
+	}
+	lines := strings.Split(string(data), "\n")
+	if len(lines) > 200 {
+		lines = lines[len(lines)-200:]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// OpenLocalServerLog opens the llama-server log file in the OS viewer.
+func (s *SettingsService) OpenLocalServerLog() string {
+	guiLog("[GUI] JS called: OpenLocalServerLog")
+	logPath := llm.LocalServerLogFilePath()
+	if logPath == "" {
+		return "error: no log path"
+	}
+	if _, err := os.Stat(logPath); err != nil {
+		return "error: log file not found"
+	}
+	OpenFile(logPath)
+	return "ok"
+}
+
+// SetLocalKeepAlive toggles the keep-alive setting for a local provider.
+func (s *SettingsService) SetLocalKeepAlive(label string, enabled bool) string {
+	guiLog("[GUI] JS called: SetLocalKeepAlive(%s, %v)", label, enabled)
+	def, ok := s.cfgCopy.LLMProviders[label]
+	if !ok {
+		return "error: provider not found"
+	}
+	def.KeepAlive = enabled
+	s.cfgCopy.LLMProviders[label] = def
+	if err := s.clearLegacyAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
 	return "ok"

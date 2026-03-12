@@ -575,6 +575,20 @@
       </div>
     </div>
 
+    <div class="section" id="local-keepalive-section" style="display:none">
+      <h2>GhostLocal AI Engine</h2>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Keep Engine Running</div>
+          <div class="sublabel">Stay on: llama-server stays running between requests (no 5-min idle shutdown). Useful for debugging.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="pref-keepalive" onchange="onToggleKeepAlive(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
     <hr class="section-divider">
 
     <div class="section">
@@ -618,6 +632,18 @@
         <button class="btn btn-secondary btn-sm" onclick="onClearLog()">Clear Log</button>
       </div>
       <div class="status" id="debug-status"></div>
+    </div>
+
+    <div class="section">
+      <h2>GhostLocal AI Engine Log</h2>
+      <div style="font-size:0.78em;color:#6c7086;margin-bottom:8px">llama-server stderr output (useful for diagnosing startup crashes)</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn btn-secondary btn-sm" onclick="onViewLocalLog()">View Log</button>
+        <button class="btn btn-secondary btn-sm" onclick="onOpenLocalLogFile()">Open Log File</button>
+        <button class="btn btn-secondary btn-sm" onclick="onCopyLocalLog()">Copy to Clipboard</button>
+      </div>
+      <div id="local-log-preview" style="display:none;max-height:200px;overflow-y:auto;background:#181825;border:1px solid #313244;border-radius:6px;padding:8px;font-family:monospace;font-size:0.75em;white-space:pre-wrap;word-break:break-all;color:#a6adc8;margin-bottom:8px"></div>
+      <div class="status" id="local-log-status"></div>
     </div>
 
   </div>
@@ -763,6 +789,16 @@ async function init() {
   if (raw) configData = JSON.parse(raw);
   renderProviderList();
   initHotkeyCapture();
+
+  // Show keep-alive toggle if a local provider is configured.
+  const providers = configData.llm_providers || {};
+  for (const [label, def] of Object.entries(providers)) {
+    if (def.provider === 'local') {
+      document.getElementById('local-keepalive-section').style.display = 'block';
+      document.getElementById('pref-keepalive').checked = !!def.keep_alive;
+      break;
+    }
+  }
 
   // Show macOS permissions section and check status.
   const permsResult = await goCall('checkPermissions');
@@ -1549,6 +1585,16 @@ async function onOpenPermissions() {
 
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }
 async function onToggleClipboard(enabled) { await goCall('setPreserveClipboard', enabled); }
+async function onToggleKeepAlive(enabled) {
+  // Find the local provider label.
+  const providers = configData.llm_providers || {};
+  let localLabel = '';
+  for (const [label, def] of Object.entries(providers)) {
+    if (def.provider === 'local') { localLabel = label; break; }
+  }
+  if (!localLabel) return;
+  await goCall('setLocalKeepAlive', localLabel, enabled);
+}
 async function onMaxCharsChange(val) { await goCall('setMaxInputChars', parseInt(val) || 0); }
 async function onLogLevelChange(level) { await goCall('setLogLevel', level); }
 
@@ -1595,6 +1641,38 @@ async function onCopyLog() {
     setStatus('debug-status', 'success', 'Log copied to clipboard (' + tail.split('\n').length + ' lines)');
   } catch(e) {
     setStatus('debug-status', 'error', 'Copy failed: ' + e.message);
+  }
+}
+
+async function onViewLocalLog() {
+  clearStatus('local-log-status');
+  const log = await goCall('localServerLog');
+  const preview = document.getElementById('local-log-preview');
+  if (!log) {
+    preview.style.display = 'block';
+    preview.textContent = '(no log data — llama-server may not have run yet)';
+    return;
+  }
+  preview.style.display = 'block';
+  preview.textContent = log;
+  preview.scrollTop = preview.scrollHeight;
+}
+
+async function onOpenLocalLogFile() {
+  clearStatus('local-log-status');
+  const result = await goCall('openLocalServerLog');
+  if (result && result.startsWith('error')) setStatus('local-log-status', 'error', result);
+}
+
+async function onCopyLocalLog() {
+  clearStatus('local-log-status');
+  const log = await goCall('localServerLog');
+  if (!log) { setStatus('local-log-status', 'error', 'No log data'); return; }
+  try {
+    await navigator.clipboard.writeText(log);
+    setStatus('local-log-status', 'success', 'Log copied (' + log.split('\n').length + ' lines)');
+  } catch(e) {
+    setStatus('local-log-status', 'error', 'Copy failed: ' + e.message);
   }
 }
 

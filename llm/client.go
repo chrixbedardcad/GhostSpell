@@ -104,6 +104,7 @@ func NewClientFromDef(def config.LLMProviderDef) (Client, error) {
 			Model:     def.Model,
 			MaxTokens: def.MaxTokens,
 			TimeoutMs: def.TimeoutMs,
+			KeepAlive: def.KeepAlive,
 		})
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", def.Provider)
