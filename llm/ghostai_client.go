@@ -129,8 +129,8 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 		return nil, fmt.Errorf("ghost-ai: %w", err)
 	}
 
-	// Strip thinking tags (same as subprocess client).
-	text = stripThinkingTags(text)
+	// Clean up model output: strip thinking tags, ChatML tokens, reasoning.
+	text = cleanLocalModelResponse(text)
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("ghost-ai returned empty content")
 	}
@@ -146,6 +146,60 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 		Provider: "local",
 		Model:    c.modelName,
 	}, nil
+}
+
+// cleanLocalModelResponse strips ChatML artifacts, thinking tags, and reasoning
+// from small local model output, extracting just the corrected/processed text.
+func cleanLocalModelResponse(s string) string {
+	// 1. Strip <think>...</think> blocks.
+	s = stripThinkingTags(s)
+
+	// 2. Strip ChatML special tokens that may leak through.
+	for _, tok := range []string{"<|im_end|>", "<|im_start|>", "</s>", "<|endoftext|>"} {
+		s = strings.ReplaceAll(s, tok, "")
+	}
+
+	// 3. If model emitted "Answer:" or "Corrected:", take only the text after it.
+	for _, marker := range []string{"Answer:", "Answer :", "Corrected:", "Corrected text:"} {
+		if idx := strings.LastIndex(s, marker); idx != -1 {
+			after := strings.TrimSpace(s[idx+len(marker):])
+			if after != "" {
+				s = after
+				break
+			}
+		}
+	}
+
+	// 4. Truncate at any "User:" or role marker (model continuing the conversation).
+	for _, stop := range []string{"\nUser:", "\nuser:", "\nAssistant:", "\nassistant:", "\nSystem:", "\n---"} {
+		if idx := strings.Index(s, stop); idx != -1 {
+			s = s[:idx]
+		}
+	}
+
+	// 5. Strip reasoning preambles ("Okay, let's...", "Let me check...", etc.)
+	// If the response starts with reasoning, try to find the actual answer after it.
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	if len(lines) > 1 {
+		first := strings.ToLower(strings.TrimSpace(lines[0]))
+		reasoningStarts := []string{"okay,", "ok,", "let me", "let's", "i need to", "first,",
+			"looking at", "the user", "checking", "i'll", "now,", "so,", "here"}
+		for _, prefix := range reasoningStarts {
+			if strings.HasPrefix(first, prefix) {
+				// Find the last non-empty line — small models often put the answer last.
+				for i := len(lines) - 1; i >= 1; i-- {
+					candidate := strings.TrimSpace(lines[i])
+					if candidate != "" && !strings.HasPrefix(strings.ToLower(candidate), "answer") {
+						s = candidate
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+
+	return strings.TrimSpace(s)
 }
 
 func (c *GhostAIClient) Close() {

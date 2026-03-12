@@ -206,7 +206,7 @@ char* ghost_engine_complete(ghost_engine* e,
     }
 
     int n_prompt = llama_tokenize(e->vocab, prompt, prompt_len,
-                                  tokens, n_max_tok, 1 /*add_special*/, 0 /*parse_special*/);
+                                  tokens, n_max_tok, 1 /*add_special*/, 1 /*parse_special*/);
     if (n_prompt < 0) {
         /* Need more space: llama_tokenize returns -needed_size on overflow. */
         n_max_tok = -n_prompt + 1;
@@ -219,7 +219,7 @@ char* ghost_engine_complete(ghost_engine* e,
         }
         tokens = bigger;
         n_prompt = llama_tokenize(e->vocab, prompt, prompt_len,
-                                  tokens, n_max_tok, 1, 0);
+                                  tokens, n_max_tok, 1, 1);
     }
     if (n_prompt < 0) {
         free(tokens);
