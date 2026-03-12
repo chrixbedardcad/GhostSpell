@@ -31,7 +31,14 @@ type LLMProviderDefCompat struct {
 }
 
 // GhostAIAvailable reports whether the embedded Ghost-AI engine is compiled in.
-func GhostAIAvailable() bool {
+// Recovers from panics in case CGo initialization fails (missing DLL, etc.).
+func GhostAIAvailable() (available bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("[ghost-ai] availability check panicked", "panic", r)
+			available = false
+		}
+	}()
 	return ghostai.Available()
 }
 

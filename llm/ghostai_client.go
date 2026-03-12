@@ -25,7 +25,18 @@ type GhostAIClient struct {
 }
 
 // newGhostAIFromDef creates a GhostAIClient from a provider definition.
-func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
+// Recovers from C-level panics (e.g. missing DLLs) so the app doesn't crash.
+func newGhostAIFromDef(def LLMProviderDefCompat) (client *GhostAIClient, err error) {
+	// Catch C-level panics (missing DLL, segfault in llama init, etc.)
+	// so GhostSpell can still start with Ghost-AI disabled.
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("[ghost-ai] engine init panicked — disabling Ghost-AI", "panic", r)
+			err = fmt.Errorf("ghost-ai init panic: %v", r)
+			client = nil
+		}
+	}()
+
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
 		maxTokens = 256
@@ -70,7 +81,15 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 
 func (c *GhostAIClient) Provider() string { return "local" }
 
-func (c *GhostAIClient) Send(ctx context.Context, req Request) (*Response, error) {
+func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, err error) {
+	// Catch C-level panics during inference.
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("[ghost-ai] inference panicked", "panic", r)
+			err = fmt.Errorf("ghost-ai inference panic: %v", r)
+			resp = nil
+		}
+	}()
 	c.mu.Lock()
 
 	// Reload model if it was unloaded by idle timer.
