@@ -1272,22 +1272,9 @@ async function localCheckUpdate() {
     if (result) result.textContent = '';
     const statusEl = document.getElementById('local-action-status-settings');
     statusEl.className = 'status info';
-    statusEl.innerHTML = 'Update available: ' + esc(info.latest) + ' (current: ' + esc(info.current) + '). '
-      + '<button class="btn btn-primary btn-sm" onclick="localUpdateEngine()" style="font-size:0.75em;margin-left:4px">Update engine</button>';
+    statusEl.textContent = 'Newer engine available: ' + info.latest + ' (current: ' + info.current + '). Will be included in the next GhostSpell update.';
   } else {
     if (result) result.textContent = 'Up to date (' + info.current + ')';
-  }
-}
-
-async function localUpdateEngine() {
-  const statusEl = document.getElementById('local-action-status-settings');
-  statusEl.className = 'status info'; statusEl.textContent = 'Downloading updated engine...';
-  const result = await goCall('localDownloadServer');
-  if (result && result.startsWith('ok')) {
-    statusEl.className = 'status success'; statusEl.textContent = 'Engine updated!';
-    onLocalRefresh();
-  } else {
-    statusEl.className = 'status error'; statusEl.textContent = 'Update failed: ' + (result || '');
   }
 }
 
