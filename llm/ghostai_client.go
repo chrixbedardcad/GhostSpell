@@ -112,6 +112,16 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 	if maxTokens == 0 {
 		maxTokens = c.maxTokens
 	}
+	// Dynamic max_tokens: for correction tasks, output ≈ input length.
+	// Cap to 1.5x input word count + headroom, avoiding wasted generation.
+	inputWords := len(strings.Fields(req.Text))
+	dynamicMax := int(float64(inputWords)*2) + 64
+	if dynamicMax < maxTokens {
+		maxTokens = dynamicMax
+	}
+	if maxTokens < 32 {
+		maxTokens = 32
+	}
 
 	// Format using the model's chat template (ChatML for Qwen, etc.).
 	// System = instruction prompt, User = the text to process.

@@ -14,7 +14,10 @@ import (
 )
 
 const (
-	localIdleTimeout = 5 * time.Minute
+	// localIdleTimeout controls how long Ghost-AI keeps the model in memory
+	// after the last request. Small GGUF models use 400MB-1GB of RAM —
+	// keeping them loaded avoids a 500ms-2s reload penalty on each use.
+	localIdleTimeout = 30 * time.Minute
 
 	// BundledLlamaCppVersion is the llama.cpp release tag compiled into GhostSpell.
 	// Single source of truth for CI builds and version display.

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"log/slog"
+	"runtime"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -19,6 +20,18 @@ func CreateIndicator(app *application.App) {
 	indicatorMu.Lock()
 	defer indicatorMu.Unlock()
 
+	// On Windows, BackgroundTypeTransparent + Frameless causes WS_EX_LAYERED
+	// which is incompatible with WebView2 (window renders invisible).
+	// Use BackgroundTypeTranslucent instead — it triggers WS_EX_NOREDIRECTIONBITMAP
+	// which works with WebView2's DirectComposition renderer.
+	// Similarly, IgnoreMouseEvents adds WS_EX_LAYERED on Windows, so skip it.
+	bgType := application.BackgroundTypeTransparent
+	ignoreMouse := true
+	if runtime.GOOS == "windows" {
+		bgType = application.BackgroundTypeTranslucent
+		ignoreMouse = false
+	}
+
 	indicatorWin = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:              "ghostspell-indicator",
 		Title:             "",
@@ -26,19 +39,19 @@ func CreateIndicator(app *application.App) {
 		Height:            130,
 		Frameless:         true,
 		AlwaysOnTop:       true,
-		BackgroundType:    application.BackgroundTypeTransparent,
+		BackgroundType:    bgType,
 		BackgroundColour:  application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 		DisableResize:     true,
 		Hidden:            true,
-		IgnoreMouseEvents: true,
+		IgnoreMouseEvents: ignoreMouse,
 		URL:               "/indicator.html",
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar:                   true,
 			DisableFramelessWindowDecorations: true,
 		},
 		Mac: application.MacWindow{
-			TitleBar:  application.MacTitleBar{Hide: true},
-			Backdrop:  application.MacBackdropTransparent,
+			TitleBar:    application.MacTitleBar{Hide: true},
+			Backdrop:    application.MacBackdropTransparent,
 			WindowLevel: application.MacWindowLevelFloating,
 		},
 	})
