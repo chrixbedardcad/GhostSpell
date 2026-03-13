@@ -347,5 +347,6 @@ func (ts *trayState) refreshMenu() {
 		"active_prompt", activePrompt,
 		"prompts", len(promptNames),
 		"models", modelCount,
+		"update", updateVer,
 	)
 }
