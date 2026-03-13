@@ -215,12 +215,16 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 	guiLog("[GUI] JS called: TestConnection(provider=%s, model=%s, endpoint=%q)", provider, model, endpoint)
 
 	// Ollama and local need much longer timeout — first request loads model into memory.
+	// They also need more max_tokens because thinking models (Qwen3, DeepSeek-R1)
+	// may consume tokens on <think> tags even with /no_think.
 	timeout := 10 * time.Second
+	maxTokens := 64
 	timeoutMs := 10000
 	if provider == "ollama" || provider == "local" {
 		timeout = 120 * time.Second
+		maxTokens = 128
 		timeoutMs = 120000
-		guiLog("[GUI] %s detected — using %s timeout", provider, timeout)
+		guiLog("[GUI] %s detected — using %s timeout, %d max_tokens", provider, timeout, maxTokens)
 	}
 
 	def := config.LLMProviderDef{
@@ -228,7 +232,7 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 		APIKey:      apiKey,
 		Model:       model,
 		APIEndpoint: endpoint,
-		MaxTokens:   32,
+		MaxTokens:   maxTokens,
 		TimeoutMs:   timeoutMs,
 	}
 
@@ -247,7 +251,7 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 	_, err = client.Send(tctx, llm.Request{
 		Prompt:    "Reply with OK",
 		Text:      "test",
-		MaxTokens: 32,
+		MaxTokens: maxTokens,
 	})
 	elapsed := time.Since(start)
 	if err != nil {
@@ -300,7 +304,7 @@ func (s *SettingsService) TestProvider(label string) string {
 	_, err = client.Send(tctx, llm.Request{
 		Prompt:    "Reply with OK",
 		Text:      "test",
-		MaxTokens: 32,
+		MaxTokens: maxTokens,
 	})
 	elapsed := time.Since(start)
 	if err != nil {
