@@ -101,7 +101,7 @@ func sendKeyComboAtomic(modifier, key uint16) error {
 	if ret != 4 {
 		return fmt.Errorf("SendInput: expected 4 events injected, got %d (err=%v)", ret, err)
 	}
-	slog.Debug("SendInput: keystroke sent", "modifier", fmt.Sprintf("0x%02X", modifier), "key", fmt.Sprintf("0x%02X", key), "injected", ret)
+	slog.Info("SendInput: keystroke sent", "modifier", fmt.Sprintf("0x%02X", modifier), "key", fmt.Sprintf("0x%02X", key), "injected", ret)
 	return nil
 }
 
@@ -126,9 +126,7 @@ func (s *WindowsSimulator) WaitForModifierRelease() {
 		}
 		if !anyPressed {
 			waited := time.Since(start)
-			if waited > 10*time.Millisecond {
-				slog.Debug("WaitForModifierRelease: modifiers released", "waited_ms", waited.Milliseconds())
-			}
+			slog.Info("WaitForModifierRelease: modifiers released", "waited_ms", waited.Milliseconds())
 			// Small settle delay — let the OS fully process the key release
 			// before we inject new keystrokes.
 			time.Sleep(30 * time.Millisecond)
@@ -166,12 +164,12 @@ func (s *WindowsSimulator) CopyScript() error        { return fmt.Errorf("not su
 func (s *WindowsSimulator) PasteScript() error       { return fmt.Errorf("not supported") }
 
 func (s *WindowsSimulator) SelectAll() error {
-	slog.Debug("Windows SelectAll: sending Ctrl+A", "foreground", s.FrontAppName())
+	slog.Info("Windows SelectAll: sending Ctrl+A", "foreground", s.FrontAppName())
 	return sendKeyComboAtomic(vkControl, vkA)
 }
 
 func (s *WindowsSimulator) Copy() error {
-	slog.Debug("Windows Copy: sending Ctrl+C", "foreground", s.FrontAppName())
+	slog.Info("Windows Copy: sending Ctrl+C", "foreground", s.FrontAppName())
 	return sendKeyComboAtomic(vkControl, vkC)
 }
 

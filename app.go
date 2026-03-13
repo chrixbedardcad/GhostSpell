@@ -65,12 +65,11 @@ func captureText(
 	// Log the frontmost app for diagnostics.
 	// If a GhostSpell window (Settings, Wizard, Update) is focused,
 	// skip capture — keyboard simulation would go to our own window.
-	if appName := kb.FrontAppName(); appName != "" {
-		slog.Debug("captureText: frontmost app", "app", appName)
-		if strings.Contains(appName, "GhostSpell") {
-			slog.Warn("captureText: GhostSpell window is focused, skipping capture", "window", appName)
-			return "", false, captureViaCGEvent, fmt.Errorf("cannot capture from GhostSpell window — switch to another app first")
-		}
+	appName := kb.FrontAppName()
+	slog.Info("captureText: foreground window", "app", appName, "empty", appName == "")
+	if appName != "" && strings.Contains(appName, "GhostSpell") {
+		slog.Warn("captureText: GhostSpell window is focused, skipping capture", "window", appName)
+		return "", false, captureViaCGEvent, fmt.Errorf("cannot capture from GhostSpell window — switch to another app first")
 	}
 
 	// --- Strategy 1: Accessibility API (macOS) ---
@@ -106,7 +105,7 @@ func captureText(
 	if err != nil {
 		return "", false, captureViaCGEvent, fmt.Errorf("read clipboard: %w", err)
 	}
-	slog.Debug("captureText: clipboard read", "len", len(text), "empty", text == "")
+	slog.Info("captureText: clipboard after Copy", "len", len(text), "empty", text == "")
 
 	if text != "" {
 		slog.Info("Selection detected", "prompt", promptName, "len", len(text))
@@ -131,7 +130,7 @@ func captureText(
 	if err != nil {
 		return "", false, captureViaCGEvent, fmt.Errorf("read clipboard after select-all: %w", err)
 	}
-	slog.Debug("captureText: final clipboard read", "len", len(text))
+	slog.Info("captureText: clipboard after SelectAll+Copy", "len", len(text))
 
 	if text != "" {
 		return text, false, captureViaCGEvent, nil
@@ -199,7 +198,7 @@ func captureText(
 	if text != "" {
 		slog.Info("captureText: got text via osascript fallback", "len", len(text))
 	} else {
-		slog.Debug("captureText: osascript fallback also returned empty")
+		slog.Info("captureText: all strategies returned empty", "foreground", appName)
 	}
 
 	return text, false, captureViaScript, nil
