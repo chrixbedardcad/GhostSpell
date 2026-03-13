@@ -103,8 +103,8 @@ func AvailableLocalModels() []LocalModel {
 		{
 			Name:     "phi-4-mini",
 			FileName: "Phi-4-mini-instruct-Q4_K_M.gguf",
-			URL:      "https://huggingface.co/bartowski/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf",
-			Size:     2_360_000_000,
+			URL:      "https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF/resolve/main/Phi-4-mini-instruct-Q4_K_M.gguf",
+			Size:     2_490_000_000,
 			Desc:     "Microsoft's Phi-4 Mini (3.8B). Excellent reasoning and grammar. Needs 4GB+ RAM.",
 		},
 		{

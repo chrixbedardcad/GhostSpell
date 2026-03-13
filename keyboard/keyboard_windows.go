@@ -93,14 +93,15 @@ func sendKeyComboAtomic(modifier, key uint16) error {
 		makeInput(key, false),
 		makeInput(modifier, false),
 	}
-	ret, _, _ := procSendInput.Call(
+	ret, _, err := procSendInput.Call(
 		4,
 		uintptr(unsafe.Pointer(&inputs[0])),
 		unsafe.Sizeof(inputs[0]),
 	)
 	if ret != 4 {
-		return fmt.Errorf("SendInput: expected 4 events injected, got %d", ret)
+		return fmt.Errorf("SendInput: expected 4 events injected, got %d (err=%v)", ret, err)
 	}
+	slog.Debug("SendInput: keystroke sent", "modifier", fmt.Sprintf("0x%02X", modifier), "key", fmt.Sprintf("0x%02X", key), "injected", ret)
 	return nil
 }
 
@@ -165,10 +166,12 @@ func (s *WindowsSimulator) CopyScript() error        { return fmt.Errorf("not su
 func (s *WindowsSimulator) PasteScript() error       { return fmt.Errorf("not supported") }
 
 func (s *WindowsSimulator) SelectAll() error {
+	slog.Debug("Windows SelectAll: sending Ctrl+A", "foreground", s.FrontAppName())
 	return sendKeyComboAtomic(vkControl, vkA)
 }
 
 func (s *WindowsSimulator) Copy() error {
+	slog.Debug("Windows Copy: sending Ctrl+C", "foreground", s.FrontAppName())
 	return sendKeyComboAtomic(vkControl, vkC)
 }
 
