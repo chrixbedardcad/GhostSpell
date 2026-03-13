@@ -89,12 +89,22 @@ func ShowWizardOnApp(svc *SettingsService, app *application.App, cfg *config.Con
 // svc must be the SettingsService that was pre-registered on the app before Run().
 func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, onSaved func()) {
 	guiLog("[GUI] ShowSettings (async) called")
+
+	// Always close any previous settings window before creating a new one.
+	// This covers normal re-opens, but also edge cases where the closing
+	// event was missed or the window ended up behind other windows.
 	settingsOpenMu.Lock()
-	if settingsOpen {
-		settingsOpenMu.Unlock()
-		guiLog("[GUI] ShowSettings: window already open, skipping")
-		return
+	prev := svc.window
+	svc.window = nil
+	settingsOpen = false
+	settingsOpenMu.Unlock()
+
+	if prev != nil {
+		guiLog("[GUI] ShowSettings: closing previous window before reopening")
+		prev.Close()
 	}
+
+	settingsOpenMu.Lock()
 	settingsOpen = true
 	settingsOpenMu.Unlock()
 
@@ -133,6 +143,7 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 		guiLog("[GUI] Settings window closing event received")
 		settingsOpenMu.Lock()
 		settingsOpen = false
+		svc.window = nil
 		settingsOpenMu.Unlock()
 	})
 
