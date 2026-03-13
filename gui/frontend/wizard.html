@@ -351,7 +351,7 @@
       </div>
       <div class="card-desc">
         Runs 100% on your machine &mdash; private, offline, no account needed.<br>
-        Download a model and start correcting instantly.
+        Powered by Qwen3.5. Download a model (~1 GB) and start instantly.
       </div>
     </div>
 
@@ -554,7 +554,7 @@
     <h2 style="font-size:1.1em;margin-bottom:6px;color:#bac2de">Ghost-AI Setup</h2>
     <div style="font-size:0.82em;color:#6c7086;margin-bottom:10px;line-height:1.5">
       Ghost-AI runs locally on your machine &mdash; private, offline, no account needed.<br>
-      Just download a grammar model to get started.
+      Powered by Qwen3.5 &mdash; praised for exceptional intelligence density.
     </div>
     <div style="display:flex;gap:12px;margin-bottom:8px">
       <span style="font-size:0.75em;color:#89b4fa">&#128274; Your text stays on your device</span>
@@ -775,7 +775,7 @@ async function welcomeDownloadAndStart() {
   const btn = document.getElementById('welcome-start-btn');
   const statusEl = document.getElementById('welcome-status');
   if (!welcomeSelectedModel) {
-    welcomeSelectedModel = 'qwen3-1.7b';
+    welcomeSelectedModel = 'qwen3.5-2b';
   }
   btn.disabled = true;
 
@@ -1098,20 +1098,28 @@ async function localRefresh() {
 }
 
 function renderLocalReady(container, models, available) {
-  let html = '<div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0"><strong>Ghost-AI is ready!</strong> Select a model:</div>';
-  html += '<div class="form-group" style="margin-bottom:4px"><select id="local-model-select">';
+  let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:4px"><img src="/ghostAI.png" width="22" height="22"><strong style="font-size:0.88em;color:#bac2de">Ghost-AI is ready!</strong></div>';
+  // Show installed models as selectable cards
+  html += '<div style="font-size:0.78em;color:#6c7086;margin-bottom:8px">Select a model to use:</div>';
   for (const m of models) {
-    const badge = m.tag ? ' (' + m.tag + ')' : '';
-    const sizeMB = m.size ? ' - ' + Math.round(m.size / 1024 / 1024) + ' MB' : '';
-    html += '<option value="' + esc(m.name) + '">' + esc(m.name) + badge + sizeMB + '</option>';
+    const sizeMB = m.size ? Math.round(m.size / 1024 / 1024) : '?';
+    const badge = m.tag ? tagBadgeHTML(m.tag) : '';
+    html += `<div class="model-card" style="cursor:pointer" onclick="document.getElementById('local-model-select').value='${escJS(m.name)}';document.querySelectorAll('.local-sel-card').forEach(c=>c.style.borderColor='#45475a');this.style.borderColor='#89b4fa'" class="local-sel-card">
+      <div class="model-info">
+        <div class="model-name"><span style="color:#a6e3a1;font-size:0.85em">&#10003;</span> ${esc(m.name)}${badge}</div>
+        <div class="model-meta">${sizeMB} MB &mdash; installed</div>
+        ${m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
+      </div>
+    </div>`;
   }
-  html += '</select></div>';
-  html += '<div style="margin-top:12px"><button class="btn btn-primary" onclick="localFinish()">Use this model</button></div>';
+  html += '<input type="hidden" id="local-model-select" value="' + esc(models[0].name) + '">';
+  html += '<div style="margin-top:10px"><button class="btn btn-primary" onclick="localFinish()">Use this model</button></div>';
   // Show available models not yet downloaded
   const installedNames = new Set(models.map(m => m.name));
   const remaining = (available || []).filter(m => !installedNames.has(m.name));
   if (remaining.length > 0) {
     html += '<div style="font-size:0.82em;color:#6c7086;margin-top:16px;margin-bottom:8px;border-top:1px solid #45475a;padding-top:12px">Download more models</div>';
+    html += '<div style="font-size:0.72em;color:#f9e2af;margin-bottom:8px">&#128161; Larger models = better results, but need more RAM.</div>';
     for (const m of remaining) {
       const sizeMB = Math.round(m.size / 1024 / 1024);
       const badge = m.tag ? tagBadgeHTML(m.tag) : '';
@@ -1120,17 +1128,20 @@ function renderLocalReady(container, models, available) {
           <div class="model-info">
             <div class="model-name">${esc(m.name)}${badge}</div>
             <div class="model-meta">${sizeMB} MB download</div>
-            ${m.desc ? '<div style="font-size:0.75em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
+            ${m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
           </div>
           <button class="btn btn-primary btn-sm" onclick="localDownloadModel('${escJS(m.name)}')" id="local-dl-${esc(m.name)}">&#9729; Download</button>
         </div>`;
     }
   }
   container.innerHTML = html;
+  // Auto-select first installed model card
+  const firstCard = container.querySelector('.model-card');
+  if (firstCard) firstCard.style.borderColor = '#89b4fa';
 }
 
 function renderLocalNeedModel(container, available) {
-  let html = '<div style="font-size:0.88em;color:#bac2de;line-height:1.6;padding:8px 0">Download a grammar model to get started:</div>';
+  let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:4px"><img src="/ghostAI.png" width="22" height="22"><span style="font-size:0.88em;color:#bac2de">Download a model to get started:</span></div>';
   html += '<div style="font-size:0.72em;color:#f9e2af;margin-bottom:8px">&#128161; Larger models = better results, but need more RAM and disk space.</div>';
   for (const m of available) {
     const sizeMB = Math.round(m.size / 1024 / 1024);
@@ -1155,7 +1166,7 @@ function renderLocalNeedAll(container, available) {
 
 async function localSetupAll() {
   // Ghost-AI engine is built-in — just download the default model.
-  await localDownloadModel('qwen3-1.7b');
+  await localDownloadModel('qwen3.5-2b');
 }
 
 async function localDownloadModel(name) {
