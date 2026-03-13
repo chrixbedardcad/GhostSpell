@@ -739,9 +739,11 @@
       <div class="status" id="update-status"></div>
     </div>
 
-    <div style="background:#313244;border:1px solid #45475a;border-radius:8px;padding:14px;margin-top:16px">
-      <div style="font-size:0.82em;font-weight:600;color:#cdd6f4;margin-bottom:8px">Open Source Licenses</div>
-      <div style="font-size:0.75em;color:#a6adc8;line-height:1.6">
+    <details style="background:#313244;border:1px solid #45475a;border-radius:8px;padding:10px 14px;margin-top:16px;cursor:pointer">
+      <summary style="font-size:0.82em;font-weight:600;color:#cdd6f4;list-style:none;display:flex;align-items:center;gap:6px">
+        <span id="license-arrow" style="font-size:0.7em;transition:transform 0.2s">&#9654;</span> Open Source Licenses
+      </summary>
+      <div style="font-size:0.75em;color:#a6adc8;line-height:1.6;margin-top:10px">
         <div style="margin-bottom:6px">
           <strong>llama.cpp</strong> — MIT License<br>
           Copyright (c) 2023-2026 The ggml authors.<br>
@@ -761,7 +763,7 @@
           <a href="#" onclick="wails.Browser.OpenURL('https://huggingface.co/Qwen'); return false;" style="color:#89b4fa;text-decoration:none;margin-left:4px">Source</a>
         </div>
       </div>
-    </div>
+    </details>
   </div>
 
 </div><!-- /tab-content -->
@@ -1753,7 +1755,14 @@ async function doUpdate() {
 }
 
 // ---- Boot ----
-document.addEventListener('DOMContentLoaded', () => { init(); autoCheckForUpdate(); });
+document.addEventListener('DOMContentLoaded', () => {
+  init(); autoCheckForUpdate();
+  const ld = document.querySelector('#tab-about details');
+  if (ld) ld.addEventListener('toggle', () => {
+    const arrow = document.getElementById('license-arrow');
+    if (arrow) arrow.style.transform = ld.open ? 'rotate(90deg)' : '';
+  });
+});
 </script>
 </body>
 </html>
