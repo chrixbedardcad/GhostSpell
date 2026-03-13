@@ -2,6 +2,7 @@ package ghostai
 
 import (
 	"context"
+	"log/slog"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -187,7 +188,7 @@ func (e *Engine) Close() error {
 		return nil
 	}
 
-	e.tracer.Info("close: destroying engine")
+	slog.Info("[ghost-ai] close: destroying engine")
 	e.be.close()
 	e.closed = true
 	return nil

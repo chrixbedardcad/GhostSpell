@@ -1,6 +1,7 @@
 package ghostai
 
 import (
+	"log/slog"
 	"sync/atomic"
 	"time"
 )
@@ -57,7 +58,7 @@ func (cb *CircuitBreaker) Allow() error {
 			// Transition to half-open: let one request through.
 			if cb.state.CompareAndSwap(circuitOpen, circuitHalfOpen) {
 				if cb.tracer != nil {
-					cb.tracer.Debug("circuit: half-open, testing next request")
+					slog.Debug("[ghost-ai] circuit: half-open, testing next request")
 				}
 			}
 			return nil

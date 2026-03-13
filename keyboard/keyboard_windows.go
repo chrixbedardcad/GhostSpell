@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	user32         = syscall.NewLazyDLL("user32.dll")
-	procSendInput  = user32.NewProc("SendInput")
+	user32                = syscall.NewLazyDLL("user32.dll")
+	procSendInput         = user32.NewProc("SendInput")
+	procGetAsyncKeyState  = user32.NewProc("GetAsyncKeyState")
 )
 
 const (
@@ -19,6 +20,10 @@ const (
 	keyEventUp    = 0x0002
 
 	vkControl = 0x11
+	vkShift   = 0x10
+	vkMenu    = 0x12 // Alt
+	vkLWin    = 0x5B
+	vkRWin    = 0x5C
 	vkA       = 0x41
 	vkC       = 0x43
 	vkV       = 0x56
@@ -89,7 +94,30 @@ func sendKeyCombo(modifier, key uint16) error {
 	return nil
 }
 
-func (s *WindowsSimulator) WaitForModifierRelease() {}
+// WaitForModifierRelease polls GetAsyncKeyState until all modifier keys
+// (Ctrl, Shift, Alt, Win) are physically released. This prevents our
+// synthetic Ctrl+C/V from colliding with the user's hotkey modifiers.
+func (s *WindowsSimulator) WaitForModifierRelease() {
+	modKeys := []uint16{vkControl, vkShift, vkMenu, vkLWin, vkRWin}
+	const maxWait = 500 * time.Millisecond
+	const pollInterval = 5 * time.Millisecond
+	deadline := time.Now().Add(maxWait)
+
+	for time.Now().Before(deadline) {
+		anyPressed := false
+		for _, vk := range modKeys {
+			ret, _, _ := procGetAsyncKeyState.Call(uintptr(vk))
+			if ret&0x8000 != 0 { // high bit = currently pressed
+				anyPressed = true
+				break
+			}
+		}
+		if !anyPressed {
+			return
+		}
+		time.Sleep(pollInterval)
+	}
+}
 func (s *WindowsSimulator) ReadSelectedText() string        { return "" }
 func (s *WindowsSimulator) ReadAllText() string              { return "" }
 func (s *WindowsSimulator) WriteSelectedText(string) bool { return false }
