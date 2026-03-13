@@ -959,6 +959,7 @@ const TAG_BADGES = {
   fast:        {label:'FAST',        cls:'badge-fast'},
   cheap:       {label:'CHEAP',       cls:'badge-free'},
   heavy:       {label:'HEAVY',       cls:'badge-heavy'},
+  deprecated:  {label:'DEPRECATED',  cls:'badge-heavy'},
 };
 
 let modelList = [];
@@ -1149,9 +1150,9 @@ function renderLocalModels(container, installedModels, allAvailable) {
     // Action buttons
     html += '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0">';
     if (m.installed) {
-      html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();localDeleteModelWizard(\'' + escJS(m.name) + '\')" style="font-size:0.7em;padding:3px 6px" title="Delete model">&#128465;</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();localDeleteModelWizard(\'' + escJS(m.name) + '\')" style="font-size:0.7em" title="Delete model">\u2715 Delete</button>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();localDownloadModel(\'' + escJS(m.name) + '\')" id="local-dl-' + esc(m.name) + '" style="font-size:0.75em">Download</button>';
+      html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();localDownloadModel(\'' + escJS(m.name) + '\')" id="local-dl-' + esc(m.name) + '" style="font-size:0.75em">\u2B07 Download</button>';
     }
     html += '</div>';
     html += '</div>';

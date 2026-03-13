@@ -47,10 +47,15 @@ type Config struct {
 	// State readers — called to build the menu.
 	GetActivePrompt func() int
 	GetPromptNames  func() []string
+	GetPromptIcons  func() []string // emoji icons per prompt (same order as names)
 	GetModelLabels  func() []ModelLabel
 
 	// OnUpdateClick is called when the "Update available" menu item is clicked.
 	OnUpdateClick func()
+
+	// GetInitError returns a non-empty string when the LLM failed to init at startup.
+	// Used to show a warning in the tray menu so users know to fix their model config.
+	GetInitError func() string
 }
 
 // trayState holds the runtime state of the system tray.
@@ -249,6 +254,18 @@ func (ts *trayState) refreshMenu() {
 		})
 	}
 
+	// Model error indicator.
+	if ts.cfg.GetInitError != nil {
+		if errMsg := ts.cfg.GetInitError(); errMsg != "" {
+			errItem := menu.Add("Model error — open Settings")
+			errItem.OnClick(func(ctx *application.Context) {
+				if ts.cfg.OnSettings != nil {
+					ts.cfg.OnSettings()
+				}
+			})
+		}
+	}
+
 	menu.AddSeparator()
 
 	// Prompt selection (radio group).
@@ -262,8 +279,17 @@ func (ts *trayState) refreshMenu() {
 		promptNames = ts.cfg.GetPromptNames()
 	}
 
+	var promptIcons []string
+	if ts.cfg.GetPromptIcons != nil {
+		promptIcons = ts.cfg.GetPromptIcons()
+	}
+
 	for i, name := range promptNames {
-		item := menu.AddRadio(name, i == activePrompt)
+		displayName := name
+		if i < len(promptIcons) && promptIcons[i] != "" {
+			displayName = promptIcons[i] + " " + name
+		}
+		item := menu.AddRadio(displayName, i == activePrompt)
 		idx := i // capture for closure
 		item.OnClick(func(ctx *application.Context) {
 			if ts.cfg.OnPromptSelect != nil {

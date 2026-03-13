@@ -189,8 +189,11 @@ func main() {
 			needsSetup = true
 		}
 	}
+	var initError error
 	if !needsSetup {
-		// Initialize LLM client — if it fails, fall back to the wizard.
+		// Initialize LLM client — if it fails and no providers exist, show wizard.
+		// If providers exist but model fails (e.g. legacy model removed), start
+		// the app with an error state instead of forcing the wizard.
 		var client llm.Client
 		if cfg.DefaultLLM != "" {
 			def := cfg.LLMProviders[cfg.DefaultLLM]
@@ -199,9 +202,17 @@ func main() {
 			client, err = llm.NewClient(cfg)
 		}
 		if err != nil {
-			slog.Warn("LLM init failed, will show setup wizard", "error", err)
-			fmt.Fprintf(os.Stderr, "LLM init failed: %v — opening setup wizard\n", err)
-			needsSetup = true
+			if len(cfg.LLMProviders) > 0 {
+				// Providers configured but model failed — don't force wizard.
+				slog.Warn("LLM init failed (model error), starting without active model", "error", err)
+				fmt.Fprintf(os.Stderr, "LLM init failed: %v — open Settings to fix\n", err)
+				initError = err
+				sound.Init(*cfg.SoundEnabled)
+			} else {
+				slog.Warn("LLM init failed, will show setup wizard", "error", err)
+				fmt.Fprintf(os.Stderr, "LLM init failed: %v — opening setup wizard\n", err)
+				needsSetup = true
+			}
 		} else {
 			router = mode.NewRouter(cfg, client)
 			sound.Init(*cfg.SoundEnabled)
@@ -218,7 +229,7 @@ func main() {
 		"needs_setup", needsSetup,
 	)
 
-	runApp(cfg, router, configPath, needsSetup)
+	runApp(cfg, router, configPath, needsSetup, initError)
 }
 
 // printStatus prints provider, mode, and hotkey info to stdout.

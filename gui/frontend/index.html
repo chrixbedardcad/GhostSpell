@@ -1070,6 +1070,7 @@ const TAG_BADGES = {
   fast:        {label:'FAST',        cls:'badge-fast'},
   cheap:       {label:'CHEAP',       cls:'badge-free'},
   heavy:       {label:'HEAVY',       cls:'badge-heavy'},
+  deprecated:  {label:'DEPRECATED',  cls:'badge-heavy'},
 };
 
 let formModelList = [];
@@ -1326,9 +1327,9 @@ async function onLocalRefresh() {
     html += '<div style="display:flex;gap:4px" onclick="event.stopPropagation()">';
     if (m.installed) {
       html += '<button class="btn btn-secondary btn-sm" onclick="localSetFormModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">' + (selected ? '\u2714 Selected' : 'Select') + '</button>';
-      html += '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em;padding:3px 6px" title="Delete model">&#128465;</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em" title="Delete model">\u2715 Delete</button>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">Download</button>';
+      html += '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">\u2B07 Download</button>';
     }
     html += '</div>';
     html += '</div>';
@@ -1420,7 +1421,7 @@ async function renderPrompts() {
          ondragstart="promptDragStart(event, ${i})" ondragover="promptDragOver(event)" ondrop="promptDrop(event, ${i})">
       <div class="top-row">
         <div>
-          <span class="name">${esc(p.name)}</span>
+          ${p.icon ? '<span style="margin-right:4px">' + esc(p.icon) + '</span>' : ''}<span class="name">${esc(p.name)}</span>
           ${p.llm ? '<span class="llm-badge">' + esc(p.llm) + '</span>' : ''}
         </div>
         <div class="actions">`;
@@ -1447,10 +1448,24 @@ function buildInlineForm(idx, p) {
   for (const label of Object.keys(providers)) {
     llmOpts += '<option value="' + esc(label) + '"' + (label === (p.llm || '') ? ' selected' : '') + '>' + esc(label) + '</option>';
   }
+  const iconChoices = ['\u270F\uFE0F','\uD83D\uDC8E','\uD83D\uDE04','\uD83D\uDCDD','\u2702\uFE0F','\uD83C\uDF10','\uD83D\uDCA1','\uD83D\uDD25','\uD83C\uDFAF','\u2728','\uD83D\uDE80','\uD83E\uDDE0','\uD83D\uDCAC','\uD83D\uDD0D','\uD83C\uDFA8'];
+  const currentIcon = p.icon || '';
+  let iconPicker = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">';
+  iconPicker += '<span class="icon-choice' + (!currentIcon ? ' selected' : '') + '" onclick="selectPromptIcon(this, \'\')" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid ' + (!currentIcon ? '#89b4fa' : '#45475a') + ';font-size:0.85em;color:#6c7086">none</span>';
+  for (const ic of iconChoices) {
+    const sel = ic === currentIcon;
+    iconPicker += '<span class="icon-choice' + (sel ? ' selected' : '') + '" onclick="selectPromptIcon(this, \'' + ic + '\')" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid ' + (sel ? '#89b4fa' : '#45475a') + ';font-size:1.1em">' + ic + '</span>';
+  }
+  iconPicker += '</div>';
   return `<div class="inline-edit">
     <div class="form-group">
       <label>Name</label>
       <input type="text" id="pe-name" value="${esc(p.name)}">
+    </div>
+    <div class="form-group">
+      <label>Icon</label>
+      <input type="hidden" id="pe-icon" value="${esc(currentIcon)}">
+      ${iconPicker}
     </div>
     <div class="form-group">
       <label>Prompt</label>
@@ -1477,11 +1492,17 @@ function cancelInlineEdit() {
   renderPrompts();
 }
 
+function selectPromptIcon(el, icon) {
+  document.getElementById('pe-icon').value = icon;
+  el.parentElement.querySelectorAll('.icon-choice').forEach(s => s.style.borderColor = '#45475a');
+  el.style.borderColor = '#89b4fa';
+}
+
 function addPromptInline() {
   // Add a blank prompt, then open it for editing
   const prompts = configData.prompts || [];
   const newIdx = prompts.length;
-  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '').then(result => {
+  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '').then(result => {
     if (result && result.startsWith('ok')) {
       promptEditIdx = newIdx;
       renderPrompts();
@@ -1495,9 +1516,10 @@ async function saveInlinePrompt(idx) {
   const name = document.getElementById('pe-name').value.trim();
   const promptText = document.getElementById('pe-text').value.trim();
   const llm = document.getElementById('pe-llm').value;
+  const icon = document.getElementById('pe-icon') ? document.getElementById('pe-icon').value : '';
   if (!name) { setStatus('prompt-status', 'error', 'Name is required'); return; }
   if (!promptText) { setStatus('prompt-status', 'error', 'Prompt is required'); return; }
-  const result = await goCall('savePrompt', idx, name, promptText, llm);
+  const result = await goCall('savePrompt', idx, name, promptText, llm, icon);
   if (result && result.startsWith('ok')) {
     promptEditIdx = -1;
     renderPrompts();

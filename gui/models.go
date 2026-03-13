@@ -65,8 +65,9 @@ func KnownModels(provider string) []ModelInfo {
 		}
 	case "local":
 		return []ModelInfo{
-			{Name: "qwen3-0.6b", Tag: "recommended"},
-			{Name: "qwen3-1.7b", Tag: "best"},
+			{Name: "qwen3.5-2b", Tag: "recommended"},
+			{Name: "qwen3.5-0.8b", Tag: "fast"},
+			{Name: "qwen3.5-4b", Tag: "best"},
 		}
 	case "ollama":
 		return []ModelInfo{

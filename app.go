@@ -506,7 +506,7 @@ func checkAndNotifyUpdate(setUpdate func(string)) {
 	}
 }
 
-func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSetup bool) {
+func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSetup bool, initError error) {
 	cb := newClipboard()
 	kb := newKeyboard()
 	hk := newHotkeyManager()
@@ -624,6 +624,10 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}()
 	}
 
+	// initErr tracks the LLM init error so the tray can display it.
+	// Cleared when the user fixes the model via settings.
+	var initErr error = initError
+
 	trayCfg := tray.Config{
 		IconPNG:         assets.TrayIcon64,
 		TemplateIconPNG: assets.TrayIconMacOS,
@@ -654,6 +658,16 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				if router != nil {
 					router.ResetClients()
 				}
+				// If we had an init error and the user fixed the config, try to init the router.
+				if router == nil && initErr != nil && cfg.DefaultLLM != "" {
+					def := cfg.LLMProviders[cfg.DefaultLLM]
+					client, clientErr := llm.NewClientFromDef(def)
+					if clientErr == nil {
+						router = mode.NewRouter(cfg, client)
+						initErr = nil
+						slog.Info("Model error resolved after settings save")
+					}
+				}
 				slog.Info("Live config reloaded after settings save")
 				refreshHotkeys()
 			})
@@ -669,6 +683,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		},
 		OnUpdateClick: func() {
 			gui.ShowUpdateWindow(settingsSvc, cfg, configPath)
+		},
+		GetInitError: func() string {
+			if initErr != nil {
+				return initErr.Error()
+			}
+			return ""
 		},
 		OnExit: func() {
 			slog.Info("Exit requested via tray menu")
@@ -694,6 +714,15 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				names[i] = p.Name
 			}
 			return names
+		},
+		GetPromptIcons: func() []string {
+			mu.Lock()
+			defer mu.Unlock()
+			icons := make([]string, len(cfg.Prompts))
+			for i, p := range cfg.Prompts {
+				icons[i] = p.Icon
+			}
+			return icons
 		},
 		GetModelLabels: func() []tray.ModelLabel {
 			mu.Lock()

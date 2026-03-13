@@ -142,6 +142,14 @@ func LocalModelsDir() (string, error) {
 	return dir, nil
 }
 
+// legacyModelNames maps model names that were removed from the curated list
+// to their GGUF filenames, so existing configs keep working after upgrades.
+// Add an entry here whenever a model is removed from AvailableLocalModels().
+var legacyModelNames = map[string]string{
+	"qwen3-8b":  "Qwen3-8B-Q4_K_M.gguf",
+	"qwen3-0.6b": "Qwen3-0.6B-Q4_K_M.gguf",
+}
+
 // resolveLocalModel maps a friendly model name to the GGUF file path.
 func resolveLocalModel(name string) (string, error) {
 	modelsDir, err := LocalModelsDir()
@@ -149,7 +157,7 @@ func resolveLocalModel(name string) (string, error) {
 		return "", err
 	}
 
-	// Map friendly names to filenames.
+	// Map friendly names to filenames via curated list.
 	for _, m := range AvailableLocalModels() {
 		if m.Name == name {
 			path := filepath.Join(modelsDir, m.FileName)
@@ -158,6 +166,16 @@ func resolveLocalModel(name string) (string, error) {
 			}
 			return path, nil
 		}
+	}
+
+	// Check legacy model names (removed from curated list but may still be in config).
+	if fileName, ok := legacyModelNames[name]; ok {
+		path := filepath.Join(modelsDir, fileName)
+		if _, err := os.Stat(path); err == nil {
+			slog.Info("[ghost-ai] resolved legacy model name", "name", name, "file", fileName)
+			return path, nil
+		}
+		// Legacy file not on disk — fall through to raw filename check.
 	}
 
 	// Assume it's already a filename.
@@ -206,7 +224,17 @@ func InstalledLocalModels() ([]LocalModel, error) {
 			}
 		}
 		if m.Name == "" {
-			m.Name = strings.TrimSuffix(e.Name(), ".gguf")
+			// Check legacy model names for a friendly name + deprecated tag.
+			for legacyName, legacyFile := range legacyModelNames {
+				if legacyFile == e.Name() {
+					m.Name = legacyName
+					m.Tag = "deprecated"
+					break
+				}
+			}
+			if m.Name == "" {
+				m.Name = strings.TrimSuffix(e.Name(), ".gguf")
+			}
 		}
 		installed = append(installed, m)
 	}

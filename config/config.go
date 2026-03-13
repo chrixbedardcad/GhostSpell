@@ -15,6 +15,7 @@ type PromptEntry struct {
 	Name   string `json:"name"`
 	Prompt string `json:"prompt"`
 	LLM    string `json:"llm,omitempty"`
+	Icon   string `json:"icon,omitempty"` // emoji icon shown in tray menu (e.g. "✏️")
 }
 
 // LLMProviderDef defines a named LLM provider configuration.
@@ -86,12 +87,12 @@ const (
 // DefaultPrompts returns the default prompt list.
 func DefaultPrompts() []PromptEntry {
 	return []PromptEntry{
-		{Name: "Correct", Prompt: DefaultCorrectPrompt},
-		{Name: "Polish", Prompt: DefaultPolishPrompt},
-		{Name: "Funny", Prompt: DefaultFunnyPrompt},
-		{Name: "Elaborate", Prompt: DefaultElaboratePrompt},
-		{Name: "Shorten", Prompt: DefaultShortenPrompt},
-		{Name: "Translate", Prompt: DefaultTranslatePrompt},
+		{Name: "Correct", Prompt: DefaultCorrectPrompt, Icon: "\u270F\uFE0F"},
+		{Name: "Polish", Prompt: DefaultPolishPrompt, Icon: "\U0001F48E"},
+		{Name: "Funny", Prompt: DefaultFunnyPrompt, Icon: "\U0001F604"},
+		{Name: "Elaborate", Prompt: DefaultElaboratePrompt, Icon: "\U0001F4DD"},
+		{Name: "Shorten", Prompt: DefaultShortenPrompt, Icon: "\u2702\uFE0F"},
+		{Name: "Translate", Prompt: DefaultTranslatePrompt, Icon: "\U0001F310"},
 	}
 }
 

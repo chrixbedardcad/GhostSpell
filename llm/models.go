@@ -13,7 +13,7 @@ var cheapModels = map[string]string{
 	"gemini":    "gemini-2.5-flash-lite",
 	"xai":       "grok-3-mini",
 	"deepseek":  "deepseek-chat",
-	"local":     "qwen3-0.6b",
+	"local":     "qwen3.5-0.8b",
 }
 
 // ResolveModelTag checks if the model string is a known tag (e.g. "cheap")
