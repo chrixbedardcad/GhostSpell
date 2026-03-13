@@ -118,7 +118,7 @@ func DefaultConfig() Config {
 		MaxInputChars:     2000,
 		PreserveClipboard: true,
 		SoundEnabled:      boolPtr(true),
-		LogLevel:          "info",
+		LogLevel:          "debug",
 		LogFile:           "ghostspell.log",
 	}
 }
