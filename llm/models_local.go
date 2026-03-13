@@ -94,6 +94,7 @@ func AvailableLocalModels() []LocalModel {
 			FileName: "Qwen3-8B-Q4_K_M.gguf",
 			URL:      "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
 			Size:     5_030_000_000,
+			Tag:      "heavy",
 			Desc:     "Excellent quality. Near cloud-level corrections. Needs 8GB+ RAM.",
 		},
 		{
