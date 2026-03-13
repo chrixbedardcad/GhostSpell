@@ -27,8 +27,17 @@ Write-Info "Latest version: $Version"
 # --- Download binaries ------------------------------------------------------
 
 # Kill any running GhostSpell before overwriting the binaries.
-Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+$procs = Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue
+if ($procs) {
+    Write-Info "Stopping running GhostSpell..."
+    $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+    $waited = 0
+    while ($waited -lt 10) {
+        Start-Sleep -Seconds 1
+        $waited++
+        if (-not (Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue)) { break }
+    }
+}
 
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null

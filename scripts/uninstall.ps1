@@ -20,14 +20,44 @@ function Write-Ok   { param($Msg) Write-Host $Msg -ForegroundColor Green }
 # --- Stop running instance --------------------------------------------------
 
 Write-Info "Stopping GhostSpell if running..."
-Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+$procs = Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue
+if ($procs) {
+    $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Wait up to 10 seconds for the process to fully exit and release file handles.
+    $waited = 0
+    while ($waited -lt 10) {
+        Start-Sleep -Seconds 1
+        $waited++
+        $still = Get-Process -Name "ghostspell*" -ErrorAction SilentlyContinue
+        if (-not $still) { break }
+    }
+    if ($waited -ge 10) {
+        Write-Host "Warning: GhostSpell may still be running. Trying to continue..." -ForegroundColor Yellow
+    }
+}
 
 # --- Remove binaries --------------------------------------------------------
 
 if (Test-Path $InstallDir) {
     Write-Info "Removing $InstallDir..."
-    Remove-Item -Recurse -Force $InstallDir
+    # Retry up to 3 times — file handles may take a moment to release after process exit.
+    $attempt = 0
+    $removed = $false
+    while ($attempt -lt 3 -and -not $removed) {
+        try {
+            Remove-Item -Recurse -Force $InstallDir
+            $removed = $true
+        } catch {
+            $attempt++
+            if ($attempt -lt 3) {
+                Write-Host "  Retrying in 2 seconds (files still locked)..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 2
+            } else {
+                Write-Host "  Could not remove $InstallDir — files may still be locked." -ForegroundColor Red
+                Write-Host "  Close GhostSpell and try again, or delete the folder manually." -ForegroundColor Red
+            }
+        }
+    }
 }
 
 # --- Remove app data --------------------------------------------------------
