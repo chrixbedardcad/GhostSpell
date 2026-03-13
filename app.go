@@ -662,23 +662,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			scheduleHotkeyRecovery()
 		},
 		OnUpdateClick: func() {
-			// Open Settings to the About tab (first tab) which has the update UI.
-			gui.ShowSettings(settingsSvc, cfg, configPath, func() {
-				newCfg, err := config.LoadRaw(configPath)
-				if err != nil {
-					slog.Error("Failed to reload config after settings save", "error", err)
-					return
-				}
-				mu.Lock()
-				*cfg = *newCfg
-				mu.Unlock()
-				sound.SetEnabled(*cfg.SoundEnabled)
-				if router != nil {
-					router.ResetClients()
-				}
-				slog.Info("Live config reloaded after settings save")
-				refreshHotkeys()
-			})
+			gui.ShowUpdateWindow(settingsSvc, cfg, configPath)
 		},
 		OnExit: func() {
 			slog.Info("Exit requested via tray menu")

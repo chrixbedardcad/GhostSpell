@@ -135,6 +135,51 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 	guiLog("[GUI] Settings window created on running app")
 }
 
+// updateGuard prevents multiple update windows.
+var (
+	updateOpen   bool
+	updateOpenMu sync.Mutex
+)
+
+// ShowUpdateWindow opens the update popup window on the running tray Wails app.
+func ShowUpdateWindow(svc *SettingsService, cfg *config.Config, configPath string) {
+	updateOpenMu.Lock()
+	if updateOpen {
+		updateOpenMu.Unlock()
+		return
+	}
+	updateOpen = true
+	updateOpenMu.Unlock()
+
+	svc.Reset(cfg, configPath, nil)
+
+	app := application.Get()
+	if app == nil {
+		updateOpenMu.Lock()
+		updateOpen = false
+		updateOpenMu.Unlock()
+		return
+	}
+	svc.app = app
+
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "GhostSpell Update",
+		Width:  400,
+		Height: 420,
+		URL:    "/update.html",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:               application.MacBackdropTranslucent,
+		},
+	})
+
+	win.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		updateOpenMu.Lock()
+		updateOpen = false
+		updateOpenMu.Unlock()
+	})
+}
+
 // showStandaloneWindow creates a standalone Wails app with a settings window
 // and blocks until closed. Used for first-launch setup before the tray exists.
 func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func()) *config.Config {

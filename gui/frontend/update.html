@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GhostSpell Update</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1e1e2e; color: #cdd6f4;
+    min-height: 100vh; padding: 24px;
+  }
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; padding-bottom: 14px;
+    border-bottom: 1px solid #313244;
+  }
+  .header h1 { font-size: 1.2em; font-weight: 600; }
+  .version-box {
+    background: #313244; border-radius: 8px; padding: 16px;
+    margin-bottom: 16px;
+  }
+  .version-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .version-row:last-child { margin-bottom: 0; }
+  .version-label { font-size: 0.85em; color: #6c7086; }
+  .version-value { font-size: 0.9em; font-weight: 600; }
+  .version-value.new { color: #a6e3a1; }
+  .version-value.current { color: #89b4fa; }
+  .release-notes {
+    background: #313244; border-radius: 8px; padding: 14px;
+    margin-bottom: 16px; max-height: 200px; overflow-y: auto;
+    font-size: 0.82em; color: #a6adc8; line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .release-notes::-webkit-scrollbar { width: 6px; }
+  .release-notes::-webkit-scrollbar-track { background: transparent; }
+  .release-notes::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+  .release-notes .loading { color: #6c7086; font-style: italic; }
+  .btn-row {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 20px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border: none; border-radius: 6px;
+    font-size: 0.9em; font-weight: 500; cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary { background: #a6e3a1; color: #1e1e2e; }
+  .btn-primary:hover:not(:disabled) { background: #94d990; }
+  .btn-secondary { background: #45475a; color: #cdd6f4; }
+  .btn-secondary:hover:not(:disabled) { background: #585b70; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="/ghost-icon.png" alt="GhostSpell" style="width:32px;height:32px">
+  <h1>Update Available</h1>
+</div>
+
+<div class="version-box">
+  <div class="version-row">
+    <span class="version-label">Current version</span>
+    <span class="version-value current" id="current-ver">...</span>
+  </div>
+  <div class="version-row">
+    <span class="version-label">New version</span>
+    <span class="version-value new" id="new-ver">...</span>
+  </div>
+</div>
+
+<div style="font-size:0.85em;color:#bac2de;margin-bottom:8px;font-weight:500">What's new:</div>
+<div class="release-notes" id="release-notes">
+  <span class="loading">Loading release notes...</span>
+</div>
+
+<div class="btn-row">
+  <button class="btn btn-secondary" onclick="closeSelf()">Later</button>
+  <button class="btn btn-primary" onclick="doUpdate()" id="update-btn">Update Now</button>
+</div>
+
+<script type="module" src="/wails/runtime.js"></script>
+<script>
+const _pkg = 'github.com/chrixbedardcad/GhostSpell/gui';
+async function goCall(fn, ...args) {
+  try {
+    const method = _pkg + '.SettingsService.' + fn.charAt(0).toUpperCase() + fn.slice(1);
+    return await wails.Call.ByName(method, ...args);
+  } catch (e) { console.error('Bridge call failed:', fn, e); return null; }
+}
+
+function esc(s) {
+  const el = document.createElement('span');
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+async function init() {
+  // Get current + latest version
+  const raw = await goCall('checkForUpdate');
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    document.getElementById('current-ver').textContent = 'v' + data.current;
+    document.getElementById('new-ver').textContent = 'v' + data.latest;
+
+    // Fetch release notes from GitHub
+    try {
+      const resp = await fetch('https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest');
+      if (resp.ok) {
+        const rel = await resp.json();
+        const body = rel.body || 'No release notes available.';
+        document.getElementById('release-notes').textContent = body;
+      } else {
+        document.getElementById('release-notes').textContent = 'Could not load release notes.';
+      }
+    } catch(e) {
+      document.getElementById('release-notes').textContent = 'Could not load release notes.';
+    }
+  } catch(e) {}
+}
+
+async function doUpdate() {
+  const btn = document.getElementById('update-btn');
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+  await goCall('updateNow');
+}
+
+function closeSelf() {
+  goCall('closeWindow');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
