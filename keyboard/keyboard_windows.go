@@ -4,15 +4,18 @@ package keyboard
 
 import (
 	"fmt"
+	"log/slog"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
 var (
-	user32                = syscall.NewLazyDLL("user32.dll")
-	procSendInput         = user32.NewProc("SendInput")
-	procGetAsyncKeyState  = user32.NewProc("GetAsyncKeyState")
+	user32                    = syscall.NewLazyDLL("user32.dll")
+	procSendInput             = user32.NewProc("SendInput")
+	procGetAsyncKeyState      = user32.NewProc("GetAsyncKeyState")
+	procGetForegroundWindow   = user32.NewProc("GetForegroundWindow")
+	procGetWindowTextW        = user32.NewProc("GetWindowTextW")
 )
 
 const (
@@ -54,18 +57,22 @@ func NewWindowsSimulator() *WindowsSimulator {
 	return &WindowsSimulator{}
 }
 
-func sendKey(vk uint16, down bool) error {
+func makeInput(vk uint16, down bool) input {
 	var flags uint32
 	if !down {
 		flags = keyEventUp
 	}
-	inp := input{
+	return input{
 		inputType: inputKeyboard,
 		ki: keybdInput{
 			wVk:     vk,
 			dwFlags: flags,
 		},
 	}
+}
+
+func sendKey(vk uint16, down bool) error {
+	inp := makeInput(vk, down)
 	ret, _, _ := procSendInput.Call(1, uintptr(unsafe.Pointer(&inp)), unsafe.Sizeof(inp))
 	if ret == 0 {
 		action := "keydown"
@@ -77,19 +84,22 @@ func sendKey(vk uint16, down bool) error {
 	return nil
 }
 
-func sendKeyCombo(modifier, key uint16) error {
-	if err := sendKey(modifier, true); err != nil {
-		return err
+// sendKeyComboAtomic sends modifier+key as a single atomic SendInput call.
+// This prevents other processes from injecting input between our keystrokes.
+func sendKeyComboAtomic(modifier, key uint16) error {
+	inputs := [4]input{
+		makeInput(modifier, true),
+		makeInput(key, true),
+		makeInput(key, false),
+		makeInput(modifier, false),
 	}
-	if err := sendKey(key, true); err != nil {
-		return err
-	}
-	time.Sleep(10 * time.Millisecond)
-	if err := sendKey(key, false); err != nil {
-		return err
-	}
-	if err := sendKey(modifier, false); err != nil {
-		return err
+	ret, _, _ := procSendInput.Call(
+		4,
+		uintptr(unsafe.Pointer(&inputs[0])),
+		unsafe.Sizeof(inputs[0]),
+	)
+	if ret != 4 {
+		return fmt.Errorf("SendInput: expected 4 events injected, got %d", ret)
 	}
 	return nil
 }
@@ -101,7 +111,8 @@ func (s *WindowsSimulator) WaitForModifierRelease() {
 	modKeys := []uint16{vkControl, vkShift, vkMenu, vkLWin, vkRWin}
 	const maxWait = 500 * time.Millisecond
 	const pollInterval = 5 * time.Millisecond
-	deadline := time.Now().Add(maxWait)
+	start := time.Now()
+	deadline := start.Add(maxWait)
 
 	for time.Now().Before(deadline) {
 		anyPressed := false
@@ -113,33 +124,56 @@ func (s *WindowsSimulator) WaitForModifierRelease() {
 			}
 		}
 		if !anyPressed {
+			waited := time.Since(start)
+			if waited > 10*time.Millisecond {
+				slog.Debug("WaitForModifierRelease: modifiers released", "waited_ms", waited.Milliseconds())
+			}
+			// Small settle delay — let the OS fully process the key release
+			// before we inject new keystrokes.
+			time.Sleep(30 * time.Millisecond)
 			return
 		}
 		time.Sleep(pollInterval)
 	}
+	slog.Warn("WaitForModifierRelease: timed out after 500ms, proceeding anyway")
 }
-func (s *WindowsSimulator) ReadSelectedText() string        { return "" }
-func (s *WindowsSimulator) ReadAllText() string              { return "" }
+
+func (s *WindowsSimulator) ReadSelectedText() string    { return "" }
+func (s *WindowsSimulator) ReadAllText() string          { return "" }
 func (s *WindowsSimulator) WriteSelectedText(string) bool { return false }
 func (s *WindowsSimulator) WriteAllText(string) bool      { return false }
-func (s *WindowsSimulator) FrontAppName() string             { return "" }
-func (s *WindowsSimulator) SelectAllAX() error               { return fmt.Errorf("not supported") }
-func (s *WindowsSimulator) CopyAX() error                    { return fmt.Errorf("not supported") }
-func (s *WindowsSimulator) PasteAX() error                   { return fmt.Errorf("not supported") }
-func (s *WindowsSimulator) SelectAllScript() error           { return fmt.Errorf("not supported") }
-func (s *WindowsSimulator) CopyScript() error                { return fmt.Errorf("not supported") }
-func (s *WindowsSimulator) PasteScript() error               { return fmt.Errorf("not supported") }
+
+// FrontAppName returns the title of the foreground window.
+func (s *WindowsSimulator) FrontAppName() string {
+	hwnd, _, _ := procGetForegroundWindow.Call()
+	if hwnd == 0 {
+		return ""
+	}
+	var buf [256]uint16
+	ret, _, _ := procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	if ret == 0 {
+		return ""
+	}
+	return syscall.UTF16ToString(buf[:ret])
+}
+
+func (s *WindowsSimulator) SelectAllAX() error     { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) CopyAX() error          { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) PasteAX() error          { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) SelectAllScript() error  { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) CopyScript() error        { return fmt.Errorf("not supported") }
+func (s *WindowsSimulator) PasteScript() error       { return fmt.Errorf("not supported") }
 
 func (s *WindowsSimulator) SelectAll() error {
-	return sendKeyCombo(vkControl, vkA)
+	return sendKeyComboAtomic(vkControl, vkA)
 }
 
 func (s *WindowsSimulator) Copy() error {
-	return sendKeyCombo(vkControl, vkC)
+	return sendKeyComboAtomic(vkControl, vkC)
 }
 
 func (s *WindowsSimulator) Paste() error {
-	return sendKeyCombo(vkControl, vkV)
+	return sendKeyComboAtomic(vkControl, vkV)
 }
 
 func (s *WindowsSimulator) PressRight() error {
