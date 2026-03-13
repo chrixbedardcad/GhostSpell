@@ -1057,6 +1057,8 @@ async function finishCloud() {
 }
 
 // ==================== STEP 2d: LOCAL AI ====================
+let localSelectedModel = '';
+
 async function localRefresh() {
   const bar = document.getElementById('local-status-bar');
   const text = document.getElementById('local-status-text');
@@ -1085,83 +1087,103 @@ async function localRefresh() {
   const available = st.available || [];
 
   if (models.length > 0) {
-    // Ready — model downloaded
     bar.className = 'ollama-status-bar running';
     text.textContent = 'Ghost-AI ready';
-    renderLocalReady(body, models, available);
   } else {
-    // Need to download a model
     bar.className = 'ollama-status-bar installed';
-    text.textContent = 'Ghost-AI engine built-in — download a model';
-    renderLocalNeedModel(body, available);
+    text.textContent = 'Ghost-AI engine built-in — pick a model';
   }
+  renderLocalModels(body, models, available);
 }
 
-function renderLocalReady(container, models, available) {
-  let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:4px"><img src="/ghostAI.png" width="22" height="22"><strong style="font-size:0.88em;color:#bac2de">Ghost-AI is ready!</strong></div>';
-  // Show installed models as selectable cards
-  html += '<div style="font-size:0.78em;color:#6c7086;margin-bottom:8px">Select a model to use:</div>';
-  for (const m of models) {
-    const sizeMB = m.size ? Math.round(m.size / 1024 / 1024) : '?';
-    const badge = m.tag ? tagBadgeHTML(m.tag) : '';
-    html += `<div class="model-card" style="cursor:pointer" onclick="document.getElementById('local-model-select').value='${escJS(m.name)}';document.querySelectorAll('.local-sel-card').forEach(c=>c.style.borderColor='#45475a');this.style.borderColor='#89b4fa'" class="local-sel-card">
-      <div class="model-info">
-        <div class="model-name"><span style="color:#a6e3a1;font-size:0.85em">&#10003;</span> ${esc(m.name)}${badge}</div>
-        <div class="model-meta">${sizeMB} MB &mdash; installed</div>
-        ${m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
-      </div>
-    </div>`;
-  }
-  html += '<input type="hidden" id="local-model-select" value="' + esc(models[0].name) + '">';
-  html += '<div style="margin-top:10px"><button class="btn btn-primary" onclick="localFinish()">Use this model</button></div>';
-  // Show available models not yet downloaded
-  const installedNames = new Set(models.map(m => m.name));
-  const remaining = (available || []).filter(m => !installedNames.has(m.name));
-  if (remaining.length > 0) {
-    html += '<div style="font-size:0.82em;color:#6c7086;margin-top:16px;margin-bottom:8px;border-top:1px solid #45475a;padding-top:12px">Download more models</div>';
-    html += '<div style="font-size:0.72em;color:#f9e2af;margin-bottom:8px">&#128161; Larger models = better results, but need more RAM.</div>';
-    for (const m of remaining) {
-      const sizeMB = Math.round(m.size / 1024 / 1024);
-      const badge = m.tag ? tagBadgeHTML(m.tag) : '';
-      html += `
-        <div class="model-card">
-          <div class="model-info">
-            <div class="model-name">${esc(m.name)}${badge}</div>
-            <div class="model-meta">${sizeMB} MB download</div>
-            ${m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="localDownloadModel('${escJS(m.name)}')" id="local-dl-${esc(m.name)}">&#9729; Download</button>
-        </div>`;
+function renderLocalModels(container, installedModels, allAvailable) {
+  const installedNames = new Set(installedModels.map(m => m.name));
+  // Merge: all available models with installed status
+  const allModels = allAvailable.map(m => ({
+    ...m,
+    installed: installedNames.has(m.name),
+    // Use installed size if available (actual file size)
+    size: installedNames.has(m.name)
+      ? (installedModels.find(im => im.name === m.name) || {}).size || m.size
+      : m.size,
+  }));
+  // Also add any installed models not in the available list (e.g. manually added)
+  for (const m of installedModels) {
+    if (!allAvailable.find(a => a.name === m.name)) {
+      allModels.push({ ...m, installed: true });
     }
   }
-  container.innerHTML = html;
-  // Auto-select first installed model card
-  const firstCard = container.querySelector('.model-card');
-  if (firstCard) firstCard.style.borderColor = '#89b4fa';
-}
 
-function renderLocalNeedModel(container, available) {
-  let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:4px"><img src="/ghostAI.png" width="22" height="22"><span style="font-size:0.88em;color:#bac2de">Download a model to get started:</span></div>';
-  html += '<div style="font-size:0.72em;color:#f9e2af;margin-bottom:8px">&#128161; Larger models = better results, but need more RAM and disk space.</div>';
-  for (const m of available) {
-    const sizeMB = Math.round(m.size / 1024 / 1024);
-    const badge = m.tag ? tagBadgeHTML(m.tag) : '';
-    html += `
-      <div class="model-card">
-        <div class="model-info">
-          <div class="model-name">${esc(m.name)}${badge}</div>
-          <div class="model-meta">${sizeMB} MB download</div>
-          ${m.desc ? '<div style="font-size:0.75em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>' : ''}
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="localDownloadModel('${escJS(m.name)}')" id="local-dl-${esc(m.name)}">&#9729; Download</button>
-      </div>`;
+  // Auto-select: prefer previously selected, then first installed, then recommended
+  if (!localSelectedModel || !allModels.find(m => m.name === localSelectedModel)) {
+    const firstInstalled = allModels.find(m => m.installed);
+    const rec = allModels.find(m => m.tag === 'recommended');
+    localSelectedModel = firstInstalled ? firstInstalled.name : (rec ? rec.name : (allModels[0] || {}).name || '');
   }
+
+  let html = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;margin-bottom:4px">'
+    + '<img src="/ghostAI.png" width="22" height="22">'
+    + '<span style="font-size:0.88em;color:#bac2de">Select a model</span>'
+    + '</div>';
+
+  for (const m of allModels) {
+    const sizeMB = m.size ? Math.round(m.size / 1024 / 1024) : '?';
+    const badge = m.tag ? tagBadgeHTML(m.tag) : '';
+    const isSelected = m.name === localSelectedModel;
+    const statusIcon = m.installed
+      ? '<span style="color:#a6e3a1;font-size:0.85em" title="Downloaded">&#10003;</span>'
+      : '<span style="color:#585b70;font-size:0.85em" title="Not downloaded">&#9729;</span>';
+    const borderStyle = isSelected ? 'border-color:#89b4fa' : '';
+
+    html += '<div class="model-card" style="cursor:pointer;' + borderStyle + '" onclick="localSelectModel(\'' + escJS(m.name) + '\')">';
+    html += '<div class="model-info">';
+    html += '<div class="model-name">' + statusIcon + ' ' + esc(m.name) + badge;
+    if (isSelected) html += ' <span class="badge badge-rec" style="font-size:0.65em;vertical-align:middle">SELECTED</span>';
+    html += '</div>';
+    html += '<div class="model-meta">' + sizeMB + ' MB';
+    if (m.installed) html += ' &mdash; downloaded';
+    html += '</div>';
+    if (m.desc) html += '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>';
+    html += '</div>';
+
+    // Action buttons
+    html += '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0">';
+    if (m.installed) {
+      html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();localDeleteModelWizard(\'' + escJS(m.name) + '\')" style="font-size:0.7em;padding:3px 6px" title="Delete model">&#128465;</button>';
+    } else {
+      html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();localDownloadModel(\'' + escJS(m.name) + '\')" id="local-dl-' + esc(m.name) + '" style="font-size:0.75em">Download</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // "Use this model" button — only enabled if selected model is downloaded
+  const selModel = allModels.find(m => m.name === localSelectedModel);
+  const canUse = selModel && selModel.installed;
+  html += '<input type="hidden" id="local-model-select" value="' + esc(localSelectedModel) + '">';
+  html += '<div style="margin-top:10px"><button class="btn btn-primary" onclick="localFinish()"' + (canUse ? '' : ' disabled title="Download a model first"') + '>' + (canUse ? 'Use ' + esc(localSelectedModel) : 'Download a model first') + '</button></div>';
+
   container.innerHTML = html;
 }
 
-function renderLocalNeedAll(container, available) {
-  // Ghost-AI engine is built-in — just need a model download.
-  renderLocalNeedModel(container, available);
+function localSelectModel(name) {
+  localSelectedModel = name;
+  localRefresh();
+}
+
+async function localDeleteModelWizard(name) {
+  if (!confirm('Delete ' + name + '? You can re-download it later.')) return;
+  const statusEl = document.getElementById('local-action-status');
+  const result = await goCall('localDeleteModel', name);
+  if (result && result.startsWith('ok')) {
+    statusEl.className = 'status success';
+    statusEl.textContent = name + ' deleted.';
+    if (localSelectedModel === name) localSelectedModel = '';
+    localRefresh();
+  } else {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Delete failed: ' + (result || 'unknown error');
+  }
 }
 
 async function localSetupAll() {
@@ -1205,8 +1227,8 @@ async function localDownloadModel(name) {
   if (result && result.startsWith('ok')) {
     statusEl.className = 'status success';
     statusEl.textContent = name + ' downloaded!';
-    // Auto-save and proceed
-    await saveLocalProvider(name);
+    localSelectedModel = name;
+    localRefresh();
   } else {
     statusEl.className = 'status error';
     statusEl.textContent = 'Download failed: ' + (result || 'unknown error');

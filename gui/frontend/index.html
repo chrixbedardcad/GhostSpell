@@ -1279,53 +1279,63 @@ async function onLocalRefresh() {
   const engineVersion = st.engine_version || '';
   const models = st.models || [];
   const available = st.available || [];
+  const formModel = document.getElementById('form-model').value;
 
   if (models.length > 0) {
     bar.className = 'ollama-status-bar running'; text.textContent = 'Ghost-AI ready \u2014 Engine ' + esc(engineVersion);
-    // Show installed models with select buttons
-    let html = '<div style="font-size:0.78em;color:#6c7086;margin-bottom:6px">Installed models</div>';
-    const formModel = document.getElementById('form-model').value;
-    for (const m of models) {
-      const sizeMB = m.size ? Math.round(m.size / 1024 / 1024) + ' MB' : '';
-      const badge = m.tag ? ollamaTagBadge(m.tag) : '';
-      const selected = m.name === formModel;
-      html += '<div class="ollama-model-card' + (selected ? '" style="border-color:#89b4fa' : '') + '">'
-        + '<div><div class="model-name"><span style="color:#a6e3a1">&#10003;</span> ' + esc(m.name) + badge + (selected ? ' <span class="badge badge-rec">SELECTED</span>' : '') + '</div>'
-        + '<div class="model-meta">' + esc(sizeMB) + '</div></div>'
-        + '<div style="display:flex;gap:4px">'
-        + '<button class="btn btn-secondary btn-sm" onclick="localSetFormModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">' + (selected ? '\u2714 Selected' : 'Select') + '</button>'
-        + '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em;padding:3px 6px">Del</button>'
-        + '</div></div>';
-    }
-    // Show available models not yet installed
-    const installedNames = new Set(models.map(m => m.name));
-    const remaining = available.filter(m => !installedNames.has(m.name));
-    if (remaining.length > 0) {
-      html += '<div style="font-size:0.78em;color:#6c7086;margin-top:10px;margin-bottom:6px">Download more</div>';
-      for (const m of remaining) {
-        const sizeMB = Math.round(m.size / 1024 / 1024);
-        html += '<div class="ollama-model-card">'
-          + '<div class="model-name"><span style="color:#89b4fa">&#9729;</span> ' + esc(m.name) + ollamaTagBadge(m.tag) + ' <span style="font-size:0.75em;color:#6c7086">' + sizeMB + ' MB</span></div>'
-          + (m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px;padding-left:18px">' + esc(m.desc) + '</div>' : '')
-          + '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">&#9729; Download</button>'
-          + '</div>';
-      }
-    }
-    body.innerHTML = html;
-    if (!formModel && models.length > 0) localSetFormModel(models[0].name);
   } else {
-    bar.className = 'ollama-status-bar installed'; text.textContent = 'Ghost-AI ready \u2014 download a model';
-    let html = '';
-    for (const m of available) {
-      const sizeMB = Math.round(m.size / 1024 / 1024);
-      html += '<div class="ollama-model-card">'
-        + '<div class="model-name"><span style="color:#89b4fa">&#9729;</span> ' + esc(m.name) + ollamaTagBadge(m.tag) + ' <span style="font-size:0.75em;color:#6c7086">' + sizeMB + ' MB</span></div>'
-        + (m.desc ? '<div style="font-size:0.72em;color:#6c7086;margin-top:2px;padding-left:18px">' + esc(m.desc) + '</div>' : '')
-        + '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">&#9729; Download</button>'
-        + '</div>';
-    }
-    body.innerHTML = html;
+    bar.className = 'ollama-status-bar installed'; text.textContent = 'Ghost-AI ready \u2014 pick a model';
   }
+
+  // Build unified model list: all available with installed status
+  const installedNames = new Set(models.map(m => m.name));
+  const allModels = available.map(m => ({
+    ...m,
+    installed: installedNames.has(m.name),
+    size: installedNames.has(m.name)
+      ? (models.find(im => im.name === m.name) || {}).size || m.size
+      : m.size,
+  }));
+  // Add manually installed models not in available list
+  for (const m of models) {
+    if (!available.find(a => a.name === m.name)) {
+      allModels.push({ ...m, installed: true });
+    }
+  }
+
+  let html = '';
+  for (const m of allModels) {
+    const sizeMB = m.size ? Math.round(m.size / 1024 / 1024) : '?';
+    const badge = m.tag ? ollamaTagBadge(m.tag) : '';
+    const selected = m.name === formModel;
+    const statusIcon = m.installed
+      ? '<span style="color:#a6e3a1">&#10003;</span>'
+      : '<span style="color:#585b70">&#9729;</span>';
+
+    html += '<div class="ollama-model-card" style="cursor:pointer;' + (selected ? 'border-color:#89b4fa' : '') + '" onclick="localSetFormModel(\'' + escJS(m.name) + '\')">';
+    html += '<div>';
+    html += '<div class="model-name">' + statusIcon + ' ' + esc(m.name) + badge;
+    if (selected) html += ' <span class="badge badge-rec">SELECTED</span>';
+    html += '</div>';
+    html += '<div class="model-meta">' + sizeMB + ' MB';
+    if (m.installed) html += ' &mdash; downloaded';
+    html += '</div>';
+    if (m.desc) html += '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:4px" onclick="event.stopPropagation()">';
+    if (m.installed) {
+      html += '<button class="btn btn-secondary btn-sm" onclick="localSetFormModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">' + (selected ? '\u2714 Selected' : 'Select') + '</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em;padding:3px 6px" title="Delete model">&#128465;</button>';
+    } else {
+      html += '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">Download</button>';
+    }
+    html += '</div>';
+    html += '</div>';
+  }
+
+  body.innerHTML = html;
+  if (!formModel && models.length > 0) localSetFormModel(models[0].name);
 }
 
 function localSetFormModel(name) {
@@ -1361,20 +1371,30 @@ async function localDownloadModelSettings(name) {
   if (btn) { btn.disabled = false; }
   if (result && result.startsWith('ok')) {
     statusEl.className = 'status success'; statusEl.textContent = name + ' downloaded!';
-    onLocalRefresh();
+    localSetFormModel(name);
   } else {
     statusEl.className = 'status error'; statusEl.textContent = 'Failed: ' + (result || 'unknown');
   }
 }
 
 async function localDeleteModelSettings(name) {
+  if (!confirm('Delete ' + name + '? You can re-download it later.')) return;
+  const statusEl = document.getElementById('local-action-status-settings');
   const result = await goCall('localDeleteModel', name);
-  if (result && result.startsWith('ok')) { onLocalRefresh(); }
+  if (result && result.startsWith('ok')) {
+    statusEl.className = 'status success'; statusEl.textContent = name + ' deleted.';
+    // If deleted model was the selected one, clear form model
+    const formModel = document.getElementById('form-model');
+    if (formModel && formModel.value === name) formModel.value = '';
+    onLocalRefresh();
+  } else {
+    statusEl.className = 'status error'; statusEl.textContent = 'Delete failed: ' + (result || 'unknown');
+  }
 }
 
 async function localSetupAllSettings() {
   // Ghost-AI engine is built-in — just download the default model.
-  await localDownloadModelSettings('qwen3-0.6b');
+  await localDownloadModelSettings('qwen3.5-2b');
 }
 
 // ===========================================================================

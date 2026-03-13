@@ -63,8 +63,14 @@ func captureText(
 	kb.WaitForModifierRelease()
 
 	// Log the frontmost app for diagnostics.
+	// If a GhostSpell window (Settings, Wizard, Update) is focused,
+	// skip capture — keyboard simulation would go to our own window.
 	if appName := kb.FrontAppName(); appName != "" {
 		slog.Debug("captureText: frontmost app", "app", appName)
+		if strings.Contains(appName, "GhostSpell") {
+			slog.Warn("captureText: GhostSpell window is focused, skipping capture", "window", appName)
+			return "", false, captureViaCGEvent, fmt.Errorf("cannot capture from GhostSpell window — switch to another app first")
+		}
 	}
 
 	// --- Strategy 1: Accessibility API (macOS) ---
