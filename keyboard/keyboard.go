@@ -60,4 +60,14 @@ type Simulator interface {
 
 	// PasteScript sends Cmd+V via osascript / System Events.
 	PasteScript() error
+
+	// SaveForegroundWindow saves the current foreground window handle so that
+	// RestoreForegroundWindow can give it focus later. On Windows, this is
+	// required because the indicator overlay steals focus when shown.
+	// No-op on macOS/Linux (indicator doesn't steal focus there).
+	SaveForegroundWindow()
+
+	// RestoreForegroundWindow restores focus to the window saved by
+	// SaveForegroundWindow. Idempotent — safe to call multiple times.
+	RestoreForegroundWindow()
 }

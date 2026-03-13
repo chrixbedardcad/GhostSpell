@@ -17,7 +17,9 @@ func NewLinuxSimulator() *LinuxSimulator {
 	return &LinuxSimulator{}
 }
 
-func (s *LinuxSimulator) WaitForModifierRelease() {}
+func (s *LinuxSimulator) WaitForModifierRelease()      {}
+func (s *LinuxSimulator) SaveForegroundWindow()         {}
+func (s *LinuxSimulator) RestoreForegroundWindow()      {}
 func (s *LinuxSimulator) ReadSelectedText() string        { return "" }
 func (s *LinuxSimulator) ReadAllText() string              { return "" }
 func (s *LinuxSimulator) WriteSelectedText(string) bool { return false }

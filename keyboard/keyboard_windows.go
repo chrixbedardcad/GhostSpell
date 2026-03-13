@@ -15,6 +15,7 @@ var (
 	procSendInput             = user32.NewProc("SendInput")
 	procGetAsyncKeyState      = user32.NewProc("GetAsyncKeyState")
 	procGetForegroundWindow   = user32.NewProc("GetForegroundWindow")
+	procSetForegroundWindow   = user32.NewProc("SetForegroundWindow")
 	procGetWindowTextW        = user32.NewProc("GetWindowTextW")
 )
 
@@ -50,7 +51,11 @@ type input struct {
 }
 
 // WindowsSimulator implements keyboard simulation on Windows using SendInput.
-type WindowsSimulator struct{}
+type WindowsSimulator struct {
+	// savedHWND is the foreground window handle saved by SaveForegroundWindow.
+	// Used to restore focus after the indicator overlay steals it.
+	savedHWND uintptr
+}
 
 // NewWindowsSimulator creates a new Windows keyboard simulator.
 func NewWindowsSimulator() *WindowsSimulator {
@@ -176,6 +181,34 @@ func (s *WindowsSimulator) FrontAppName() string {
 		return "(untitled)"
 	}
 	return syscall.UTF16ToString(buf[:ret])
+}
+
+// SaveForegroundWindow records the current foreground window HWND so that
+// RestoreForegroundWindow can give it focus later. Call this right after
+// text capture — before ShowIndicator steals focus.
+func (s *WindowsSimulator) SaveForegroundWindow() {
+	hwnd, _, _ := procGetForegroundWindow.Call()
+	s.savedHWND = hwnd
+	slog.Info("SaveForegroundWindow", "hwnd", fmt.Sprintf("0x%X", hwnd), "title", s.FrontAppName())
+}
+
+// RestoreForegroundWindow gives focus back to the window saved by
+// SaveForegroundWindow. Idempotent — skips if already focused or if
+// no window was saved.
+func (s *WindowsSimulator) RestoreForegroundWindow() {
+	if s.savedHWND == 0 {
+		return
+	}
+	current, _, _ := procGetForegroundWindow.Call()
+	if current == s.savedHWND {
+		return // already focused
+	}
+	slog.Info("RestoreForegroundWindow", "target", fmt.Sprintf("0x%X", s.savedHWND), "current", fmt.Sprintf("0x%X", current))
+	ret, _, _ := procSetForegroundWindow.Call(s.savedHWND)
+	if ret == 0 {
+		slog.Warn("SetForegroundWindow failed", "hwnd", fmt.Sprintf("0x%X", s.savedHWND))
+	}
+	time.Sleep(50 * time.Millisecond)
 }
 
 func (s *WindowsSimulator) SelectAllAX() error     { return fmt.Errorf("not supported") }

@@ -323,9 +323,19 @@ func processMode(
 	slog.Info("Captured text", "prompt", promptName, "len", len(text), "selection", hadSelection, "method", capMethod, "text", text)
 	fmt.Printf("[%s] Captured: %q\n", promptName, text)
 
+	// Save the foreground window HWND before showing the indicator.
+	// On Windows the indicator overlay (AlwaysOnTop, no WS_EX_NOACTIVATE)
+	// steals focus when shown. Without this, all subsequent SendInput calls
+	// (Ctrl+A, Ctrl+V) would go to the indicator instead of the target app.
+	kb.SaveForegroundWindow()
+
 	// Text captured — now safe to show the indicator overlay. It won't
 	// interfere with keyboard simulation since capture is complete.
 	gui.ShowIndicator()
+
+	// Immediately restore focus to the target app. The indicator is visible
+	// (visual feedback) but the target app has focus for keyboard simulation.
+	kb.RestoreForegroundWindow()
 
 	// Create cancellable context with per-provider timeout.
 	timeout := time.Duration(router.TimeoutForPrompt(promptIdx)) * time.Millisecond
@@ -345,6 +355,15 @@ func processMode(
 	// Send to LLM via mode router.
 	slog.Debug("Sending to LLM...", "prompt", promptName, "text_len", len(text))
 	result, err := router.Process(ctx, promptIdx, text)
+
+	// LLM call complete — hide the overlay and restore focus to the target
+	// window before any keyboard simulation (paste, select-all, etc).
+	// This is defense-in-depth: RestoreForegroundWindow was already called
+	// after ShowIndicator, but the user may have clicked elsewhere during
+	// processing, or the indicator may have recaptured focus.
+	gui.HideIndicator()
+	kb.RestoreForegroundWindow()
+
 	if err != nil {
 		slog.Error("LLM processing failed", "prompt", promptName, "error", err)
 		sound.StopWorkingLoop()

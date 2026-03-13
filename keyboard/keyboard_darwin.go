@@ -429,6 +429,13 @@ func resolveChar(ch rune, fallback int) C.CGKeyCode {
 // work correctly on AZERTY, QWERTZ, Dvorak, and other non-QWERTY layouts.
 type DarwinSimulator struct{}
 
+// SaveForegroundWindow is a no-op on macOS — the indicator uses
+// IgnoreMouseEvents + MacWindowLevelFloating which doesn't steal focus.
+func (s *DarwinSimulator) SaveForegroundWindow() {}
+
+// RestoreForegroundWindow is a no-op on macOS.
+func (s *DarwinSimulator) RestoreForegroundWindow() {}
+
 func NewDarwinSimulator() *DarwinSimulator {
 	return &DarwinSimulator{}
 }
