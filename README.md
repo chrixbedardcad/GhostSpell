@@ -77,7 +77,7 @@ gh release view --repo chrixbedardcad/GhostSpell --json tagName -q .tagName
 ## Quick Start
 
 1. **Install** GhostSpell using the one-liner above
-2. **Add a provider** — the setup wizard opens on first launch. You can **Log in with ChatGPT** (one click, no API key needed) or pick any provider and paste an API key.
+2. **Choose an AI engine** — the setup wizard opens on first launch. Pick **Ghost-AI** (free, local, private), **Log in with ChatGPT** (one click, no API key), or connect any cloud provider with an API key.
 3. **Use it** — type something in any app, press **Ctrl+G**
 
 That's the whole workflow. GhostSpell auto-detects the language and fixes spelling, grammar, and syntax.
@@ -88,18 +88,18 @@ GhostSpell ships with 6 built-in prompts. Switch between them from the tray menu
 
 | Prompt | What it does |
 |--------|-------------|
-| **Correct** | Fix spelling, grammar, and syntax (default) |
-| **Polish** | Improve clarity and flow without changing meaning |
-| **Funny** | Rewrite with humor |
-| **Elaborate** | Expand on the text with more detail |
-| **Shorten** | Make it more concise |
-| **Translate** | Translate between configured language pairs |
+| ✏️ **Correct** | Fix spelling, grammar, and syntax (default) |
+| 💎 **Polish** | Improve clarity and flow without changing meaning |
+| 😄 **Funny** | Rewrite with humor |
+| 📝 **Elaborate** | Expand on the text with more detail |
+| ✂️ **Shorten** | Make it more concise |
+| 🌐 **Translate** | Translate between configured language pairs |
 
-You can create custom prompts and assign per-prompt LLM overrides in **Settings > Templates**.
+Emoji icons show in the tray menu for quick recognition. You can create custom prompts and assign per-prompt LLM overrides in **Settings > Prompts**.
 
 ### Local AI
 
-**Ghost-AI (built-in)** — No install needed. GhostSpell ships with an embedded llama.cpp engine. Pick a model in the wizard, download it (~400MB), and you're running local AI with zero setup.
+**Ghost-AI (built-in)** — No install needed. GhostSpell ships with an embedded llama.cpp engine. Pick a model in the wizard, download it (~1 GB), and you're running local AI with zero setup. Recommended model: Qwen3.5-2B.
 
 **Ollama** — If you already use Ollama, select it in the setup wizard. GhostSpell detects your install, lets you pick a model, and connects automatically.
 
@@ -111,7 +111,9 @@ You can create custom prompts and assign per-prompt LLM overrides in **Settings 
 - **Ghost-AI** — Built-in local AI engine (embedded llama.cpp). No account, no API key, works offline.
 - **Multi-provider** — Anthropic, OpenAI, Gemini, xAI, DeepSeek, Ollama. Use different models per prompt.
 - **ChatGPT OAuth** — Log in with your ChatGPT account, no API key needed.
-- **Settings GUI** — 5-tab settings panel: Models, Templates, General, About, Debug. No JSON editing required.
+- **Setup wizard** — 4-step guided setup on first launch: Welcome → Permissions (macOS) → Model Selector → Ready.
+- **Prompt icons** — Emoji icons in the tray menu for each prompt (✏️ Correct, 💎 Polish, etc.).
+- **Settings GUI** — 7-tab settings panel: About, General, Models, Prompts, Hotkeys, Debug, Help. No JSON editing required.
 - **One-click updates** — Check for updates and install from Settings > About.
 - **Ollama integration** — Detect, install, pull models from the GUI.
 - **Custom prompts** — Add your own prompt templates with optional per-prompt LLM overrides.
@@ -184,9 +186,9 @@ Most users only need the **Settings GUI**. For power users, everything is stored
   "default_llm": "claude",
   "active_prompt": 0,
   "prompts": [
-    { "name": "Correct", "prompt": "Detect the language. Fix spelling and grammar. Return ONLY the corrected text." },
-    { "name": "Polish", "prompt": "Improve clarity and flow. Return ONLY the improved text." },
-    { "name": "Translate", "prompt": "Translate to {target_language}. Return ONLY the translation.", "llm": "chatgpt" }
+    { "name": "Correct", "icon": "✏️", "prompt": "Detect the language. Fix spelling and grammar. Return ONLY the corrected text." },
+    { "name": "Polish", "icon": "💎", "prompt": "Improve clarity and flow. Return ONLY the improved text." },
+    { "name": "Translate", "icon": "🌐", "prompt": "Translate to {target_language}. Return ONLY the translation.", "llm": "chatgpt" }
   ],
   "hotkeys": {
     "action": "Ctrl+G",
@@ -302,6 +304,7 @@ powershell -c "irm https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/m
 | Problem | Solution |
 |---------|----------|
 | Hotkeys don't work | Check that GhostSpell is running (look for tray icon). On macOS, grant Input Monitoring permission. |
+| **Windows**: Ctrl+G captures empty text | Update to v0.10.2+. Older versions had a stuck modifier key issue where Ctrl from the hotkey wasn't released before simulating Ctrl+C. |
 | API errors | Verify API key in Settings > Models. Check that your provider account has credits. |
 | Slow responses | Try a faster model, or switch to local Ollama. |
 | **Linux**: Missing dependencies | `sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 xclip xdotool` |
