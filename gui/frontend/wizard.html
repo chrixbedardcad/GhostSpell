@@ -364,7 +364,7 @@
 
   <!-- ============ STEP 2e: CLOUD CHOICE (secondary path) ============ -->
   <div class="step-section" id="step-2e">
-    <h2 style="font-size:1.1em;margin-bottom:14px;color:#bac2de">How do you want to connect?</h2>
+    <h2 style="font-size:1.1em;margin-bottom:14px;color:#bac2de">Add Model</h2>
 
     <div class="card" onclick="selectCategory('local')" style="border-color:#a6e3a1">
       <div class="card-header">
@@ -419,7 +419,7 @@
   <!-- ============ STEP 2a: CLOUD PROVIDER SELECTION ============ -->
   <div class="step-section" id="step-2a">
     <h2 style="font-size:1.1em;margin-bottom:14px;color:#bac2de">Pick a provider</h2>
-    <div style="font-size:0.82em;color:#6c7086;margin-bottom:12px">Each provider requires an API key. Most offer a free tier to get started.</div>
+    <div style="font-size:0.82em;color:#6c7086;margin-bottom:12px">Choose a provider, then select a model. Most offer a free tier.</div>
 
     <div class="card" onclick="selectCloudProvider('gemini')">
       <div class="card-header">
@@ -1440,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (returnTo === 'settings') {
     document.getElementById('wizard-cancel-row').style.display = 'flex';
-    document.querySelector('.header .sub').textContent = 'Add a new AI provider';
+    document.querySelector('.header .sub').textContent = 'Add a new model';
     // When returning from settings, go straight to cloud choice.
     goToStep('1.5');
     return;

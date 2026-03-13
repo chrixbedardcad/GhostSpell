@@ -375,16 +375,16 @@
   <!-- ============ MODELS TAB ============ -->
   <div id="tab-models" class="tab-panel">
     <div class="toolbar">
-      <h2 style="margin-bottom:0">Providers</h2>
+      <h2 style="margin-bottom:0">Models</h2>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-primary btn-sm" onclick="showAddProvider()">+ Add Provider</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddProvider()">+ Add Model</button>
       </div>
     </div>
     <div id="provider-list"></div>
 
     <!-- Add/Edit provider form -->
     <div id="provider-form" style="display:none;margin-top:14px;padding:14px;background:#313244;border-radius:8px">
-      <h2 id="form-title">Add Provider</h2>
+      <h2 id="form-title">Add Model</h2>
       <input type="hidden" id="edit-original-label" value="">
       <div class="form-group">
         <label for="form-provider">Provider</label>
@@ -841,7 +841,7 @@ async function renderProviderList() {
   const defaultLLM = configData.default_llm || '';
 
   if (Object.keys(providers).length === 0) {
-    container.innerHTML = '<div class="empty-state">No providers configured.<br>Click "+ Add Provider" to get started.</div>';
+    container.innerHTML = '<div class="empty-state">No models configured.<br>Click "+ Add Model" to get started.</div>';
     return;
   }
 
@@ -908,7 +908,7 @@ function showAddProvider() {
 function setupLocalAI() {
   // Open the inline form pre-filled for Local AI
   document.getElementById('provider-form').style.display = 'block';
-  document.getElementById('form-title').textContent = 'Add Provider';
+  document.getElementById('form-title').textContent = 'Add Model';
   document.getElementById('edit-original-label').value = '';
   document.getElementById('form-provider').value = 'local';
   document.getElementById('form-label').value = 'ghost-ai';
@@ -929,7 +929,7 @@ function onEditProvider(label) {
   const def = configData.llm_providers[label];
   if (!def) return;
   document.getElementById('provider-form').style.display = 'block';
-  document.getElementById('form-title').textContent = 'Edit Provider';
+  document.getElementById('form-title').textContent = 'Edit Model';
   document.getElementById('edit-original-label').value = label;
   document.getElementById('form-provider').value = def.provider;
   document.getElementById('form-label').value = label;

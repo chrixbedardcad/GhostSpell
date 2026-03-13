@@ -90,6 +90,13 @@ func AvailableLocalModels() []LocalModel {
 			Desc:     "High quality. Understands nuance and complex grammar. Needs 4GB+ RAM.",
 		},
 		{
+			Name:     "qwen3-8b",
+			FileName: "Qwen3-8B-Q4_K_M.gguf",
+			URL:      "https://huggingface.co/unsloth/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
+			Size:     5_030_000_000,
+			Desc:     "Excellent quality. Near cloud-level corrections. Needs 8GB+ RAM.",
+		},
+		{
 			Name:     "gemma-3-1b",
 			FileName: "gemma-3-1b-it-Q4_K_M.gguf",
 			URL:      "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
