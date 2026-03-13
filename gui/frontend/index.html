@@ -172,6 +172,10 @@
   }
   .local-ai-banner .btn-dismiss:hover { color: #a6adc8; }
 
+  /* Hide native details/summary disclosure triangle — we use our own arrow (#139) */
+  details summary::-webkit-details-marker { display: none; }
+  details summary::marker { content: ""; display: none; }
+
   .toolbar {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 14px;
@@ -1327,9 +1331,9 @@ async function onLocalRefresh() {
     html += '<div style="display:flex;gap:4px" onclick="event.stopPropagation()">';
     if (m.installed) {
       html += '<button class="btn btn-secondary btn-sm" onclick="localSetFormModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">' + (selected ? '\u2714 Selected' : 'Select') + '</button>';
-      html += '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em" title="Delete model">\u2715 Delete</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="localDeleteModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em" title="Delete model">&#128465; Remove</button>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">\u2B07 Download</button>';
+      html += '<button class="btn btn-primary btn-sm" onclick="localDownloadModelSettings(\'' + escJS(m.name) + '\')" style="font-size:0.75em">&#9729;&#65039; Download</button>';
     }
     html += '</div>';
     html += '</div>';

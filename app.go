@@ -772,7 +772,11 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	}()
 
 	// Floating ghost overlay — shows while processing.
+	// CreateIndicator sets Hidden:true, but explicitly hide again as a safety
+	// measure — on macOS, AlwaysOnTop + Frameless windows have occasionally
+	// appeared visible despite the Hidden flag (#137).
 	gui.CreateIndicator(wailsApp)
+	gui.HideIndicator()
 
 	// When debug auto-disables after 30min, log it.
 	if debugState != nil {

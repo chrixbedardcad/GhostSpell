@@ -345,6 +345,25 @@ func applyDefaults(cfg *Config) {
 		cfg.Prompts = DefaultPrompts()
 	}
 
+	// Migrate icons: assign default emoji icons to built-in prompts that lack
+	// them. Existing configs created before the icon field was added will get
+	// the standard icons without losing any custom prompt data.
+	defaultIcons := map[string]string{
+		"Correct":   "\u270F\uFE0F",
+		"Polish":    "\U0001F48E",
+		"Funny":     "\U0001F604",
+		"Elaborate": "\U0001F4DD",
+		"Shorten":   "\u2702\uFE0F",
+		"Translate": "\U0001F310",
+	}
+	for i := range cfg.Prompts {
+		if cfg.Prompts[i].Icon == "" {
+			if icon, ok := defaultIcons[cfg.Prompts[i].Name]; ok {
+				cfg.Prompts[i].Icon = icon
+			}
+		}
+	}
+
 	// Clamp active_prompt to valid range.
 	if cfg.ActivePrompt < 0 || cfg.ActivePrompt >= len(cfg.Prompts) {
 		cfg.ActivePrompt = 0

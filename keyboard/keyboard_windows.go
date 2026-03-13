@@ -108,9 +108,12 @@ func sendKeyComboAtomic(modifier, key uint16) error {
 // WaitForModifierRelease polls GetAsyncKeyState until all modifier keys
 // (Ctrl, Shift, Alt, Win) are physically released. This prevents our
 // synthetic Ctrl+C/V from colliding with the user's hotkey modifiers.
+// If the poll times out (e.g. Ctrl from Ctrl+G is still "stuck" in the
+// Windows input queue), we inject keyup events for all modifiers to
+// forcefully clear the stuck state before proceeding.
 func (s *WindowsSimulator) WaitForModifierRelease() {
 	modKeys := []uint16{vkControl, vkShift, vkMenu, vkLWin, vkRWin}
-	const maxWait = 500 * time.Millisecond
+	const maxWait = 1000 * time.Millisecond
 	const pollInterval = 5 * time.Millisecond
 	start := time.Now()
 	deadline := start.Add(maxWait)
@@ -134,7 +137,21 @@ func (s *WindowsSimulator) WaitForModifierRelease() {
 		}
 		time.Sleep(pollInterval)
 	}
-	slog.Warn("WaitForModifierRelease: timed out after 500ms, proceeding anyway")
+
+	// Timeout — force-release all modifier keys via SendInput. On some Windows
+	// machines the Ctrl key from the hotkey (Ctrl+G) stays "stuck" in the input
+	// queue, which causes our subsequent Ctrl+C/A/V to be interpreted as bare
+	// C/A/V (or worse, nothing at all). Injecting explicit keyup events clears
+	// the stuck state so the following SendInput calls work correctly.
+	slog.Warn("WaitForModifierRelease: timed out, force-releasing modifiers", "waited_ms", maxWait.Milliseconds())
+	for _, vk := range modKeys {
+		ret, _, _ := procGetAsyncKeyState.Call(uintptr(vk))
+		if ret&0x8000 != 0 {
+			slog.Info("WaitForModifierRelease: force-releasing stuck modifier", "vk", fmt.Sprintf("0x%02X", vk))
+			sendKey(vk, false) // inject keyup
+		}
+	}
+	time.Sleep(50 * time.Millisecond)
 }
 
 func (s *WindowsSimulator) ReadSelectedText() string    { return "" }
@@ -143,15 +160,20 @@ func (s *WindowsSimulator) WriteSelectedText(string) bool { return false }
 func (s *WindowsSimulator) WriteAllText(string) bool      { return false }
 
 // FrontAppName returns the title of the foreground window.
+// Returns "(untitled)" if a window exists but has no title, and "" if no
+// foreground window exists at all. This distinction helps diagnose capture
+// issues where the hotkey fires but no target window is in focus.
 func (s *WindowsSimulator) FrontAppName() string {
 	hwnd, _, _ := procGetForegroundWindow.Call()
 	if hwnd == 0 {
+		slog.Info("FrontAppName: no foreground window (hwnd=0)")
 		return ""
 	}
 	var buf [256]uint16
 	ret, _, _ := procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
 	if ret == 0 {
-		return ""
+		slog.Info("FrontAppName: foreground window has no title", "hwnd", fmt.Sprintf("0x%X", hwnd))
+		return "(untitled)"
 	}
 	return syscall.UTF16ToString(buf[:ret])
 }

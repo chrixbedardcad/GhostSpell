@@ -586,14 +586,18 @@
 
   <!-- ============ STEP 2d: LOCAL AI SETUP ============ -->
   <div class="step-section" id="step-2d">
-    <h2 style="font-size:1.1em;margin-bottom:6px;color:#bac2de">Ghost-AI Setup</h2>
-    <div style="font-size:0.82em;color:#6c7086;margin-bottom:10px;line-height:1.5">
-      Ghost-AI runs locally on your machine &mdash; private, offline, no account needed.<br>
-      Powered by Qwen3.5 &mdash; praised for exceptional intelligence density.
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <img src="/ghostAI.png" width="48" height="48" style="flex-shrink:0">
+      <div>
+        <h2 style="font-size:1.1em;margin-bottom:2px;color:#bac2de">Ghost-AI Setup</h2>
+        <div style="font-size:0.82em;color:#6c7086;line-height:1.4">
+          Runs 100% on your machine &mdash; private, offline, no account needed.
+        </div>
+      </div>
     </div>
-    <div style="display:flex;gap:12px;margin-bottom:8px">
-      <span style="font-size:0.75em;color:#89b4fa">&#128274; Your text stays on your device</span>
-      <span style="font-size:0.75em;color:#a6e3a1">&#9889; Works without internet</span>
+    <div style="display:flex;gap:16px;margin-bottom:8px">
+      <span style="font-size:0.78em;color:#89b4fa">&#128274; Your text stays on your device</span>
+      <span style="font-size:0.78em;color:#a6e3a1">&#9889; Works without internet</span>
     </div>
     <div style="font-size:0.72em;color:#f9e2af;margin-bottom:14px;line-height:1.4">
       &#128161; Tip: Larger models produce better results but need more RAM and disk space.
@@ -1091,12 +1095,12 @@ function renderLocalModels(container, installedModels, allAvailable) {
     if (m.desc) html += '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>';
     html += '</div>';
 
-    // Action buttons
-    html += '<div style="display:flex;gap:4px;align-items:center;flex-shrink:0">';
+    // Action buttons — clean, styled icons (#134)
+    html += '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">';
     if (m.installed) {
-      html += '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();localDeleteModelWizard(\'' + escJS(m.name) + '\')" style="font-size:0.7em" title="Delete model">\u2715 Delete</button>';
+      html += '<button class="btn btn-sm" onclick="event.stopPropagation();localDeleteModelWizard(\'' + escJS(m.name) + '\')" style="font-size:0.75em;background:#45475a;color:#f38ba8;border:1px solid #f38ba8;padding:5px 10px" title="Delete model">&#128465; Remove</button>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();localDownloadModel(\'' + escJS(m.name) + '\')" id="local-dl-' + esc(m.name) + '" style="font-size:0.75em">\u2B07 Download</button>';
+      html += '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();localDownloadModel(\'' + escJS(m.name) + '\')" id="local-dl-' + esc(m.name) + '" style="font-size:0.75em;padding:5px 10px">&#9729;&#65039; Download</button>';
     }
     html += '</div>';
     html += '</div>';
@@ -1461,8 +1465,16 @@ async function openImPane() {
   await goCall('openInputMonitoringPane');
 }
 
-function permissionsNext() {
-  goToStep('restart');
+async function permissionsNext() {
+  // If both permissions are already granted, no restart needed — go
+  // straight to model selection. Only show the restart step when the
+  // user just toggled a permission and macOS needs to reload the grant.
+  const perms = await checkPerms();
+  if (perms.accessibility && perms.postEvent) {
+    goToStep(1);
+  } else {
+    goToStep('restart');
+  }
 }
 
 function skipPermissions() {
@@ -1495,6 +1507,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   const platform = await goCall('getPlatform');
   if (platform === 'darwin') {
     isMac = true;
+    // If both permissions are already granted (e.g. app restarted after
+    // the user set them in the previous session), skip welcome and
+    // permissions — go directly to model selection (#139).
+    const perms = await checkPerms();
+    if (perms.accessibility && perms.postEvent) {
+      goToStep(1);
+      return;
+    }
   }
 
   // Always start at the welcome page

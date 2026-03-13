@@ -124,6 +124,10 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 	})
 	svc.window = win
 
+	// Bring window to front — on macOS and Windows the new window can appear
+	// behind other windows if the app is a background-only (accessory) process (#139).
+	win.Focus()
+
 	// Reset the guard when the window closes so it can be reopened later.
 	win.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		guiLog("[GUI] Settings window closing event received")
