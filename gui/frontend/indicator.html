@@ -79,43 +79,20 @@
   <div class="timer" id="t">0s</div>
 </div>
 <script>
+// Read prompt icon and name from URL query parameters.
+// Go passes them via SetURL: /indicator.html?i=💎&n=Polish
+var _p = new URLSearchParams(window.location.search);
+var _icon = _p.get('i') || '';
+var _name = _p.get('n') || '';
+document.getElementById('pi').textContent = _icon;
+document.getElementById('pn').textContent = _name;
+
+// Start the timer immediately on page load.
 var _start = Date.now();
-var _iv = null;
-
-// Read prompt data from the window title (set via native SetTitle API,
-// not ExecJS — guaranteed reliable on all platforms).
-// Format: "icon|name"
-function readPromptFromTitle() {
-  var t = document.title || '';
-  var idx = t.indexOf('|');
-  if (idx >= 0) {
-    document.getElementById('pi').textContent = t.substring(0, idx);
-    document.getElementById('pn').textContent = t.substring(idx + 1);
-  }
-}
-
-function startTimer() {
-  _start = Date.now();
-  document.getElementById('t').textContent = '0s';
-  readPromptFromTitle();
-  if (_iv) clearInterval(_iv);
-  _iv = setInterval(function() {
-    var s = Math.floor((Date.now() - _start) / 1000);
-    document.getElementById('t').textContent = s + 's';
-  }, 1000);
-}
-
-// ExecJS fallback — still works if ExecJS lands.
-function setPrompt(icon, name) {
-  document.getElementById('pi').textContent = icon || '';
-  document.getElementById('pn').textContent = name || '';
-}
-
-// Start timer + read prompt when the window becomes visible.
-document.addEventListener('visibilitychange', function() {
-  if (!document.hidden) startTimer();
-});
-window.addEventListener('focus', startTimer);
+var _iv = setInterval(function() {
+  var s = Math.floor((Date.now() - _start) / 1000);
+  document.getElementById('t').textContent = s + 's';
+}, 1000);
 </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"log/slog"
+	"net/url"
 	"runtime"
 	"sync"
 	"time"
@@ -83,16 +84,14 @@ func ShowIndicator(promptIcon, promptName string) {
 
 	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon)
 
-	// Pass prompt data via the window title — this is a native Win32/Cocoa
-	// API call that doesn't go through WebView JS injection, so it's 100%
-	// reliable. The frameless window doesn't show a title bar, and the JS
-	// side reads document.title on focus/visibilitychange to render the
-	// prompt icon and name. Format: "icon|name" (pipe-separated).
-	win.SetTitle(promptIcon + "|" + promptName)
+	// Pass prompt data via URL query parameters. This is 100% reliable on
+	// all platforms — no ExecJS needed. The page is tiny and loads instantly.
+	// SetURL on a hidden window works because it's a navigation request,
+	// not JS injection. The JS parses the URL on load to display the prompt.
+	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName)
+	win.SetURL(u)
+	time.Sleep(100 * time.Millisecond) // let the page load
 	win.Show()
-	// Also try ExecJS as belt-and-suspenders — if it lands, great.
-	time.Sleep(100 * time.Millisecond)
-	win.ExecJS(`startTimer()`)
 }
 
 // HideIndicator hides the floating ghost overlay.
