@@ -11,12 +11,13 @@ import (
 )
 
 var (
-	user32                    = syscall.NewLazyDLL("user32.dll")
-	procSendInput             = user32.NewProc("SendInput")
-	procGetAsyncKeyState      = user32.NewProc("GetAsyncKeyState")
-	procGetForegroundWindow   = user32.NewProc("GetForegroundWindow")
-	procSetForegroundWindow   = user32.NewProc("SetForegroundWindow")
-	procGetWindowTextW        = user32.NewProc("GetWindowTextW")
+	user32                      = syscall.NewLazyDLL("user32.dll")
+	procSendInput               = user32.NewProc("SendInput")
+	procGetAsyncKeyState        = user32.NewProc("GetAsyncKeyState")
+	procGetForegroundWindow     = user32.NewProc("GetForegroundWindow")
+	procSetForegroundWindow     = user32.NewProc("SetForegroundWindow")
+	procGetWindowTextW          = user32.NewProc("GetWindowTextW")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 )
 
 const (
@@ -181,6 +182,20 @@ func (s *WindowsSimulator) FrontAppName() string {
 		return "(untitled)"
 	}
 	return syscall.UTF16ToString(buf[:ret])
+}
+
+// IsForegroundOwnProcess returns true if the foreground window belongs to
+// the current GhostSpell process. Compares the foreground window's process ID
+// (via GetWindowThreadProcessId) against our own os.Getpid().
+func (s *WindowsSimulator) IsForegroundOwnProcess() bool {
+	hwnd, _, _ := procGetForegroundWindow.Call()
+	if hwnd == 0 {
+		return false
+	}
+	var pid uint32
+	procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	own := uint32(syscall.Getpid())
+	return pid == own
 }
 
 // SaveForegroundWindow records the current foreground window HWND so that

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/clipboard"
@@ -53,9 +52,12 @@ func captureText(
 	// Log the frontmost app for diagnostics.
 	// If a GhostSpell window (Settings, Wizard, Update) is focused,
 	// skip capture — keyboard simulation would go to our own window.
+	// Use IsForegroundOwnProcess() instead of checking the window title,
+	// because on Windows FrontAppName() returns the window title which can
+	// false-match browser tabs containing "GhostSpell" in the page title.
 	appName := kb.FrontAppName()
 	slog.Info("captureText: foreground window", "app", appName, "empty", appName == "")
-	if appName != "" && strings.Contains(appName, "GhostSpell") {
+	if kb.IsForegroundOwnProcess() {
 		slog.Warn("captureText: GhostSpell window is focused, skipping capture", "window", appName)
 		return captureResult{Method: captureViaCGEvent, Err: fmt.Errorf("cannot capture from GhostSpell window — switch to another app first")}
 	}

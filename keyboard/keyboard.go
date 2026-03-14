@@ -70,4 +70,11 @@ type Simulator interface {
 	// RestoreForegroundWindow restores focus to the window saved by
 	// SaveForegroundWindow. Idempotent — safe to call multiple times.
 	RestoreForegroundWindow()
+
+	// IsForegroundOwnProcess returns true if the foreground window belongs
+	// to the current GhostSpell process. Used to skip capture when our own
+	// Settings/Wizard window is focused. This is more reliable than checking
+	// the window title, which can false-match browser tabs containing
+	// "GhostSpell" in the page title.
+	IsForegroundOwnProcess() bool
 }

@@ -516,6 +516,14 @@ func (s *DarwinSimulator) FrontAppName() string {
 	return name
 }
 
+// IsForegroundOwnProcess returns true if the foreground app is GhostSpell.
+// On macOS, FrontAppName returns the process name (not window title), so a
+// direct comparison works reliably.
+func (s *DarwinSimulator) IsForegroundOwnProcess() bool {
+	name := s.FrontAppName()
+	return name == "GhostSpell"
+}
+
 func (s *DarwinSimulator) SelectAllAX() error {
 	// Use ANSI key code 0x00, NOT layout-resolved keyA.
 	// Same reason as SelectAll(): SDL apps (Firestorm) interpret key codes as
