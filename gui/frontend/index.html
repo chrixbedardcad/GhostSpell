@@ -392,6 +392,57 @@
     </div>
     <div id="provider-list"></div>
 
+    <!-- Inline provider picker -->
+    <div id="provider-picker" style="display:none;margin-top:14px;padding:14px;background:#313244;border-radius:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h2 style="margin:0;font-size:1em">Choose a provider</h2>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('provider-picker').style.display='none'" style="padding:2px 8px;font-size:0.75em">✕</button>
+      </div>
+      <div style="font-size:0.75em;color:#6c7086;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #45475a">Run locally — free &amp; private</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+        <button class="btn btn-secondary" onclick="pickProvider('local')" style="text-align:left;padding:8px 10px">
+          <img src="/ghostAI.png" width="18" height="18" style="vertical-align:middle;margin-right:4px">
+          <strong>Ghost-AI</strong> <span class="badge badge-free" style="font-size:0.6em">FREE</span>
+        </button>
+        <button class="btn btn-secondary" onclick="pickProvider('ollama')" style="text-align:left;padding:8px 10px">
+          🦙 <strong>Ollama</strong> <span class="badge badge-free" style="font-size:0.6em">FREE</span>
+        </button>
+      </div>
+      <div style="font-size:0.75em;color:#6c7086;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #45475a">Cloud providers</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <button class="btn btn-secondary" onclick="pickProvider('gemini')" style="text-align:left;padding:8px 10px">
+          <strong>Gemini</strong> <span class="badge badge-free" style="font-size:0.6em">FREE</span>
+        </button>
+        <button class="btn btn-secondary" onclick="showOpenAIChoiceSettings()" style="text-align:left;padding:8px 10px">
+          <strong>OpenAI</strong>
+        </button>
+        <button class="btn btn-secondary" onclick="pickProvider('anthropic')" style="text-align:left;padding:8px 10px">
+          <strong>Claude</strong>
+        </button>
+        <button class="btn btn-secondary" onclick="pickProvider('xai')" style="text-align:left;padding:8px 10px">
+          <strong>xAI Grok</strong>
+        </button>
+        <button class="btn btn-secondary" onclick="pickProvider('deepseek')" style="text-align:left;padding:8px 10px">
+          <strong>DeepSeek</strong>
+        </button>
+      </div>
+    </div>
+
+    <!-- OpenAI connection method choice -->
+    <div id="openai-choice" style="display:none;margin-top:14px;padding:14px;background:#313244;border-radius:8px">
+      <h2 style="margin:0 0 4px;font-size:1em">Connect to OpenAI</h2>
+      <p style="margin:0 0 10px;font-size:0.82em;color:#a6adc8">Choose how to connect your ChatGPT account.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <button class="btn btn-secondary" onclick="pickOpenAIKey()" style="text-align:left;padding:10px">
+          🔑 <strong>API Key</strong><br><span style="font-size:0.78em;color:#a6adc8">Paste your OpenAI API key. Works with any plan.</span>
+        </button>
+        <button class="btn btn-secondary" onclick="pickOpenAIOAuth()" style="text-align:left;padding:10px">
+          🔐 <strong>OAuth Login</strong><br><span style="font-size:0.78em;color:#a6adc8">Sign in with your ChatGPT account. No key needed.</span>
+        </button>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openai-choice').style.display='none';showAddProvider()">← Back</button>
+    </div>
+
     <!-- Add/Edit provider form -->
     <div id="provider-form" style="display:none;margin-top:14px;padding:14px;background:#313244;border-radius:8px">
       <h2 id="form-title">Add Model</h2>
@@ -958,7 +1009,44 @@ async function onTestProvider(label) {
 }
 
 function showAddProvider() {
-  window.location.href = '/wizard.html?returnTo=settings';
+  // Show inline provider picker instead of redirecting to wizard.
+  const picker = document.getElementById('provider-picker');
+  const openaiChoice = document.getElementById('openai-choice');
+  if (openaiChoice) openaiChoice.style.display = 'none';
+  if (picker) { picker.style.display = 'block'; picker.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  document.getElementById('provider-form').style.display = 'none';
+}
+
+function pickProvider(provider) {
+  document.getElementById('provider-picker').style.display = 'none';
+  document.getElementById('provider-form').style.display = 'block';
+  document.getElementById('form-title').textContent = 'Add Model';
+  document.getElementById('edit-original-label').value = '';
+  document.getElementById('form-provider').value = provider;
+  const autoLabels = { anthropic:'claude', openai:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek', ollama:'ollama', local:'ghost-ai' };
+  document.getElementById('form-label').value = autoLabels[provider] || provider;
+  document.getElementById('form-apikey').value = '';
+  document.getElementById('form-endpoint').value = '';
+  onFormProviderChange();
+  clearStatus('form-status');
+  setTimeout(() => document.getElementById('provider-form').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function showOpenAIChoiceSettings() {
+  document.getElementById('provider-picker').style.display = 'none';
+  const c = document.getElementById('openai-choice');
+  c.style.display = 'block';
+  c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function pickOpenAIKey() {
+  document.getElementById('openai-choice').style.display = 'none';
+  pickProvider('openai');
+}
+
+function pickOpenAIOAuth() {
+  document.getElementById('openai-choice').style.display = 'none';
+  window.location.href = '/wizard.html?returnTo=settings&startOAuth=1';
 }
 
 function setupLocalAI() {
