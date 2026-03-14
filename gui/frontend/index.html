@@ -1073,13 +1073,10 @@ async function init() {
   initHotkeyCapture();
 
   // Show keep-alive toggle if a local provider is configured.
-  const providers = configData.llm_providers || {};
-  for (const [label, def] of Object.entries(providers)) {
-    if (def.provider === 'local') {
-      document.getElementById('local-keepalive-section').style.display = 'block';
-      document.getElementById('pref-keepalive').checked = !!def.keep_alive;
-      break;
-    }
+  const localProv = (configData.providers || {}).local;
+  if (localProv) {
+    document.getElementById('local-keepalive-section').style.display = 'block';
+    document.getElementById('pref-keepalive').checked = !!localProv.keep_alive;
   }
 
   // Show macOS permissions section and check status.
@@ -1137,13 +1134,10 @@ const PROVIDER_NAMES = {local:'Ghost-AI', ollama:'Ollama', lmstudio:'LM Studio',
 
 async function renderProviders() {
   await reloadConfig();
-  const providers = configData.llm_providers || {};
+  const providers = configData.providers || {};
   const types = ['local','ollama','lmstudio','openai','anthropic','gemini','xai','deepseek'];
-  // Build a set of configured provider types
-  const configuredTypes = new Set();
-  for (const [label, def] of Object.entries(providers)) {
-    if (def.provider) configuredTypes.add(def.provider);
-  }
+  // Provider types are the keys of configData.providers
+  const configuredTypes = new Set(Object.keys(providers));
   types.forEach(function(t) {
     var isConfigured = configuredTypes.has(t);
     var statusEl = document.getElementById('prov-status-' + t);
@@ -1181,39 +1175,27 @@ function backToProviders() {
 
 async function loadProviderSetupValues(type) {
   await reloadConfig();
-  var providers = configData.llm_providers || {};
+  var prov = (configData.providers || {})[type];
   if (type === 'local') {
     // Load keep-alive setting
-    for (var label in providers) {
-      if (providers[label].provider === 'local') {
-        document.getElementById('prov-local-keepalive').checked = !!providers[label].keep_alive;
-        break;
-      }
+    if (prov) {
+      document.getElementById('prov-local-keepalive').checked = !!prov.keep_alive;
     }
     onProvLocalRefresh();
   } else if (type === 'ollama') {
-    for (var label in providers) {
-      if (providers[label].provider === 'ollama') {
-        document.getElementById('prov-ollama-endpoint').value = providers[label].api_endpoint || 'http://localhost:11434';
-        break;
-      }
+    if (prov) {
+      document.getElementById('prov-ollama-endpoint').value = prov.api_endpoint || 'http://localhost:11434';
     }
     refreshOllamaSetup();
   } else if (type === 'lmstudio') {
-    for (var label in providers) {
-      if (providers[label].provider === 'lmstudio') {
-        document.getElementById('prov-lmstudio-endpoint').value = providers[label].api_endpoint || 'http://localhost:1234/v1';
-        break;
-      }
+    if (prov) {
+      document.getElementById('prov-lmstudio-endpoint').value = prov.api_endpoint || 'http://localhost:1234/v1';
     }
     refreshLMStudioSetup();
   } else if (type === 'openai') {
-    for (var label in providers) {
-      if (providers[label].provider === 'openai' && providers[label].api_key) {
-        document.getElementById('prov-openai-apikey').value = providers[label].api_key;
-        document.getElementById('openai-apikey-form').style.display = 'block';
-        break;
-      }
+    if (prov && prov.api_key) {
+      document.getElementById('prov-openai-apikey').value = prov.api_key;
+      document.getElementById('openai-apikey-form').style.display = 'block';
     }
   }
 }
@@ -1230,12 +1212,9 @@ function showCloudSetup(type) {
   link.textContent = 'Get ' + names[type].split(' ')[0] + ' API Key \u2192';
   // Load existing key if configured
   document.getElementById('prov-cloud-apikey').value = '';
-  var providers = configData.llm_providers || {};
-  for (var label in providers) {
-    if (providers[label].provider === type && providers[label].api_key) {
-      document.getElementById('prov-cloud-apikey').value = providers[label].api_key;
-      break;
-    }
+  var prov = (configData.providers || {})[type];
+  if (prov && prov.api_key) {
+    document.getElementById('prov-cloud-apikey').value = prov.api_key;
   }
   document.getElementById('provider-setup-cloud').style.display = 'block';
 }
@@ -1244,11 +1223,11 @@ async function saveCloudProvider(type) {
   var statusId = type === 'openai' ? 'prov-openai-status' : 'prov-cloud-status';
   var key = document.getElementById(type === 'openai' ? 'prov-openai-apikey' : 'prov-cloud-apikey').value.trim();
   if (!key) { setStatus(statusId, 'error', 'API key required'); return; }
-  // Find existing label or create default
-  var providers = configData.llm_providers || {};
+  // Find existing model label for this provider type, or create default
+  var models = configData.models || {};
   var existingLabel = '';
-  for (var label in providers) {
-    if (providers[label].provider === type) { existingLabel = label; break; }
+  for (var label in models) {
+    if (models[label].provider === type) { existingLabel = label; break; }
   }
   var autoLabels = {anthropic:'claude', openai:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek'};
   var saveLabel = existingLabel || autoLabels[type] || type;
@@ -1278,11 +1257,11 @@ async function saveCloudProvider(type) {
 async function testProviderConnection(type) {
   var resultEl = document.getElementById('prov-result-' + type);
   var testResultEl = document.getElementById('prov-' + type + '-test-result');
-  // Find the provider label for this type
-  var providers = configData.llm_providers || {};
+  // Find a model label that uses this provider type
+  var models = configData.models || {};
   var label = '';
-  for (var l in providers) {
-    if (providers[l].provider === type) { label = l; break; }
+  for (var l in models) {
+    if (models[l].provider === type) { label = l; break; }
   }
   if (!label) {
     if (resultEl) { resultEl.className = 'provider-test-result fail'; resultEl.textContent = '\u2718 Not configured'; resultEl.style.display = 'block'; }
@@ -1344,10 +1323,11 @@ function startOpenAIOAuth() {
 }
 
 async function saveProviderKeepAlive(enabled) {
-  var providers = configData.llm_providers || {};
+  // Find a model label that uses the local provider
+  var models = configData.models || {};
   var localLabel = '';
-  for (var label in providers) {
-    if (providers[label].provider === 'local') { localLabel = label; break; }
+  for (var label in models) {
+    if (models[label].provider === 'local') { localLabel = label; break; }
   }
   if (localLabel) await goCall('setLocalKeepAlive', localLabel, enabled);
 }
@@ -1371,9 +1351,9 @@ async function onProvLocalRefresh() {
   // Find currently selected model from config
   var selectedModel = provSelectedModel['local'] || '';
   if (!selectedModel) {
-    var providers = configData.llm_providers || {};
-    for (var label in providers) {
-      if (providers[label].provider === 'local') { selectedModel = providers[label].model; break; }
+    var cfgModels = configData.models || {};
+    for (var label in cfgModels) {
+      if (cfgModels[label].provider === 'local') { selectedModel = cfgModels[label].model; break; }
     }
   }
 
@@ -1437,10 +1417,10 @@ async function onProvLocalRefresh() {
 function provLocalSelectModel(name) {
   provSelectedModel['local'] = name;
   // Auto-save provider with this model
-  var providers = configData.llm_providers || {};
+  var cfgModels = configData.models || {};
   var existingLabel = '';
-  for (var label in providers) {
-    if (providers[label].provider === 'local') { existingLabel = label; break; }
+  for (var label in cfgModels) {
+    if (cfgModels[label].provider === 'local') { existingLabel = label; break; }
   }
   var saveLabel = existingLabel || 'ghost-ai';
   goCall('saveProvider', saveLabel, 'local', '', name, '', existingLabel).then(function(result) {
@@ -1526,9 +1506,9 @@ async function provOllamaDropdown(container, installedModels) {
 
   var selectedModel = provSelectedModel['ollama'] || '';
   if (!selectedModel) {
-    var providers = configData.llm_providers || {};
-    for (var label in providers) {
-      if (providers[label].provider === 'ollama') { selectedModel = providers[label].model; break; }
+    var cfgModels = configData.models || {};
+    for (var label in cfgModels) {
+      if (cfgModels[label].provider === 'ollama') { selectedModel = cfgModels[label].model; break; }
     }
   }
 
@@ -1609,10 +1589,10 @@ async function saveOllamaProvider() {
   var endpoint = document.getElementById('prov-ollama-endpoint').value.trim();
   var model = provSelectedModel['ollama'] || '';
   if (!model) { setStatus('prov-ollama-status', 'error', 'Select a model first'); return; }
-  var providers = configData.llm_providers || {};
+  var cfgModels = configData.models || {};
   var existingLabel = '';
-  for (var label in providers) {
-    if (providers[label].provider === 'ollama') { existingLabel = label; break; }
+  for (var label in cfgModels) {
+    if (cfgModels[label].provider === 'ollama') { existingLabel = label; break; }
   }
   var saveLabel = existingLabel || 'ollama';
   var result = await goCall('saveProvider', saveLabel, 'ollama', '', model, endpoint, existingLabel);
@@ -1647,10 +1627,10 @@ async function refreshLMStudioSetup() {
 async function saveLMStudioProvider() {
   var endpoint = document.getElementById('prov-lmstudio-endpoint').value.trim();
   if (!endpoint) { setStatus('prov-lmstudio-status', 'error', 'Endpoint required'); return; }
-  var providers = configData.llm_providers || {};
+  var cfgModels = configData.models || {};
   var existingLabel = '';
-  for (var label in providers) {
-    if (providers[label].provider === 'lmstudio') { existingLabel = label; break; }
+  for (var label in cfgModels) {
+    if (cfgModels[label].provider === 'lmstudio') { existingLabel = label; break; }
   }
   var saveLabel = existingLabel || 'lmstudio';
   var result = await goCall('saveProvider', saveLabel, 'lmstudio', '', 'default', endpoint, existingLabel);
@@ -1697,12 +1677,12 @@ function ollamaTagBadge(tag) {
 
 async function renderModels() {
   await reloadConfig();
-  var providers = configData.llm_providers || {};
-  var defaultLLM = configData.default_llm || '';
+  var models = configData.models || {};
+  var defaultModel = configData.default_model || '';
   var container = document.getElementById('model-list');
   var emptyEl = document.getElementById('model-empty');
 
-  var labels = Object.keys(providers).sort();
+  var labels = Object.keys(models).sort();
   if (labels.length === 0) {
     container.innerHTML = '';
     emptyEl.style.display = '';
@@ -1712,12 +1692,13 @@ async function renderModels() {
 
   var html = '';
   labels.forEach(function(label) {
-    var m = providers[label];
-    var isDefault = label === defaultLLM;
+    var m = models[label];
+    var isDefault = label === defaultModel;
     var provName = PROVIDER_NAMES[m.provider] || m.provider;
-    html += '<div class="provider-entry">';
+    var hasProvider = !!(configData.providers || {})[m.provider];
+    html += '<div class="provider-entry"' + (!hasProvider ? ' style="opacity:0.6"' : '') + '>';
     html += '<div class="provider-info">';
-    html += '<span class="provider-label">' + esc(label) + (isDefault ? ' <span class="badge badge-rec">DEFAULT</span>' : '') + '</span>';
+    html += '<span class="provider-label">' + esc(label) + (isDefault ? ' <span class="badge badge-rec">DEFAULT</span>' : '') + (!hasProvider ? ' <span style="color:#f38ba8;font-size:0.75em">(provider not configured)</span>' : '') + '</span>';
     html += '<span class="provider-meta">' + (PROVIDER_SVGS[m.provider] || '') + esc(provName) + ' \u00b7 ' + esc(m.model || 'no model') + '</span>';
     html += '</div>';
     html += '<div class="provider-actions">';
@@ -1860,7 +1841,7 @@ function customModelFormModel() {
 function cancelModelForm() { document.getElementById('model-form').style.display = 'none'; }
 
 function editModel(label) {
-  var def = configData.llm_providers[label];
+  var def = (configData.models || {})[label];
   if (!def) return;
   document.getElementById('model-form').style.display = 'block';
   document.getElementById('model-form-title').textContent = 'Edit Model';
@@ -1884,16 +1865,9 @@ async function saveModelForm() {
   if (!label) { setStatus('model-form-status', 'error', 'Label required'); return; }
   if (!model) { setStatus('model-form-status', 'error', 'Select a model'); return; }
   // Get existing API key and endpoint for this provider type from config
-  var providers = configData.llm_providers || {};
-  var apiKey = '';
-  var endpoint = '';
-  for (var l in providers) {
-    if (providers[l].provider === provider) {
-      apiKey = providers[l].api_key || '';
-      endpoint = providers[l].api_endpoint || '';
-      break;
-    }
-  }
+  var prov = (configData.providers || {})[provider];
+  var apiKey = prov ? (prov.api_key || '') : '';
+  var endpoint = prov ? (prov.api_endpoint || '') : '';
   var result = await goCall('saveProvider', label, provider, apiKey, model, endpoint, original);
   if (result && result.startsWith('ok')) {
     document.getElementById('model-form').style.display = 'none';
@@ -1985,9 +1959,9 @@ async function renderPrompts() {
 }
 
 function buildInlineForm(idx, p) {
-  const providers = configData.llm_providers || {};
+  const models = configData.models || {};
   let llmOpts = '<option value="">Use default</option>';
-  for (const label of Object.keys(providers)) {
+  for (const label of Object.keys(models)) {
     llmOpts += '<option value="' + esc(label) + '"' + (label === (p.llm || '') ? ' selected' : '') + '>' + esc(label) + '</option>';
   }
   const iconChoices = ['\u270F\uFE0F','\uD83D\uDC8E','\uD83D\uDE04','\uD83D\uDCDD','\u2702\uFE0F','\uD83C\uDF10','\uD83D\uDCA1','\uD83D\uDD25','\uD83C\uDFAF','\u2728','\uD83D\uDE80','\uD83E\uDDE0','\uD83D\uDCAC','\uD83D\uDD0D','\uD83C\uDFA8'];
@@ -2184,11 +2158,11 @@ async function onOpenPermissions() {
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }
 async function onToggleClipboard(enabled) { await goCall('setPreserveClipboard', enabled); }
 async function onToggleKeepAlive(enabled) {
-  // Find the local provider label.
-  const providers = configData.llm_providers || {};
+  // Find a model label that uses the local provider.
+  const models = configData.models || {};
   let localLabel = '';
-  for (const [label, def] of Object.entries(providers)) {
-    if (def.provider === 'local') { localLabel = label; break; }
+  for (const [label, m] of Object.entries(models)) {
+    if (m.provider === 'local') { localLabel = label; break; }
   }
   if (!localLabel) return;
   await goCall('setLocalKeepAlive', localLabel, enabled);

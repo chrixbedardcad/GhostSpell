@@ -16,7 +16,6 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/config"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/hotkey"
-	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/chrixbedardcad/GhostSpell/tray"
@@ -293,43 +292,41 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	// The wizard window appears alongside the tray icon. When the user saves a
 	// provider, the LLM client + router are initialised and wizardDone is closed
 	// to unblock hotkey registration.
+	var wizardInitDone bool // guards against double-close of wizardDone
 	if needsSetup {
 		gui.ShowWizardOnApp(settingsSvc, wailsApp, cfg, configPath,
 			func() {
-				// onSaved — provider was saved to disk. Initialise everything.
-				slog.Info("Wizard: provider saved, initialising LLM client...")
-				fmt.Println("Wizard: provider saved, initialising...")
+				// onSaved fires for each wizard save call (SaveProviderConfig,
+				// SaveModel, SetDefaultModel). Only init the LLM client once
+				// the full config is ready (provider + model + default set).
+				slog.Info("Wizard: config saved, checking readiness...")
 
 				newCfg, err := config.LoadRaw(configPath)
 				if err != nil {
 					slog.Error("Failed to reload config after wizard", "error", err)
-					fmt.Fprintf(os.Stderr, "Error reloading config: %v\n", err)
 					return
 				}
 				mu.Lock()
 				*cfg = *newCfg
 				mu.Unlock()
 
-				// Re-init logging in case the reload changed settings.
 				if debugState != nil {
 					debugState.InitFromConfig(cfg.LogLevel)
 				}
 
-				if err := config.Validate(cfg); err != nil {
-					slog.Error("Config validation failed after wizard", "error", err)
-					fmt.Fprintf(os.Stderr, "Config validation failed: %v\n", err)
+				// Wait until all 3 pieces are in place before initialising.
+				if cfg.DefaultModel == "" || len(cfg.Models) == 0 || len(cfg.Providers) == 0 {
+					slog.Debug("Wizard: config not fully ready yet", "default_model", cfg.DefaultModel, "models", len(cfg.Models), "providers", len(cfg.Providers))
 					return
 				}
 
-				var client llm.Client
-				if cfg.DefaultModel != "" {
-					client, err = newClientFromConfig(cfg, cfg.DefaultModel)
-				} else {
-					err = fmt.Errorf("no default_model configured")
+				if wizardInitDone {
+					return // already initialised on a previous onSaved call
 				}
+
+				client, err := newClientFromConfig(cfg, cfg.DefaultModel)
 				if err != nil {
 					slog.Error("Failed to init LLM client after wizard", "error", err)
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 					return
 				}
 
@@ -337,8 +334,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				sound.Init(*cfg.SoundEnabled)
 				sound.PlayStart()
 
+				wizardInitDone = true
 				slog.Info("Wizard: init complete, unblocking hotkeys")
-				fmt.Println("Wizard: setup complete, starting GhostSpell...")
 				close(wizardDone)
 			},
 			func() {
