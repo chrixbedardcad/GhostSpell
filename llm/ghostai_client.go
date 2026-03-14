@@ -133,17 +133,18 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 
 	// Format using the model's chat template (ChatML for Qwen, etc.).
 	// System = instruction prompt, User = the text to process.
-	// Qwen3/3.5 models recognize /no_think in the user turn (not system).
+	// /no_think goes in the system message — putting it in the user message
+	// contaminates the input text (small models echo it back as part of the
+	// corrected text instead of recognizing it as a directive).
 	systemMsg := req.Prompt
-	userMsg := req.Text
 	if thinking {
-		userMsg = "/no_think\n" + req.Text
+		systemMsg = "/no_think\n" + req.Prompt
 	}
-	prompt, err := c.engine.ApplyChat(systemMsg, userMsg)
+	prompt, err := c.engine.ApplyChat(systemMsg, req.Text)
 	if err != nil {
 		slog.Warn("[ghost-ai] chat template failed, using raw format", "error", err)
 		// Fallback to raw format if template fails.
-		prompt = systemMsg + "\n\nUser: " + userMsg
+		prompt = systemMsg + "\n\nUser: " + req.Text
 	}
 
 	text, stats, err := c.engine.Complete(ctx, prompt, maxTokens)
@@ -186,8 +187,8 @@ func cleanLocalModelResponse(s string) string {
 	// 1. Strip <think>...</think> blocks.
 	s = stripThinkingTags(s)
 
-	// 2. Strip ChatML special tokens that may leak through.
-	for _, tok := range []string{"<|im_end|>", "<|im_start|>", "</s>", "<|endoftext|>"} {
+	// 2. Strip ChatML special tokens and control directives that may leak through.
+	for _, tok := range []string{"<|im_end|>", "<|im_start|>", "</s>", "<|endoftext|>", "/no_think", "no_think"} {
 		s = strings.ReplaceAll(s, tok, "")
 	}
 
