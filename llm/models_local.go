@@ -99,6 +99,23 @@ func AvailableLocalModels() []LocalModel {
 			Tag:      "heavy",
 			Desc:     "Qwen3.5 — excellent quality. Beats GPT-oss-120B. Needs 8GB+ RAM, slow on CPU.",
 		},
+		// --- Abliterated (uncensored) Qwen3.5 ---
+		{
+			Name:     "qwen3.5-2b-uncensored",
+			FileName: "Huihui-Qwen3.5-2B-abliterated.i1-Q4_K_M.gguf",
+			URL:      "https://huggingface.co/mradermacher/Huihui-Qwen3.5-2B-abliterated-i1-GGUF/resolve/main/Huihui-Qwen3.5-2B-abliterated.i1-Q4_K_M.gguf",
+			Size:     1_270_000_000,
+			Tag:      "uncensored",
+			Desc:     "Qwen3.5 2B abliterated — no refusals. Same quality as qwen3.5-2b without content filters.",
+		},
+		{
+			Name:     "qwen3.5-4b-uncensored",
+			FileName: "Huihui-Qwen3.5-4B-abliterated.i1-Q4_K_M.gguf",
+			URL:      "https://huggingface.co/mradermacher/Huihui-Qwen3.5-4B-abliterated-i1-GGUF/resolve/main/Huihui-Qwen3.5-4B-abliterated.i1-Q4_K_M.gguf",
+			Size:     2_710_000_000,
+			Tag:      "uncensored",
+			Desc:     "Qwen3.5 4B abliterated — no refusals. High quality without content filters. Needs 4GB+ RAM.",
+		},
 		// --- Other models ---
 		{
 			Name:     "phi-4-mini",
