@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
-	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/internal/debuglog"
 	"github.com/chrixbedardcad/GhostSpell/internal/sysinfo"
 	"github.com/chrixbedardcad/GhostSpell/llm"
@@ -97,8 +96,9 @@ func logSysInfo(cfg *config.Config) {
 		"locale", info.Locale,
 		"keyboard", info.KeyboardLayout,
 		"hotkey", cfg.Hotkeys.Action,
-		"default_llm", cfg.DefaultLLM,
-		"providers", len(cfg.LLMProviders),
+		"default_model", cfg.DefaultModel,
+		"providers", len(cfg.Providers),
+		"models", len(cfg.Models),
 	)
 }
 
@@ -169,16 +169,17 @@ func main() {
 
 	slog.Info("GhostSpell starting",
 		"version", Version,
-		"default_llm", cfg.DefaultLLM,
-		"llm_providers", len(cfg.LLMProviders),
+		"default_model", cfg.DefaultModel,
+		"providers", len(cfg.Providers),
+		"models", len(cfg.Models),
 	)
 	logSysInfo(cfg)
 
 	// First-launch check: if no provider is configured, the wizard will
 	// run on the tray Wails app (no separate app to avoid goroutine leaks).
-	needsSetup := gui.NeedsSetup(cfg)
-	slog.Info("First-launch check", "needs_setup", needsSetup, "providers", len(cfg.LLMProviders), "default_llm", cfg.DefaultLLM)
-	fmt.Printf("First-launch check: needs_setup=%v providers=%d default_llm=%q\n", needsSetup, len(cfg.LLMProviders), cfg.DefaultLLM)
+	needsSetup := config.NeedsSetup(cfg)
+	slog.Info("First-launch check", "needs_setup", needsSetup, "providers", len(cfg.Providers), "default_model", cfg.DefaultModel)
+	fmt.Printf("First-launch check: needs_setup=%v providers=%d default_model=%q\n", needsSetup, len(cfg.Providers), cfg.DefaultModel)
 
 	var router *mode.Router
 	if !needsSetup {
@@ -195,14 +196,13 @@ func main() {
 		// If providers exist but model fails (e.g. legacy model removed), start
 		// the app with an error state instead of forcing the wizard.
 		var client llm.Client
-		if cfg.DefaultLLM != "" {
-			def := cfg.LLMProviders[cfg.DefaultLLM]
-			client, err = llm.NewClientFromDef(def)
+		if cfg.DefaultModel != "" {
+			client, err = newClientFromConfig(cfg, cfg.DefaultModel)
 		} else {
-			client, err = llm.NewClient(cfg)
+			err = fmt.Errorf("no default_model configured")
 		}
 		if err != nil {
-			if len(cfg.LLMProviders) > 0 {
+			if len(cfg.Providers) > 0 {
 				// Providers configured but model failed — don't force wizard.
 				slog.Warn("LLM init failed (model error), starting without active model", "error", err)
 				fmt.Fprintf(os.Stderr, "LLM init failed: %v — open Settings to fix\n", err)
@@ -232,26 +232,48 @@ func main() {
 	runApp(cfg, router, configPath, needsSetup, initError)
 }
 
+// newClientFromConfig builds an LLM client by merging a named model entry
+// with its provider credentials from the config.
+func newClientFromConfig(cfg *config.Config, label string) (llm.Client, error) {
+	model, ok := cfg.Models[label]
+	if !ok {
+		return nil, fmt.Errorf("model %q not found", label)
+	}
+	prov, ok := cfg.Providers[model.Provider]
+	if !ok {
+		return nil, fmt.Errorf("provider %q not configured", model.Provider)
+	}
+	def := config.LLMProviderDef{
+		Provider:     model.Provider,
+		APIKey:       prov.APIKey,
+		Model:        model.Model,
+		APIEndpoint:  prov.APIEndpoint,
+		RefreshToken: prov.RefreshToken,
+		KeepAlive:    prov.KeepAlive,
+		TimeoutMs:    prov.TimeoutMs,
+		MaxTokens:    model.MaxTokens,
+	}
+	if model.TimeoutMs > 0 {
+		def.TimeoutMs = model.TimeoutMs
+	}
+	return llm.NewClientFromDef(def)
+}
+
 // printStatus prints provider, mode, and hotkey info to stdout.
-func printStatus(cfg *config.Config, client llm.Client, router *mode.Router) {
-	if len(cfg.LLMProviders) > 0 {
-		fmt.Println("")
-		fmt.Println("LLM Providers:")
-		for label, def := range cfg.LLMProviders {
-			suffix := ""
-			if label == cfg.DefaultLLM {
-				suffix = " (default)"
-			}
-			fmt.Printf("  %s: %s / %s%s\n", label, def.Provider, def.Model, suffix)
+func printStatus(cfg *config.Config, _ llm.Client, _ *mode.Router) {
+	fmt.Println("")
+	fmt.Println("Models:")
+	for label, me := range cfg.Models {
+		suffix := ""
+		if label == cfg.DefaultModel {
+			suffix = " (default)"
 		}
-		for _, p := range cfg.Prompts {
-			if p.LLM != "" {
-				fmt.Printf("  prompt/%s → %s\n", p.Name, p.LLM)
-			}
+		fmt.Printf("  %s: %s / %s%s\n", label, me.Provider, me.Model, suffix)
+	}
+	for _, p := range cfg.Prompts {
+		if p.LLM != "" {
+			fmt.Printf("  prompt/%s → %s\n", p.Name, p.LLM)
 		}
-	} else {
-		fmt.Printf("Provider: %s\n", client.Provider())
-		fmt.Printf("Model: %s\n", cfg.Model)
 	}
 
 	fmt.Println("")

@@ -29,13 +29,17 @@ func (m *mockClient) Close() {}
 
 func newTestConfig() *config.Config {
 	return &config.Config{
-		LLMProvider: "anthropic",
-		APIKey:      "test-key",
-		Model:       "claude-sonnet-4-5-20250929",
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "test-key"},
+		},
+		Models: map[string]config.ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"},
+		},
+		DefaultModel: "claude",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix spelling and grammar. Return ONLY corrected text."},
 			{Name: "Polish", Prompt: "Improve the text. Return ONLY the polished text."},
-			{Name: "Translate", Prompt: "Translateglish. Return ONLY the translation."},
+			{Name: "Translate", Prompt: "Translate to English. Return ONLY the translation."},
 		},
 		ActivePrompt: 0,
 		MaxTokens:    256,
@@ -222,11 +226,15 @@ func TestRouter_SetPrompt(t *testing.T) {
 
 func TestRouter_PerPromptLLM(t *testing.T) {
 	cfg := &config.Config{
-		DefaultLLM: "claude",
-		LLMProviders: map[string]config.LLMProviderDef{
-			"claude": {Provider: "anthropic", APIKey: "sk-ant", Model: "claude-sonnet-4-5-20250929"},
-			"gpt":    {Provider: "openai", APIKey: "sk-oai", Model: "gpt-4o"},
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "sk-ant"},
+			"openai":    {APIKey: "sk-oai"},
 		},
+		Models: map[string]config.ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"},
+			"gpt":    {Provider: "openai", Model: "gpt-4o"},
+		},
+		DefaultModel: "claude",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors.", LLM: "gpt"},
 			{Name: "Polish", Prompt: "Improve text."},
@@ -245,7 +253,7 @@ func TestRouter_PerPromptLLM(t *testing.T) {
 		t.Errorf("expected llm label 'gpt' for Correct prompt, got %q", label)
 	}
 
-	// Second prompt ("Polish") has no LLM → falls back to DefaultLLM
+	// Second prompt ("Polish") has no LLM -> falls back to DefaultModel
 	label = router.llmLabelForPrompt(1)
 	if label != "claude" {
 		t.Errorf("expected llm label 'claude' for Polish prompt, got %q", label)
@@ -254,10 +262,13 @@ func TestRouter_PerPromptLLM(t *testing.T) {
 
 func TestRouter_ResetClients(t *testing.T) {
 	cfg := &config.Config{
-		DefaultLLM: "claude",
-		LLMProviders: map[string]config.LLMProviderDef{
-			"claude": {Provider: "anthropic", APIKey: "sk-ant", Model: "claude-sonnet-4-5-20250929"},
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "sk-ant"},
 		},
+		Models: map[string]config.ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"},
+		},
+		DefaultModel: "claude",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors."},
 		},
@@ -289,11 +300,15 @@ func TestRouter_ResetClients(t *testing.T) {
 
 func TestRouter_TimeoutForPrompt(t *testing.T) {
 	cfg := &config.Config{
-		DefaultLLM: "claude",
-		LLMProviders: map[string]config.LLMProviderDef{
-			"claude": {Provider: "anthropic", APIKey: "sk-ant", Model: "claude-sonnet-4-5-20250929", TimeoutMs: 15000},
-			"ollama": {Provider: "ollama", Model: "mistral", TimeoutMs: 120000},
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "sk-ant", TimeoutMs: 15000},
+			"ollama":    {TimeoutMs: 120000},
 		},
+		Models: map[string]config.ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"},
+			"ollama": {Provider: "ollama", Model: "mistral"},
+		},
+		DefaultModel: "claude",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors."},
 			{Name: "Local", Prompt: "Fix errors.", LLM: "ollama"},
@@ -304,18 +319,18 @@ func TestRouter_TimeoutForPrompt(t *testing.T) {
 	mock := &mockClient{}
 	router := NewRouter(cfg, mock)
 
-	// Default prompt uses claude → 15000ms
+	// Default prompt uses claude -> provider timeout 15000ms
 	if timeout := router.TimeoutForPrompt(0); timeout != 15000 {
 		t.Errorf("expected timeout 15000 for prompt 0, got %d", timeout)
 	}
 
-	// Prompt with LLM override uses ollama → 120000ms
+	// Prompt with LLM override uses ollama -> provider timeout 120000ms
 	if timeout := router.TimeoutForPrompt(1); timeout != 120000 {
 		t.Errorf("expected timeout 120000 for prompt 1, got %d", timeout)
 	}
 
-	// Out-of-range falls back to default LLM's timeout (claude → 15000)
+	// Out-of-range falls back to default model's provider timeout (claude -> 15000)
 	if timeout := router.TimeoutForPrompt(99); timeout != 15000 {
-		t.Errorf("expected default LLM timeout 15000 for invalid index, got %d", timeout)
+		t.Errorf("expected default provider timeout 15000 for invalid index, got %d", timeout)
 	}
 }

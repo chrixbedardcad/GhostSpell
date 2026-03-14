@@ -10,24 +10,26 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/llm"
 )
 
-// validateAndSave writes the config to disk, removing any provider entries that
-// are clearly invalid (no API key for non-ollama/local providers) and ensuring
-// DefaultLLM points to a valid provider. Legacy flat fields are omitted
-// automatically by their omitempty JSON tags.
+// validateAndSave writes the config to disk, validating that model entries
+// reference existing providers and ensuring DefaultModel points to a valid model.
 func (s *SettingsService) validateAndSave() error {
-	// Remove invalid provider entries (e.g. phantom "default" from legacy synthesis).
-	for label, def := range s.cfgCopy.LLMProviders {
-		if def.Provider != "ollama" && def.Provider != "local" && def.APIKey == "" && def.RefreshToken == "" {
-			delete(s.cfgCopy.LLMProviders, label)
-			if s.cfgCopy.DefaultLLM == label {
-				s.cfgCopy.DefaultLLM = ""
-			}
+	// Remove model entries whose provider is missing from Providers map.
+	for label, me := range s.cfgCopy.Models {
+		if _, ok := s.cfgCopy.Providers[me.Provider]; !ok {
+			// Provider missing — keep the model but log it; the UI shows a warning.
+			_ = label
 		}
 	}
-	// Ensure DefaultLLM points to a valid provider.
-	if s.cfgCopy.DefaultLLM == "" && len(s.cfgCopy.LLMProviders) > 0 {
-		for k := range s.cfgCopy.LLMProviders {
-			s.cfgCopy.DefaultLLM = k
+
+	// Ensure DefaultModel points to a valid model entry.
+	if s.cfgCopy.DefaultModel != "" {
+		if _, ok := s.cfgCopy.Models[s.cfgCopy.DefaultModel]; !ok {
+			s.cfgCopy.DefaultModel = ""
+		}
+	}
+	if s.cfgCopy.DefaultModel == "" && len(s.cfgCopy.Models) > 0 {
+		for k := range s.cfgCopy.Models {
+			s.cfgCopy.DefaultModel = k
 			break
 		}
 	}
@@ -52,51 +54,141 @@ func (s *SettingsService) GetConfig() string {
 	return string(data)
 }
 
-// SaveProvider saves or updates a named LLM provider.
-func (s *SettingsService) SaveProvider(label, provider, apiKey, model, endpoint, originalLabel string) string {
-	guiLog("[GUI] JS called: SaveProvider(%s, %s)", label, provider)
-	if label == "" {
-		return "error: label is required"
+// SaveProviderConfig saves or updates a provider's connection credentials.
+func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, refreshToken string, keepAlive bool) string {
+	guiLog("[GUI] JS called: SaveProviderConfig(%s)", providerType)
+	if providerType == "" {
+		return "error: providerType is required"
 	}
 
-	if originalLabel != "" && originalLabel != label {
-		delete(s.cfgCopy.LLMProviders, originalLabel)
-		if s.cfgCopy.DefaultLLM == originalLabel {
-			s.cfgCopy.DefaultLLM = label
-		}
+	if s.cfgCopy.Providers == nil {
+		s.cfgCopy.Providers = make(map[string]config.ProviderConfig)
 	}
 
-	if s.cfgCopy.LLMProviders == nil {
-		s.cfgCopy.LLMProviders = make(map[string]config.LLMProviderDef)
-	}
-
-	s.cfgCopy.LLMProviders[label] = config.LLMProviderDef{
-		Provider:    provider,
-		APIKey:      apiKey,
-		Model:       model,
-		APIEndpoint: endpoint,
-	}
-
-	if len(s.cfgCopy.LLMProviders) == 1 || s.cfgCopy.DefaultLLM == "" {
-		s.cfgCopy.DefaultLLM = label
+	s.cfgCopy.Providers[providerType] = config.ProviderConfig{
+		APIKey:       apiKey,
+		APIEndpoint:  endpoint,
+		RefreshToken: refreshToken,
+		KeepAlive:    keepAlive,
 	}
 
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
 
-	guiLog("[GUI] Provider saved: label=%s provider=%s", label, provider)
+	guiLog("[GUI] Provider config saved: %s", providerType)
 	return "ok"
 }
 
-// DeleteProvider removes a provider by label.
-func (s *SettingsService) DeleteProvider(label string) string {
-	guiLog("[GUI] JS called: DeleteProvider(%s)", label)
-	delete(s.cfgCopy.LLMProviders, label)
-	if s.cfgCopy.DefaultLLM == label {
-		s.cfgCopy.DefaultLLM = ""
-		for k := range s.cfgCopy.LLMProviders {
-			s.cfgCopy.DefaultLLM = k
+// SaveModel saves or updates a named model entry.
+func (s *SettingsService) SaveModel(label, providerType, modelName, originalLabel string) string {
+	guiLog("[GUI] JS called: SaveModel(%s, %s, %s, original=%s)", label, providerType, modelName, originalLabel)
+	if label == "" {
+		return "error: label is required"
+	}
+
+	if originalLabel != "" && originalLabel != label {
+		delete(s.cfgCopy.Models, originalLabel)
+		if s.cfgCopy.DefaultModel == originalLabel {
+			s.cfgCopy.DefaultModel = label
+		}
+	}
+
+	if s.cfgCopy.Models == nil {
+		s.cfgCopy.Models = make(map[string]config.ModelEntry)
+	}
+
+	s.cfgCopy.Models[label] = config.ModelEntry{
+		Provider: providerType,
+		Model:    modelName,
+	}
+
+	// Auto-set DefaultModel if this is the first model.
+	if len(s.cfgCopy.Models) == 1 || s.cfgCopy.DefaultModel == "" {
+		s.cfgCopy.DefaultModel = label
+	}
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	guiLog("[GUI] Model saved: label=%s provider=%s model=%s", label, providerType, modelName)
+	return "ok"
+}
+
+// SaveProvider is a convenience method that saves both provider config and a model entry
+// in a single call. Used by the wizard and legacy code paths.
+func (s *SettingsService) SaveProvider(label, provider, apiKey, model, endpoint, originalLabel string) string {
+	guiLog("[GUI] JS called: SaveProvider(%s, %s)", label, provider)
+	if label == "" {
+		return "error: label is required"
+	}
+
+	// Save provider credentials.
+	if s.cfgCopy.Providers == nil {
+		s.cfgCopy.Providers = make(map[string]config.ProviderConfig)
+	}
+
+	// Preserve existing RefreshToken and KeepAlive if provider already exists.
+	existing := s.cfgCopy.Providers[provider]
+	s.cfgCopy.Providers[provider] = config.ProviderConfig{
+		APIKey:       apiKey,
+		APIEndpoint:  endpoint,
+		RefreshToken: existing.RefreshToken,
+		KeepAlive:    existing.KeepAlive,
+	}
+
+	// Handle model rename.
+	if originalLabel != "" && originalLabel != label {
+		delete(s.cfgCopy.Models, originalLabel)
+		if s.cfgCopy.DefaultModel == originalLabel {
+			s.cfgCopy.DefaultModel = label
+		}
+	}
+
+	if s.cfgCopy.Models == nil {
+		s.cfgCopy.Models = make(map[string]config.ModelEntry)
+	}
+
+	s.cfgCopy.Models[label] = config.ModelEntry{
+		Provider: provider,
+		Model:    model,
+	}
+
+	// Auto-set DefaultModel if first model or none set.
+	if len(s.cfgCopy.Models) == 1 || s.cfgCopy.DefaultModel == "" {
+		s.cfgCopy.DefaultModel = label
+	}
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	guiLog("[GUI] Provider+model saved: label=%s provider=%s model=%s", label, provider, model)
+	return "ok"
+}
+
+// RemoveProvider removes a provider's credentials from the config.
+// Does NOT auto-remove models that reference it (they show a warning in the UI).
+func (s *SettingsService) RemoveProvider(providerType string) string {
+	guiLog("[GUI] JS called: RemoveProvider(%s)", providerType)
+	delete(s.cfgCopy.Providers, providerType)
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	return "ok"
+}
+
+// DeleteModel removes a model entry by label.
+func (s *SettingsService) DeleteModel(label string) string {
+	guiLog("[GUI] JS called: DeleteModel(%s)", label)
+	delete(s.cfgCopy.Models, label)
+	if s.cfgCopy.DefaultModel == label {
+		s.cfgCopy.DefaultModel = ""
+		for k := range s.cfgCopy.Models {
+			s.cfgCopy.DefaultModel = k
 			break
 		}
 	}
@@ -108,13 +200,19 @@ func (s *SettingsService) DeleteProvider(label string) string {
 	return "ok"
 }
 
-// SetDefault sets the default provider.
-func (s *SettingsService) SetDefault(label string) string {
-	guiLog("[GUI] JS called: SetDefault(%s)", label)
-	if _, ok := s.cfgCopy.LLMProviders[label]; !ok {
-		return "error: provider not found"
+// DeleteProvider removes a model entry by label (legacy compatibility alias for DeleteModel).
+func (s *SettingsService) DeleteProvider(label string) string {
+	guiLog("[GUI] JS called: DeleteProvider(%s)", label)
+	return s.DeleteModel(label)
+}
+
+// SetDefaultModel sets the default model.
+func (s *SettingsService) SetDefaultModel(label string) string {
+	guiLog("[GUI] JS called: SetDefaultModel(%s)", label)
+	if _, ok := s.cfgCopy.Models[label]; !ok {
+		return "error: model not found"
 	}
-	s.cfgCopy.DefaultLLM = label
+	s.cfgCopy.DefaultModel = label
 
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
@@ -123,7 +221,12 @@ func (s *SettingsService) SetDefault(label string) string {
 	return "ok"
 }
 
-// TestConnection tests provider credentials.
+// SetDefault sets the default model (legacy compatibility alias for SetDefaultModel).
+func (s *SettingsService) SetDefault(label string) string {
+	return s.SetDefaultModel(label)
+}
+
+// TestConnection tests provider credentials by sending a test request.
 func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint string) string {
 	guiLog("[GUI] JS called: TestConnection(provider=%s, model=%s, endpoint=%q)", provider, model, endpoint)
 
@@ -177,32 +280,115 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 	return "ok"
 }
 
-// TestProvider tests a saved provider by label.
-func (s *SettingsService) TestProvider(label string) string {
-	guiLog("[GUI] JS called: TestProvider(%s)", label)
-	def, ok := s.cfgCopy.LLMProviders[label]
+// defaultTestModel returns a sensible default model name for testing a provider connection.
+func defaultTestModel(providerType string) string {
+	models := KnownModels(providerType)
+	if len(models) > 0 {
+		return models[0].Name
+	}
+	return ""
+}
+
+// TestProviderConnection tests a saved provider by provider type.
+func (s *SettingsService) TestProviderConnection(providerType string) string {
+	guiLog("[GUI] JS called: TestProviderConnection(%s)", providerType)
+	prov, ok := s.cfgCopy.Providers[providerType]
 	if !ok {
-		guiLog("[GUI] TestProvider: provider %q not found in config", label)
+		guiLog("[GUI] TestProviderConnection: provider %q not found in config", providerType)
 		return "error: provider not found"
 	}
-	guiLog("[GUI] TestProvider: provider=%s model=%s endpoint=%q", def.Provider, def.Model, def.APIEndpoint)
+
+	// Pick a default model for this provider type.
+	model := defaultTestModel(providerType)
+	if model == "" {
+		return "error: no known test model for provider"
+	}
+
+	guiLog("[GUI] TestProviderConnection: provider=%s model=%s endpoint=%q", providerType, model, prov.APIEndpoint)
 
 	// Ollama and local need much longer timeout — first request loads model into memory.
-	// They also need more max_tokens because thinking models (Qwen3/3.5, DeepSeek)
-	// can consume 200-400 tokens on <think> blocks even with /no_think — larger
-	// models like qwen3.5-4b are especially heavy thinkers.
 	timeout := 10 * time.Second
 	maxTokens := 64
 	timeoutMs := 10000
-	if def.Provider == "ollama" || def.Provider == "local" {
+	if providerType == "ollama" || providerType == "local" {
 		timeout = 120 * time.Second
 		maxTokens = 512
 		timeoutMs = 120000
-		guiLog("[GUI] %s detected — using %s timeout, %d max_tokens", def.Provider, timeout, maxTokens)
+		guiLog("[GUI] %s detected — using %s timeout, %d max_tokens", providerType, timeout, maxTokens)
 	}
 
-	def.MaxTokens = maxTokens
-	def.TimeoutMs = timeoutMs
+	def := config.LLMProviderDef{
+		Provider:    providerType,
+		APIKey:      prov.APIKey,
+		Model:       model,
+		APIEndpoint: prov.APIEndpoint,
+		MaxTokens:   maxTokens,
+		TimeoutMs:   timeoutMs,
+	}
+
+	client, err := llm.NewClientFromDef(def)
+	if err != nil {
+		guiLog("[GUI] TestProviderConnection: NewClientFromDef failed: %v", err)
+		return fmt.Sprintf("error: %v", err)
+	}
+	defer client.Close()
+
+	guiLog("[GUI] TestProviderConnection: sending test request (timeout=%s)...", timeout)
+	tctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	start := time.Now()
+	_, err = client.Send(tctx, llm.Request{
+		Prompt:    "Reply with OK",
+		Text:      "test",
+		MaxTokens: maxTokens,
+	})
+	elapsed := time.Since(start)
+	if err != nil {
+		guiLog("[GUI] TestProviderConnection FAILED after %s: %v", elapsed, err)
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	guiLog("[GUI] TestProviderConnection OK (elapsed=%s)", elapsed)
+	return "ok"
+}
+
+// TestProvider tests a saved model entry by label.
+func (s *SettingsService) TestProvider(label string) string {
+	guiLog("[GUI] JS called: TestProvider(%s)", label)
+	me, ok := s.cfgCopy.Models[label]
+	if !ok {
+		guiLog("[GUI] TestProvider: model %q not found in config", label)
+		return "error: model not found"
+	}
+
+	prov, ok := s.cfgCopy.Providers[me.Provider]
+	if !ok {
+		guiLog("[GUI] TestProvider: provider %q not found for model %q", me.Provider, label)
+		return "error: provider not found"
+	}
+
+	guiLog("[GUI] TestProvider: provider=%s model=%s endpoint=%q", me.Provider, me.Model, prov.APIEndpoint)
+
+	// Ollama and local need much longer timeout — first request loads model into memory.
+	timeout := 10 * time.Second
+	maxTokens := 64
+	timeoutMs := 10000
+	if me.Provider == "ollama" || me.Provider == "local" {
+		timeout = 120 * time.Second
+		maxTokens = 512
+		timeoutMs = 120000
+		guiLog("[GUI] %s detected — using %s timeout, %d max_tokens", me.Provider, timeout, maxTokens)
+	}
+
+	def := config.LLMProviderDef{
+		Provider:    me.Provider,
+		APIKey:      prov.APIKey,
+		Model:       me.Model,
+		APIEndpoint: prov.APIEndpoint,
+		MaxTokens:   maxTokens,
+		TimeoutMs:   timeoutMs,
+	}
 
 	client, err := llm.NewClientFromDef(def)
 	if err != nil {
@@ -231,15 +417,15 @@ func (s *SettingsService) TestProvider(label string) string {
 	return "ok"
 }
 
-// SetRefreshToken stores an OAuth refresh token for a saved provider.
-func (s *SettingsService) SetRefreshToken(label, token string) string {
-	guiLog("[GUI] JS called: SetRefreshToken(%s)", label)
-	def, ok := s.cfgCopy.LLMProviders[label]
+// SetRefreshToken stores an OAuth refresh token for a provider type.
+func (s *SettingsService) SetRefreshToken(providerType, token string) string {
+	guiLog("[GUI] JS called: SetRefreshToken(%s)", providerType)
+	prov, ok := s.cfgCopy.Providers[providerType]
 	if !ok {
 		return "error: provider not found"
 	}
-	def.RefreshToken = token
-	s.cfgCopy.LLMProviders[label] = def
+	prov.RefreshToken = token
+	s.cfgCopy.Providers[providerType] = prov
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}

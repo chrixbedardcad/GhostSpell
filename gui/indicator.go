@@ -82,6 +82,9 @@ func ShowIndicator() {
 		}
 	}
 
+	slog.Debug("[indicator] ShowIndicator called")
+	// Pre-set "0s" before showing — belt & suspenders with the goroutine burst.
+	win.ExecJS(`document.getElementById('t').textContent='0s'`)
 	win.Show()
 	startIndicatorTimer()
 }
@@ -95,7 +98,10 @@ func HideIndicator() {
 		return
 	}
 
+	slog.Debug("[indicator] HideIndicator called")
 	stopIndicatorTimer()
+	// Set text back to "0s" before hiding so it's ready for next show.
+	win.ExecJS(`document.getElementById('t').textContent='0s'`)
 	win.Hide()
 }
 
@@ -119,6 +125,7 @@ func startIndicatorTimer() {
 	}
 
 	start := time.Now()
+	slog.Debug("[indicator] timer goroutine starting")
 
 	go func() {
 		// Immediately set "0s" — try a few times in quick succession to
@@ -127,6 +134,7 @@ func startIndicatorTimer() {
 		for i := 0; i < 3; i++ {
 			select {
 			case <-done:
+				slog.Debug("[indicator] timer goroutine stopped during init burst")
 				return
 			default:
 			}
@@ -140,6 +148,7 @@ func startIndicatorTimer() {
 		for {
 			select {
 			case <-done:
+				slog.Debug("[indicator] timer goroutine stopped", "elapsed", int(time.Since(start).Seconds()))
 				return
 			case <-ticker.C:
 				s := int(time.Since(start).Seconds())

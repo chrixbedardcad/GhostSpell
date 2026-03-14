@@ -24,23 +24,6 @@ type AnthropicClient struct {
 	httpClient *http.Client
 }
 
-// NewAnthropicClient creates a new Anthropic client from config.
-func NewAnthropicClient(cfg *config.Config) *AnthropicClient {
-	endpoint := cfg.APIEndpoint
-	if endpoint == "" {
-		endpoint = defaultAnthropicEndpoint
-	}
-
-	return &AnthropicClient{
-		apiKey:     cfg.APIKey,
-		model:      cfg.Model,
-		endpoint:   endpoint,
-		maxTokens:  cfg.MaxTokens,
-		timeoutMs:  cfg.TimeoutMs,
-		httpClient: newPooledHTTPClient(cfg.TimeoutMs),
-	}
-}
-
 // newAnthropicFromDef creates a new Anthropic client from a provider definition.
 func newAnthropicFromDef(def config.LLMProviderDef) *AnthropicClient {
 	endpoint := def.APIEndpoint

@@ -16,7 +16,6 @@ import (
 
 	"github.com/chrixbedardcad/GhostSpell/clipboard"
 	"github.com/chrixbedardcad/GhostSpell/config"
-	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 )
 
@@ -35,10 +34,13 @@ func TestFullCorrectionPipeline(t *testing.T) {
 	defer server.Close()
 
 	cfg := &config.Config{
-		LLMProvider: "anthropic",
-		APIKey:      "test-key",
-		Model:       "claude-sonnet-4-5-20250929",
-		APIEndpoint: server.URL,
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "test-key", APIEndpoint: server.URL},
+		},
+		Models: map[string]config.ModelEntry{
+			"default": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929", MaxTokens: 256},
+		},
+		DefaultModel: "default",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix all spelling and grammar errors. Return ONLY the corrected text."},
 		},
@@ -47,7 +49,7 @@ func TestFullCorrectionPipeline(t *testing.T) {
 		TimeoutMs:    5000,
 	}
 
-	client, err := llm.NewClient(cfg)
+	client, err := newClientFromConfig(cfg, cfg.DefaultModel)
 	if err != nil {
 		t.Fatalf("Failed to create LLM client: %v", err)
 	}
@@ -82,10 +84,13 @@ func TestFullPolishPipeline(t *testing.T) {
 	defer server.Close()
 
 	cfg := &config.Config{
-		LLMProvider: "anthropic",
-		APIKey:      "test-key",
-		Model:       "claude-sonnet-4-5-20250929",
-		APIEndpoint: server.URL,
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "test-key", APIEndpoint: server.URL},
+		},
+		Models: map[string]config.ModelEntry{
+			"default": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929", MaxTokens: 256},
+		},
+		DefaultModel: "default",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors."},
 			{Name: "Polish", Prompt: "Improve the text."},
@@ -95,7 +100,7 @@ func TestFullPolishPipeline(t *testing.T) {
 		TimeoutMs:    5000,
 	}
 
-	client, err := llm.NewClient(cfg)
+	client, err := newClientFromConfig(cfg, cfg.DefaultModel)
 	if err != nil {
 		t.Fatalf("Failed to create LLM client: %v", err)
 	}
@@ -194,10 +199,13 @@ func TestOpenAIPipeline(t *testing.T) {
 	defer server.Close()
 
 	cfg := &config.Config{
-		LLMProvider: "openai",
-		APIKey:      "test-openai-key",
-		Model:       "gpt-4o",
-		APIEndpoint: server.URL,
+		Providers: map[string]config.ProviderConfig{
+			"openai": {APIKey: "test-openai-key", APIEndpoint: server.URL},
+		},
+		Models: map[string]config.ModelEntry{
+			"default": {Provider: "openai", Model: "gpt-4o", MaxTokens: 256},
+		},
+		DefaultModel: "default",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors. Return ONLY corrected text."},
 		},
@@ -206,7 +214,7 @@ func TestOpenAIPipeline(t *testing.T) {
 		TimeoutMs:    5000,
 	}
 
-	client, err := llm.NewClient(cfg)
+	client, err := newClientFromConfig(cfg, cfg.DefaultModel)
 	if err != nil {
 		t.Fatalf("Failed to create OpenAI client: %v", err)
 	}
@@ -233,10 +241,13 @@ func TestLLMErrorDoesNotReplaceText(t *testing.T) {
 	defer server.Close()
 
 	cfg := &config.Config{
-		LLMProvider: "anthropic",
-		APIKey:      "test-key",
-		Model:       "claude-sonnet-4-5-20250929",
-		APIEndpoint: server.URL,
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "test-key", APIEndpoint: server.URL},
+		},
+		Models: map[string]config.ModelEntry{
+			"default": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929", MaxTokens: 256},
+		},
+		DefaultModel: "default",
 		Prompts: []config.PromptEntry{
 			{Name: "Correct", Prompt: "Fix errors."},
 		},
@@ -245,7 +256,7 @@ func TestLLMErrorDoesNotReplaceText(t *testing.T) {
 		TimeoutMs:    5000,
 	}
 
-	client, err := llm.NewClient(cfg)
+	client, err := newClientFromConfig(cfg, cfg.DefaultModel)
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}

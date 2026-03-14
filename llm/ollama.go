@@ -25,19 +25,6 @@ type OllamaClient struct {
 	httpClient *http.Client
 }
 
-// NewOllamaClient creates a new Ollama client from config.
-func NewOllamaClient(cfg *config.Config) *OllamaClient {
-	endpoint := normalizeOllamaEndpoint(cfg.APIEndpoint)
-
-	return &OllamaClient{
-		model:      cfg.Model,
-		endpoint:   endpoint,
-		maxTokens:  cfg.MaxTokens,
-		timeoutMs:  cfg.TimeoutMs,
-		httpClient: newPooledHTTPClient(cfg.TimeoutMs),
-	}
-}
-
 // normalizeOllamaEndpoint ensures the endpoint includes the /api/generate path.
 // Users often enter just the base URL (e.g. http://localhost:11434).
 func normalizeOllamaEndpoint(endpoint string) string {

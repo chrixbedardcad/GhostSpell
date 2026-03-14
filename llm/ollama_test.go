@@ -30,14 +30,13 @@ func TestOllamaClient_Send_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
-		LLMProvider: "ollama",
+	client := newOllamaFromDef(config.LLMProviderDef{
+		Provider:    "ollama",
 		Model:       "mistral",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOllamaClient(cfg)
+	})
 
 	resp, err := client.Send(context.Background(), Request{
 		Prompt: "Fix spelling errors.",
@@ -65,14 +64,13 @@ func TestOllamaClient_Send_Error(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
-		LLMProvider: "ollama",
+	client := newOllamaFromDef(config.LLMProviderDef{
+		Provider:    "ollama",
 		Model:       "nonexistent",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOllamaClient(cfg)
+	})
 
 	_, err := client.Send(context.Background(), Request{
 		Prompt: "Fix errors.",
@@ -84,25 +82,25 @@ func TestOllamaClient_Send_Error(t *testing.T) {
 }
 
 func TestOllamaClient_Provider(t *testing.T) {
-	cfg := &config.Config{
+	client := newOllamaFromDef(config.LLMProviderDef{
+		Provider:  "ollama",
 		Model:     "mistral",
 		MaxTokens: 256,
 		TimeoutMs: 5000,
-	}
-	client := NewOllamaClient(cfg)
+	})
 	if client.Provider() != "ollama" {
 		t.Errorf("expected 'ollama', got '%s'", client.Provider())
 	}
 }
 
 func TestOllamaClient_DefaultEndpoint(t *testing.T) {
-	cfg := &config.Config{
+	client := newOllamaFromDef(config.LLMProviderDef{
+		Provider:    "ollama",
 		Model:       "mistral",
 		APIEndpoint: "",
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOllamaClient(cfg)
+	})
 	if client.endpoint != defaultOllamaEndpoint {
 		t.Errorf("expected default endpoint '%s', got '%s'", defaultOllamaEndpoint, client.endpoint)
 	}

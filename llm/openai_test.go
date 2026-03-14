@@ -54,14 +54,14 @@ func TestOpenAIClient_Send_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newOpenAIFromDef(config.LLMProviderDef{
+		Provider:    "openai",
 		APIKey:      "test-key",
 		Model:       "gpt-4o",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOpenAIClient(cfg)
+	})
 
 	resp, err := client.Send(context.Background(), Request{
 		Prompt: "Fix spelling errors.",
@@ -89,14 +89,14 @@ func TestOpenAIClient_Send_APIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newOpenAIFromDef(config.LLMProviderDef{
+		Provider:    "openai",
 		APIKey:      "bad-key",
 		Model:       "gpt-4o",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOpenAIClient(cfg)
+	})
 
 	_, err := client.Send(context.Background(), Request{
 		Prompt: "Fix errors.",
@@ -121,14 +121,14 @@ func TestOpenAIClient_Send_EmptyChoices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newOpenAIFromDef(config.LLMProviderDef{
+		Provider:    "openai",
 		APIKey:      "test-key",
 		Model:       "gpt-4o",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOpenAIClient(cfg)
+	})
 
 	_, err := client.Send(context.Background(), Request{
 		Prompt: "Fix errors.",
@@ -140,27 +140,27 @@ func TestOpenAIClient_Send_EmptyChoices(t *testing.T) {
 }
 
 func TestOpenAIClient_Provider(t *testing.T) {
-	cfg := &config.Config{
+	client := newOpenAIFromDef(config.LLMProviderDef{
+		Provider:  "openai",
 		APIKey:    "test",
 		Model:     "test",
 		MaxTokens: 256,
 		TimeoutMs: 5000,
-	}
-	client := NewOpenAIClient(cfg)
+	})
 	if client.Provider() != "openai" {
 		t.Errorf("expected 'openai', got '%s'", client.Provider())
 	}
 }
 
 func TestOpenAIClient_DefaultEndpoint(t *testing.T) {
-	cfg := &config.Config{
+	client := newOpenAIFromDef(config.LLMProviderDef{
+		Provider:    "openai",
 		APIKey:      "test",
 		Model:       "test",
 		APIEndpoint: "",
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewOpenAIClient(cfg)
+	})
 	if client.endpoint != defaultOpenAIEndpoint {
 		t.Errorf("expected default endpoint '%s', got '%s'", defaultOpenAIEndpoint, client.endpoint)
 	}

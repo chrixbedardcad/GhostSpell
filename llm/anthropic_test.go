@@ -47,14 +47,14 @@ func TestAnthropicClient_Send_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newAnthropicFromDef(config.LLMProviderDef{
+		Provider:    "anthropic",
 		APIKey:      "test-key",
 		Model:       "claude-sonnet-4-5-20250929",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewAnthropicClient(cfg)
+	})
 
 	resp, err := client.Send(context.Background(), Request{
 		Prompt: "Fix spelling errors.",
@@ -82,14 +82,14 @@ func TestAnthropicClient_Send_APIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newAnthropicFromDef(config.LLMProviderDef{
+		Provider:    "anthropic",
 		APIKey:      "bad-key",
 		Model:       "claude-sonnet-4-5-20250929",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewAnthropicClient(cfg)
+	})
 
 	_, err := client.Send(context.Background(), Request{
 		Prompt: "Fix errors.",
@@ -113,14 +113,14 @@ func TestAnthropicClient_Send_EmptyResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.Config{
+	client := newAnthropicFromDef(config.LLMProviderDef{
+		Provider:    "anthropic",
 		APIKey:      "test-key",
 		Model:       "claude-sonnet-4-5-20250929",
 		APIEndpoint: server.URL,
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewAnthropicClient(cfg)
+	})
 
 	_, err := client.Send(context.Background(), Request{
 		Prompt: "Fix errors.",
@@ -132,27 +132,27 @@ func TestAnthropicClient_Send_EmptyResponse(t *testing.T) {
 }
 
 func TestAnthropicClient_Provider(t *testing.T) {
-	cfg := &config.Config{
+	client := newAnthropicFromDef(config.LLMProviderDef{
+		Provider:  "anthropic",
 		APIKey:    "test",
 		Model:     "test",
 		MaxTokens: 256,
 		TimeoutMs: 5000,
-	}
-	client := NewAnthropicClient(cfg)
+	})
 	if client.Provider() != "anthropic" {
 		t.Errorf("expected 'anthropic', got '%s'", client.Provider())
 	}
 }
 
 func TestAnthropicClient_DefaultEndpoint(t *testing.T) {
-	cfg := &config.Config{
+	client := newAnthropicFromDef(config.LLMProviderDef{
+		Provider:    "anthropic",
 		APIKey:      "test",
 		Model:       "test",
 		APIEndpoint: "",
 		MaxTokens:   256,
 		TimeoutMs:   5000,
-	}
-	client := NewAnthropicClient(cfg)
+	})
 	if client.endpoint != defaultAnthropicEndpoint {
 		t.Errorf("expected default endpoint '%s', got '%s'", defaultAnthropicEndpoint, client.endpoint)
 	}

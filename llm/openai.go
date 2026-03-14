@@ -28,24 +28,6 @@ type OpenAIClient struct {
 	httpClient   *http.Client
 }
 
-// NewOpenAIClient creates a new OpenAI client from config.
-func NewOpenAIClient(cfg *config.Config) *OpenAIClient {
-	endpoint := cfg.APIEndpoint
-	if endpoint == "" {
-		endpoint = defaultOpenAIEndpoint
-	}
-
-	return &OpenAIClient{
-		apiKey:       cfg.APIKey,
-		model:        cfg.Model,
-		endpoint:     endpoint,
-		maxTokens:    cfg.MaxTokens,
-		timeoutMs:    cfg.TimeoutMs,
-		providerName: "openai",
-		httpClient:   newPooledHTTPClient(cfg.TimeoutMs),
-	}
-}
-
 // newOpenAIFromDef creates a new OpenAI client from a provider definition.
 // Default max_completion_tokens is 2048 (higher than other providers) because
 // OpenAI reasoning models (gpt-5-nano, o1, etc.) consume tokens for internal

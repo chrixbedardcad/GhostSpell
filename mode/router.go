@@ -22,8 +22,8 @@ type Router struct {
 // NewRouter creates a new mode router.
 func NewRouter(cfg *config.Config, client llm.Client) *Router {
 	clients := make(map[string]llm.Client)
-	if cfg.DefaultLLM != "" {
-		clients[cfg.DefaultLLM] = client
+	if cfg.DefaultModel != "" {
+		clients[cfg.DefaultModel] = client
 	}
 
 	return &Router{
@@ -101,9 +101,9 @@ func (r *Router) resolveClient(label string) (llm.Client, error) {
 		if r.defaultClient != nil {
 			return r.defaultClient, nil
 		}
-		label = r.cfg.DefaultLLM
+		label = r.cfg.DefaultModel
 		if label == "" {
-			return nil, fmt.Errorf("no default LLM configured")
+			return nil, fmt.Errorf("no default model configured")
 		}
 	}
 
@@ -112,15 +112,41 @@ func (r *Router) resolveClient(label string) (llm.Client, error) {
 		r.mu.Unlock()
 		return c, nil
 	}
-	// Read provider definition while holding the lock to avoid racing
-	// with ResetClients / config reload.
-	def, ok := r.cfg.LLMProviders[label]
-	fallback := r.defaultClient
+
+	// Look up model entry
+	model, ok := r.cfg.Models[label]
+	if !ok {
+		fallback := r.defaultClient
+		r.mu.Unlock()
+		slog.Warn("Model label not found, falling back to default", "label", label)
+		return fallback, nil
+	}
+
+	// Look up provider credentials
+	prov, provOK := r.cfg.Providers[model.Provider]
 	r.mu.Unlock()
 
-	if !ok {
-		slog.Warn("LLM label not found in llm_providers, falling back to default", "label", label)
-		return fallback, nil
+	if !provOK {
+		return nil, fmt.Errorf("provider %q not configured for model %q", model.Provider, label)
+	}
+
+	// Merge model + provider into LLMProviderDef for client creation
+	def := config.LLMProviderDef{
+		Provider:     model.Provider,
+		APIKey:       prov.APIKey,
+		Model:        model.Model,
+		APIEndpoint:  prov.APIEndpoint,
+		RefreshToken: prov.RefreshToken,
+		KeepAlive:    prov.KeepAlive,
+	}
+	// Per-model timeout overrides provider timeout
+	if model.TimeoutMs > 0 {
+		def.TimeoutMs = model.TimeoutMs
+	} else {
+		def.TimeoutMs = prov.TimeoutMs
+	}
+	if model.MaxTokens > 0 {
+		def.MaxTokens = model.MaxTokens
 	}
 
 	c, err := llm.NewClientFromDef(def)
@@ -135,7 +161,7 @@ func (r *Router) resolveClient(label string) (llm.Client, error) {
 		return existing, nil
 	}
 	r.clients[label] = c
-	if label == r.cfg.DefaultLLM {
+	if label == r.cfg.DefaultModel {
 		r.defaultClient = c
 	}
 	r.mu.Unlock()
@@ -144,12 +170,17 @@ func (r *Router) resolveClient(label string) (llm.Client, error) {
 }
 
 // TimeoutForPrompt returns the timeout (in ms) for the provider that will handle
-// the given prompt. Uses the per-provider timeout_ms if set, otherwise the global.
+// the given prompt. Uses the per-model or per-provider timeout_ms if set, otherwise the global.
 func (r *Router) TimeoutForPrompt(promptIdx int) int {
 	label := r.llmLabelForPrompt(promptIdx)
 	if label != "" {
-		if def, ok := r.cfg.LLMProviders[label]; ok && def.TimeoutMs > 0 {
-			return def.TimeoutMs
+		if model, ok := r.cfg.Models[label]; ok {
+			if model.TimeoutMs > 0 {
+				return model.TimeoutMs
+			}
+			if prov, ok := r.cfg.Providers[model.Provider]; ok && prov.TimeoutMs > 0 {
+				return prov.TimeoutMs
+			}
 		}
 	}
 	return r.cfg.TimeoutMs
@@ -162,7 +193,7 @@ func (r *Router) llmLabelForPrompt(promptIdx int) string {
 			return r.cfg.Prompts[promptIdx].LLM
 		}
 	}
-	return r.cfg.DefaultLLM
+	return r.cfg.DefaultModel
 }
 
 // CyclePrompt cycles to the next prompt, returning the new index and name.

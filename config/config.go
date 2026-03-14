@@ -19,6 +19,9 @@ type PromptEntry struct {
 }
 
 // LLMProviderDef defines a named LLM provider configuration.
+// This is an internal merge type used by the LLM package to create clients.
+// It is NOT stored in config JSON directly; instead, the LLM layer
+// synthesises it from Providers + Models at runtime.
 type LLMProviderDef struct {
 	Provider     string `json:"provider"`
 	APIKey       string `json:"api_key,omitempty"`
@@ -28,6 +31,24 @@ type LLMProviderDef struct {
 	TimeoutMs    int    `json:"timeout_ms,omitempty"`
 	RefreshToken string `json:"refresh_token,omitempty"` // OAuth: used to auto-refresh API key
 	KeepAlive    bool   `json:"keep_alive,omitempty"`    // local: keep llama-server running (no idle timeout)
+}
+
+// ProviderConfig holds connection credentials for one AI provider.
+// Keys: "anthropic", "openai", "gemini", "xai", "deepseek", "ollama", "local", "lmstudio"
+type ProviderConfig struct {
+	APIKey       string `json:"api_key,omitempty"`
+	APIEndpoint  string `json:"api_endpoint,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	KeepAlive    bool   `json:"keep_alive,omitempty"`
+	TimeoutMs    int    `json:"timeout_ms,omitempty"`
+}
+
+// ModelEntry defines a named model configuration that references a provider.
+type ModelEntry struct {
+	Provider  string `json:"provider"`             // key into Providers map
+	Model     string `json:"model"`                // model identifier
+	MaxTokens int    `json:"max_tokens,omitempty"`
+	TimeoutMs int    `json:"timeout_ms,omitempty"` // overrides provider timeout
 }
 
 // Hotkeys defines the configurable hotkey bindings.
@@ -49,14 +70,9 @@ type Overlay struct {
 
 // Config is the top-level configuration for GhostSpell.
 type Config struct {
-	// Legacy flat fields — kept for backward-compat migration only.
-	LLMProvider string `json:"llm_provider,omitempty"`
-	APIKey      string `json:"api_key,omitempty"`
-	Model       string `json:"model,omitempty"`
-	APIEndpoint string `json:"api_endpoint,omitempty"`
-
-	LLMProviders map[string]LLMProviderDef `json:"llm_providers,omitempty"`
-	DefaultLLM   string                    `json:"default_llm,omitempty"`
+	Providers    map[string]ProviderConfig `json:"providers,omitempty"`
+	Models       map[string]ModelEntry     `json:"models,omitempty"`
+	DefaultModel string                    `json:"default_model,omitempty"`
 
 	ActivePrompt int           `json:"active_prompt"`
 	Prompts      []PromptEntry `json:"prompts"`
@@ -72,16 +88,21 @@ type Config struct {
 	LogFile           string `json:"log_file"`
 }
 
+// NeedsSetup returns true if no usable provider is configured.
+func NeedsSetup(cfg *Config) bool {
+	return len(cfg.Providers) == 0
+}
+
 func boolPtr(v bool) *bool { return &v }
 
 // Default prompt texts.
 const (
-	DefaultCorrectPrompt    = "Fix only spelling and grammar errors. Do not rewrite, rephrase, or restructure the sentence. Keep the text in its original language — never translate it. Preserve slang, abbreviations, acronyms, and informal tone exactly as written. Only fix what is objectively incorrect. Return ONLY the corrected text with no explanation."
-	DefaultPolishPrompt     = "Improve the following text to make it clearer, more natural, and better structured while preserving its original meaning and tone. Fix grammar, punctuation, and awkward phrasing. Smooth out rough sentences into polished, ready-to-send prose. Keep the text in its original language — never translate it. Return ONLY the improved text with no explanation."
-	DefaultFunnyPrompt      = "Rewrite the following text to be funny, witty, and entertaining while preserving the original meaning and key information. Add humor, clever wordplay, or a lighthearted twist. Keep the text in its original language — never translate it. Return ONLY the funny version with no explanation."
-	DefaultElaboratePrompt  = "Expand the following text by adding relevant detail, context, and completeness while preserving the original meaning and intent. Flesh out terse or incomplete points into well-developed statements. Maintain the same tone and style as the original. Keep the text in its original language — never translate it. Return ONLY the elaborated text with no explanation."
-	DefaultShortenPrompt    = "Condense the following text to be as concise as possible while preserving all essential meaning and key information. Remove redundancy, filler words, and unnecessary qualifiers. Keep the same tone and intent. Keep the text in its original language — never translate it. Return ONLY the shortened text with no explanation."
-	DefaultTranslatePrompt  = "Translate the following text to English regardless of its source language. Return ONLY the translated text with no explanation."
+	DefaultCorrectPrompt   = "Fix only spelling and grammar errors. Do not rewrite, rephrase, or restructure the sentence. Keep the text in its original language — never translate it. Preserve slang, abbreviations, acronyms, and informal tone exactly as written. Only fix what is objectively incorrect. Return ONLY the corrected text with no explanation."
+	DefaultPolishPrompt    = "Improve the following text to make it clearer, more natural, and better structured while preserving its original meaning and tone. Fix grammar, punctuation, and awkward phrasing. Smooth out rough sentences into polished, ready-to-send prose. Keep the text in its original language — never translate it. Return ONLY the improved text with no explanation."
+	DefaultFunnyPrompt     = "Rewrite the following text to be funny, witty, and entertaining while preserving the original meaning and key information. Add humor, clever wordplay, or a lighthearted twist. Keep the text in its original language — never translate it. Return ONLY the funny version with no explanation."
+	DefaultElaboratePrompt = "Expand the following text by adding relevant detail, context, and completeness while preserving the original meaning and intent. Flesh out terse or incomplete points into well-developed statements. Maintain the same tone and style as the original. Keep the text in its original language — never translate it. Return ONLY the elaborated text with no explanation."
+	DefaultShortenPrompt   = "Condense the following text to be as concise as possible while preserving all essential meaning and key information. Remove redundancy, filler words, and unnecessary qualifiers. Keep the same tone and intent. Keep the text in its original language — never translate it. Return ONLY the shortened text with no explanation."
+	DefaultTranslatePrompt = "Translate the following text to English regardless of its source language. Return ONLY the translated text with no explanation."
 )
 
 // DefaultPrompts returns the default prompt list.
@@ -99,6 +120,8 @@ func DefaultPrompts() []PromptEntry {
 // DefaultConfig returns a Config populated with default values.
 func DefaultConfig() Config {
 	return Config{
+		Providers: make(map[string]ProviderConfig),
+		Models:    make(map[string]ModelEntry),
 		Hotkeys: Hotkeys{
 			Action: defaultActionHotkey,
 		},
@@ -179,9 +202,11 @@ func LoadRaw(path string) (*Config, error) {
 	return cfg, nil
 }
 
-// unmarshalWithMigration parses config JSON, detecting and migrating old format
-// where "prompts" was a JSON object (with correct/translate/rewrite_templates fields)
-// to the new format where "prompts" is a JSON array of PromptEntry.
+// unmarshalWithMigration parses config JSON, detecting and migrating old formats:
+//   - Old prompts format (JSON object with correct/translate/rewrite_templates)
+//   - Old LLM fields (llm_providers map or llm_provider flat fields)
+//
+// to the new providers + models structure.
 func unmarshalWithMigration(data []byte) (*Config, error) {
 	// First, try parsing into a raw map to detect the prompts format.
 	var raw map[string]json.RawMessage
@@ -190,18 +215,25 @@ func unmarshalWithMigration(data []byte) (*Config, error) {
 	}
 
 	promptsRaw, hasPrompts := raw["prompts"]
-	needsMigration := false
+	needsPromptMigration := false
 
 	if hasPrompts && len(promptsRaw) > 0 {
 		// Trim whitespace to find the first meaningful character.
 		trimmed := strings.TrimSpace(string(promptsRaw))
 		if len(trimmed) > 0 && trimmed[0] == '{' {
-			needsMigration = true
+			needsPromptMigration = true
 		}
 	}
 
-	if needsMigration {
+	if needsPromptMigration {
 		return migrateOldConfig(data)
+	}
+
+	// Check for legacy llm_providers or llm_provider fields that need migration.
+	_, hasLLMProviders := raw["llm_providers"]
+	_, hasLLMProvider := raw["llm_provider"]
+	if hasLLMProviders || hasLLMProvider {
+		return migrateLLMFields(data)
 	}
 
 	// New format — parse directly.
@@ -214,9 +246,9 @@ func unmarshalWithMigration(data []byte) (*Config, error) {
 
 // oldPrompts represents the old prompts format.
 type oldPrompts struct {
-	Correct          string              `json:"correct"`
-	Translate        string              `json:"translate"`
-	TranslateSingle  string              `json:"translate_single"`
+	Correct          string               `json:"correct"`
+	Translate        string               `json:"translate"`
+	TranslateSingle  string               `json:"translate_single"`
 	RewriteTemplates []oldRewriteTemplate `json:"rewrite_templates"`
 }
 
@@ -226,7 +258,8 @@ type oldRewriteTemplate struct {
 	LLM    string `json:"llm,omitempty"`
 }
 
-// oldConfig is a partial struct for deserializing the old format.
+// oldConfig is a partial struct for deserializing the oldest format
+// (object-style prompts with correct/translate/rewrite_templates).
 type oldConfig struct {
 	LLMProvider  string                    `json:"llm_provider,omitempty"`
 	APIKey       string                    `json:"api_key,omitempty"`
@@ -252,7 +285,114 @@ type oldConfig struct {
 	LogFile           string     `json:"log_file"`
 }
 
-// migrateOldConfig converts an old-format config to the new format.
+// legacyConfig is a partial struct for deserializing configs with old-style
+// llm_providers / llm_provider flat fields (but new-style prompts array).
+type legacyConfig struct {
+	LLMProvider  string                    `json:"llm_provider,omitempty"`
+	APIKey       string                    `json:"api_key,omitempty"`
+	Model        string                    `json:"model,omitempty"`
+	APIEndpoint  string                    `json:"api_endpoint,omitempty"`
+	LLMProviders map[string]LLMProviderDef `json:"llm_providers,omitempty"`
+	DefaultLLM   string                    `json:"default_llm,omitempty"`
+
+	ActivePrompt      int           `json:"active_prompt"`
+	Prompts           []PromptEntry `json:"prompts"`
+	Hotkeys           Hotkeys       `json:"hotkeys"`
+	Overlay           Overlay       `json:"overlay"`
+	MaxTokens         int           `json:"max_tokens"`
+	TimeoutMs         int           `json:"timeout_ms"`
+	MaxInputChars     int           `json:"max_input_chars"`
+	PreserveClipboard bool          `json:"preserve_clipboard"`
+	SoundEnabled      *bool         `json:"sound_enabled"`
+	LogLevel          string        `json:"log_level"`
+	LogFile           string        `json:"log_file"`
+}
+
+// migrateLegacyLLM converts old llm_providers/llm_provider fields into the
+// new Providers + Models maps.
+func migrateLegacyLLM(
+	llmProvider string, apiKey string, model string, apiEndpoint string,
+	llmProviders map[string]LLMProviderDef, defaultLLM string,
+	maxTokens int,
+) (map[string]ProviderConfig, map[string]ModelEntry, string) {
+	providers := make(map[string]ProviderConfig)
+	models := make(map[string]ModelEntry)
+	defaultModel := ""
+
+	if len(llmProviders) > 0 {
+		for label, def := range llmProviders {
+			provKey := def.Provider
+			// Add provider credentials (dedup by provider key).
+			if _, exists := providers[provKey]; !exists {
+				providers[provKey] = ProviderConfig{
+					APIKey:       def.APIKey,
+					APIEndpoint:  def.APIEndpoint,
+					RefreshToken: def.RefreshToken,
+					KeepAlive:    def.KeepAlive,
+					TimeoutMs:    def.TimeoutMs,
+				}
+			}
+			models[label] = ModelEntry{
+				Provider:  provKey,
+				Model:     def.Model,
+				MaxTokens: def.MaxTokens,
+				TimeoutMs: def.TimeoutMs,
+			}
+		}
+		if defaultLLM != "" {
+			defaultModel = defaultLLM
+		}
+	} else if llmProvider != "" {
+		provKey := llmProvider
+		providers[provKey] = ProviderConfig{
+			APIKey:      apiKey,
+			APIEndpoint: apiEndpoint,
+		}
+		models["default"] = ModelEntry{
+			Provider:  provKey,
+			Model:     model,
+			MaxTokens: maxTokens,
+		}
+		defaultModel = "default"
+	}
+
+	return providers, models, defaultModel
+}
+
+// migrateLLMFields converts a config with old-style llm_providers/llm_provider
+// fields (but new-style prompts array) to the new providers + models structure.
+func migrateLLMFields(data []byte) (*Config, error) {
+	var old legacyConfig
+	if err := json.Unmarshal(data, &old); err != nil {
+		return nil, fmt.Errorf("migration: %w", err)
+	}
+
+	slog.Info("Migrating config from llm_providers to providers+models format")
+
+	providers, models, defaultModel := migrateLegacyLLM(
+		old.LLMProvider, old.APIKey, old.Model, old.APIEndpoint,
+		old.LLMProviders, old.DefaultLLM, old.MaxTokens,
+	)
+
+	return &Config{
+		Providers:         providers,
+		Models:            models,
+		DefaultModel:      defaultModel,
+		ActivePrompt:      old.ActivePrompt,
+		Prompts:           old.Prompts,
+		Hotkeys:           old.Hotkeys,
+		Overlay:           old.Overlay,
+		MaxTokens:         old.MaxTokens,
+		TimeoutMs:         old.TimeoutMs,
+		MaxInputChars:     old.MaxInputChars,
+		PreserveClipboard: old.PreserveClipboard,
+		SoundEnabled:      old.SoundEnabled,
+		LogLevel:          old.LogLevel,
+		LogFile:           old.LogFile,
+	}, nil
+}
+
+// migrateOldConfig converts an old-format config (object-style prompts) to the new format.
 func migrateOldConfig(data []byte) (*Config, error) {
 	var old oldConfig
 	if err := json.Unmarshal(data, &old); err != nil {
@@ -278,15 +418,18 @@ func migrateOldConfig(data []byte) (*Config, error) {
 	activePrompt := 0
 	// "correct" → 0 (default), others we leave at 0
 
-	cfg := &Config{
-		LLMProvider:   old.LLMProvider,
-		APIKey:        old.APIKey,
-		Model:         old.Model,
-		APIEndpoint:   old.APIEndpoint,
-		LLMProviders:  old.LLMProviders,
-		DefaultLLM:    old.DefaultLLM,
-		ActivePrompt:  activePrompt,
-		Prompts:       prompts,
+	// Migrate LLM fields.
+	providers, models, defaultModel := migrateLegacyLLM(
+		old.LLMProvider, old.APIKey, old.Model, old.APIEndpoint,
+		old.LLMProviders, old.DefaultLLM, old.MaxTokens,
+	)
+
+	return &Config{
+		Providers:    providers,
+		Models:       models,
+		DefaultModel: defaultModel,
+		ActivePrompt: activePrompt,
+		Prompts:      prompts,
 		Hotkeys: Hotkeys{
 			Action:      old.OldHotkeys.Correct,
 			CyclePrompt: old.OldHotkeys.CycleTemplate,
@@ -298,9 +441,7 @@ func migrateOldConfig(data []byte) (*Config, error) {
 		SoundEnabled:      old.SoundEnabled,
 		LogLevel:          old.LogLevel,
 		LogFile:           old.LogFile,
-	}
-
-	return cfg, nil
+	}, nil
 }
 
 // WriteDefault writes a default config file to the given path.
@@ -369,35 +510,26 @@ func applyDefaults(cfg *Config) {
 		cfg.ActivePrompt = 0
 	}
 
-	// Synthesize LLMProviders from legacy flat fields if not set.
-	if len(cfg.LLMProviders) == 0 && cfg.LLMProvider != "" {
-		if cfg.LLMProvider == "ollama" || cfg.LLMProvider == "local" || cfg.APIKey != "" {
-			cfg.LLMProviders = map[string]LLMProviderDef{
-				"default": {
-					Provider:    cfg.LLMProvider,
-					APIKey:      cfg.APIKey,
-					Model:       cfg.Model,
-					APIEndpoint: cfg.APIEndpoint,
-					MaxTokens:   cfg.MaxTokens,
-					TimeoutMs:   cfg.TimeoutMs,
-				},
-			}
-			if cfg.DefaultLLM == "" {
-				cfg.DefaultLLM = "default"
-			}
-		}
+	// Initialize maps if nil.
+	if cfg.Providers == nil {
+		cfg.Providers = make(map[string]ProviderConfig)
+	}
+	if cfg.Models == nil {
+		cfg.Models = make(map[string]ModelEntry)
 	}
 
-	// Fill missing TimeoutMs per provider from global value.
-	for label, def := range cfg.LLMProviders {
-		if def.TimeoutMs == 0 {
-			if def.Provider == "ollama" || def.Provider == "local" {
-				def.TimeoutMs = 120000
+	// Fill missing TimeoutMs per model from provider or global value.
+	for name, me := range cfg.Models {
+		if me.TimeoutMs == 0 {
+			if prov, ok := cfg.Providers[me.Provider]; ok && prov.TimeoutMs != 0 {
+				me.TimeoutMs = prov.TimeoutMs
+			} else if me.Provider == "ollama" || me.Provider == "local" {
+				me.TimeoutMs = 120000
 			} else {
-				def.TimeoutMs = cfg.TimeoutMs
+				me.TimeoutMs = cfg.TimeoutMs
 			}
+			cfg.Models[name] = me
 		}
-		cfg.LLMProviders[label] = def
 	}
 }
 
@@ -411,58 +543,47 @@ func Validate(cfg *Config) error {
 		"deepseek":  true,
 		"ollama":    true,
 		"local":     true,
+		"lmstudio":  true,
 	}
 
-	// Flat-field validation only when llm_providers was not provided directly.
-	if cfg.LLMProvider != "" {
-		if !validProviders[cfg.LLMProvider] {
-			return fmt.Errorf("unsupported llm_provider: %s (valid: anthropic, openai, gemini, xai, ollama, local)", cfg.LLMProvider)
-		}
-		if cfg.LLMProvider != "ollama" && cfg.LLMProvider != "local" && cfg.APIKey == "" {
-			return fmt.Errorf("api_key is required for provider %s", cfg.LLMProvider)
-		}
-		if cfg.Model == "" {
-			return fmt.Errorf("model is required")
-		}
-	} else if len(cfg.LLMProviders) == 0 {
-		return fmt.Errorf("either llm_provider or llm_providers is required")
+	if len(cfg.Providers) == 0 {
+		return fmt.Errorf("at least one provider is required")
 	}
 
-	// DefaultLLM required when llm_providers is set.
-	if len(cfg.LLMProviders) > 0 && cfg.DefaultLLM == "" {
-		return fmt.Errorf("default_llm is required when llm_providers is defined")
-	}
-
-	// Validate each provider def in llm_providers.
-	for label, def := range cfg.LLMProviders {
-		if !validProviders[def.Provider] {
-			return fmt.Errorf("llm_providers[%s]: unsupported provider %q (valid: anthropic, openai, gemini, xai, ollama, local)", label, def.Provider)
-		}
-		if def.Provider != "ollama" && def.Provider != "local" && def.APIKey == "" && def.RefreshToken == "" {
-			return fmt.Errorf("llm_providers[%s]: api_key is required for provider %s", label, def.Provider)
-		}
-		if def.Model == "" {
-			return fmt.Errorf("llm_providers[%s]: model is required", label)
+	// Validate each provider key.
+	for key := range cfg.Providers {
+		if !validProviders[key] {
+			return fmt.Errorf("providers[%s]: unsupported provider key (valid: anthropic, openai, gemini, xai, deepseek, ollama, local, lmstudio)", key)
 		}
 	}
 
-	// Validate LLM label references point to defined providers.
-	if len(cfg.LLMProviders) > 0 {
-		checkLabel := func(field, label string) error {
-			if label == "" {
-				return nil
-			}
-			if _, ok := cfg.LLMProviders[label]; !ok {
-				return fmt.Errorf("%s %q not found in llm_providers", field, label)
-			}
-			return nil
+	// Validate each model entry.
+	for name, me := range cfg.Models {
+		if me.Provider == "" {
+			return fmt.Errorf("models[%s]: provider is required", name)
 		}
-		if err := checkLabel("default_llm", cfg.DefaultLLM); err != nil {
-			return err
+		if _, ok := cfg.Providers[me.Provider]; !ok {
+			return fmt.Errorf("models[%s]: provider %q not found in providers", name, me.Provider)
 		}
+		if me.Model == "" {
+			return fmt.Errorf("models[%s]: model is required", name)
+		}
+	}
+
+	// DefaultModel must reference an existing model entry.
+	if cfg.DefaultModel != "" {
+		if _, ok := cfg.Models[cfg.DefaultModel]; !ok {
+			return fmt.Errorf("default_model %q not found in models", cfg.DefaultModel)
+		}
+	}
+
+	// Validate prompt LLM label references point to defined models.
+	if len(cfg.Models) > 0 {
 		for _, p := range cfg.Prompts {
-			if err := checkLabel(fmt.Sprintf("prompt[%s].llm", p.Name), p.LLM); err != nil {
-				return err
+			if p.LLM != "" {
+				if _, ok := cfg.Models[p.LLM]; !ok {
+					return fmt.Errorf("prompt[%s].llm %q not found in models", p.Name, p.LLM)
+				}
 			}
 		}
 	}

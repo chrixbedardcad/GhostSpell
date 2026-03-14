@@ -33,53 +33,6 @@ type Client interface {
 	Close()
 }
 
-// NewClient creates an LLM client based on the config.
-func NewClient(cfg *config.Config) (Client, error) {
-	switch cfg.LLMProvider {
-	case "anthropic":
-		return NewAnthropicClient(cfg), nil
-	case "openai":
-		return NewOpenAIClient(cfg), nil
-	case "gemini":
-		return NewClientFromDef(config.LLMProviderDef{
-			Provider:    "gemini",
-			APIKey:      cfg.APIKey,
-			Model:       cfg.Model,
-			APIEndpoint: cfg.APIEndpoint,
-			MaxTokens:   cfg.MaxTokens,
-			TimeoutMs:   cfg.TimeoutMs,
-		})
-	case "xai":
-		return NewClientFromDef(config.LLMProviderDef{
-			Provider:    "xai",
-			APIKey:      cfg.APIKey,
-			Model:       cfg.Model,
-			APIEndpoint: cfg.APIEndpoint,
-			MaxTokens:   cfg.MaxTokens,
-			TimeoutMs:   cfg.TimeoutMs,
-		})
-	case "deepseek":
-		return NewClientFromDef(config.LLMProviderDef{
-			Provider:    "deepseek",
-			APIKey:      cfg.APIKey,
-			Model:       cfg.Model,
-			APIEndpoint: cfg.APIEndpoint,
-			MaxTokens:   cfg.MaxTokens,
-			TimeoutMs:   cfg.TimeoutMs,
-		})
-	case "ollama":
-		return NewOllamaClient(cfg), nil
-	case "local":
-		return newGhostAIFromDef(LLMProviderDefCompat{
-			Model:     cfg.Model,
-			MaxTokens: cfg.MaxTokens,
-			TimeoutMs: cfg.TimeoutMs,
-		})
-	default:
-		return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLMProvider)
-	}
-}
-
 // NewClientFromDef creates an LLM client from a provider definition.
 // Model tags like "cheap" are resolved to actual model names before
 // creating the client.
@@ -99,6 +52,8 @@ func NewClientFromDef(def config.LLMProviderDef) (Client, error) {
 		return newDeepSeekFromDef(def), nil
 	case "ollama":
 		return newOllamaFromDef(def), nil
+	case "lmstudio":
+		return newLMStudioFromDef(def), nil
 	case "local":
 		return newGhostAIFromDef(LLMProviderDefCompat{
 			Model:     def.Model,

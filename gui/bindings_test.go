@@ -9,7 +9,10 @@ import (
 
 func TestSettingsServiceHasAllMethods(t *testing.T) {
 	svc := &SettingsService{
-		cfgCopy:    &config.Config{LLMProviders: map[string]config.LLMProviderDef{}},
+		cfgCopy: &config.Config{
+			Providers: map[string]config.ProviderConfig{},
+			Models:    map[string]config.ModelEntry{},
+		},
 		configPath: "/tmp/test-config.json",
 	}
 
@@ -19,10 +22,16 @@ func TestSettingsServiceHasAllMethods(t *testing.T) {
 		"GetConfig",
 		"GetKnownModels",
 		"SaveProvider",
+		"SaveProviderConfig",
+		"SaveModel",
 		"DeleteProvider",
+		"DeleteModel",
+		"RemoveProvider",
 		"SetDefault",
+		"SetDefaultModel",
 		"TestConnection",
 		"TestProvider",
+		"TestProviderConnection",
 		"OpenConfigFile",
 		"CloseWindow",
 		"OllamaStatus",

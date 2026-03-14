@@ -77,14 +77,14 @@ func (s *SettingsService) LocalDeleteModel(name string) string {
 }
 
 // SetLocalKeepAlive toggles the keep-alive setting for a local provider.
-func (s *SettingsService) SetLocalKeepAlive(label string, enabled bool) string {
-	guiLog("[GUI] JS called: SetLocalKeepAlive(%s, %v)", label, enabled)
-	def, ok := s.cfgCopy.LLMProviders[label]
+func (s *SettingsService) SetLocalKeepAlive(providerType string, enabled bool) string {
+	guiLog("[GUI] JS called: SetLocalKeepAlive(%s, %v)", providerType, enabled)
+	prov, ok := s.cfgCopy.Providers[providerType]
 	if !ok {
 		return "error: provider not found"
 	}
-	def.KeepAlive = enabled
-	s.cfgCopy.LLMProviders[label] = def
+	prov.KeepAlive = enabled
+	s.cfgCopy.Providers[providerType] = prov
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
@@ -168,6 +168,23 @@ func (s *SettingsService) OllamaOpenPull(model string) string {
 		return fmt.Sprintf("error: %v", err)
 	}
 	return "ok"
+}
+
+// --- LM Studio management ----------------------------------------------------
+
+// LMStudioStatus checks if an LM Studio server is reachable and returns available models.
+func (s *SettingsService) LMStudioStatus(endpoint string) string {
+	guiLog("[GUI] JS called: LMStudioStatus endpoint=%s", endpoint)
+	running, models, err := llm.LMStudioStatus(endpoint)
+	result := map[string]interface{}{
+		"running": running,
+		"models":  models,
+	}
+	if err != nil {
+		result["error"] = err.Error()
+	}
+	data, _ := json.Marshal(result)
+	return string(data)
 }
 
 // OllamaDownloadInstaller downloads the Ollama installer (platform-specific).

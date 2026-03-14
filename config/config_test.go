@@ -36,6 +36,38 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestDefaultConfigHasEmptyMaps(t *testing.T) {
+	cfg := DefaultConfig()
+
+	if cfg.Providers == nil {
+		t.Error("expected Providers to be initialized (not nil)")
+	}
+	if len(cfg.Providers) != 0 {
+		t.Errorf("expected empty Providers map, got %d entries", len(cfg.Providers))
+	}
+	if cfg.Models == nil {
+		t.Error("expected Models to be initialized (not nil)")
+	}
+	if len(cfg.Models) != 0 {
+		t.Errorf("expected empty Models map, got %d entries", len(cfg.Models))
+	}
+}
+
+func TestNeedsSetupNoProviders(t *testing.T) {
+	cfg := DefaultConfig()
+	if !NeedsSetup(&cfg) {
+		t.Error("expected NeedsSetup=true with no providers")
+	}
+}
+
+func TestNeedsSetupWithProvider(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.Providers["openai"] = ProviderConfig{APIKey: "sk-test"}
+	if NeedsSetup(&cfg) {
+		t.Error("expected NeedsSetup=false with at least one provider")
+	}
+}
+
 func TestLoadCreatesDefaultWhenMissing(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
@@ -60,9 +92,18 @@ func TestLoadValidConfig(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test-key-12345",
-		"model":        "gpt-4o",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test-key-12345",
+			},
+		},
+		"models": map[string]interface{}{
+			"gpt4o": map[string]interface{}{
+				"provider": "openai",
+				"model":    "gpt-4o",
+			},
+		},
+		"default_model": "gpt4o",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix spelling errors."},
 		},
@@ -75,17 +116,20 @@ func TestLoadValidConfig(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if loaded.LLMProvider != "openai" {
-		t.Errorf("expected provider 'openai', got '%s'", loaded.LLMProvider)
+	if _, ok := loaded.Providers["openai"]; !ok {
+		t.Error("expected 'openai' in providers")
 	}
-	if loaded.APIKey != "sk-test-key-12345" {
-		t.Errorf("expected api_key, got '%s'", loaded.APIKey)
+	if loaded.Providers["openai"].APIKey != "sk-test-key-12345" {
+		t.Errorf("expected api_key, got '%s'", loaded.Providers["openai"].APIKey)
 	}
 	if len(loaded.Prompts) != 1 {
 		t.Fatalf("expected 1 prompt, got %d", len(loaded.Prompts))
 	}
 	if loaded.Prompts[0].Name != "Correct" {
 		t.Errorf("expected prompt name 'Correct', got '%s'", loaded.Prompts[0].Name)
+	}
+	if loaded.DefaultModel != "gpt4o" {
+		t.Errorf("expected default_model 'gpt4o', got '%s'", loaded.DefaultModel)
 	}
 }
 
@@ -94,9 +138,11 @@ func TestLoadInvalidProvider(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "invalid_provider",
-		"api_key":      "sk-test",
-		"model":        "some-model",
+		"providers": map[string]interface{}{
+			"invalid_provider": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -110,14 +156,11 @@ func TestLoadInvalidProvider(t *testing.T) {
 	}
 }
 
-func TestLoadMissingAPIKey(t *testing.T) {
+func TestLoadNoProviders(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "anthropic",
-		"api_key":      "",
-		"model":        "claude-sonnet-4-5-20250929",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -127,7 +170,7 @@ func TestLoadMissingAPIKey(t *testing.T) {
 
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("expected validation error for missing API key")
+		t.Fatal("expected validation error for no providers")
 	}
 }
 
@@ -136,9 +179,16 @@ func TestLoadOllamaNoAPIKeyRequired(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "ollama",
-		"api_key":      "",
-		"model":        "mistral",
+		"providers": map[string]interface{}{
+			"ollama": map[string]interface{}{},
+		},
+		"models": map[string]interface{}{
+			"mistral": map[string]interface{}{
+				"provider": "ollama",
+				"model":    "mistral",
+			},
+		},
+		"default_model": "mistral",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -151,8 +201,8 @@ func TestLoadOllamaNoAPIKeyRequired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if loaded.LLMProvider != "ollama" {
-		t.Errorf("expected provider 'ollama', got '%s'", loaded.LLMProvider)
+	if _, ok := loaded.Providers["ollama"]; !ok {
+		t.Error("expected 'ollama' in providers")
 	}
 }
 
@@ -173,9 +223,17 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test",
-		"model":        "gpt-4o",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
+		"models": map[string]interface{}{
+			"gpt4o": map[string]interface{}{
+				"provider": "openai",
+				"model":    "gpt-4o",
+			},
+		},
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -201,9 +259,11 @@ func TestLoadLoggingDisabledByDefault(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test",
-		"model":        "gpt-4o",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -229,10 +289,12 @@ func TestLoadLoggingEnabledSetsLogFileDefault(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test",
-		"model":        "gpt-4o",
-		"log_level":    "debug",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
+		"log_level": "debug",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -258,10 +320,12 @@ func TestLoadInvalidLogLevel(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test",
-		"model":        "gpt-4o",
-		"log_level":    "verbose",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
+		"log_level": "verbose",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -280,9 +344,11 @@ func TestLoadOptionalHotkeysEmpty(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "openai",
-		"api_key":      "sk-test",
-		"model":        "gpt-4o",
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -333,10 +399,104 @@ func TestWriteDefault(t *testing.T) {
 	}
 }
 
-func TestLLMProvidersSynthesizedFromFlat(t *testing.T) {
+func TestMarshalUnmarshalRoundTrip(t *testing.T) {
+	cfg := Config{
+		Providers: map[string]ProviderConfig{
+			"anthropic": {APIKey: "sk-ant-test"},
+			"openai":    {APIKey: "sk-openai-test"},
+		},
+		Models: map[string]ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929", MaxTokens: 512},
+			"gpt4o":  {Provider: "openai", Model: "gpt-4o"},
+		},
+		DefaultModel: "claude",
+		Prompts: []PromptEntry{
+			{Name: "Correct", Prompt: "Fix errors."},
+		},
+		Hotkeys:   Hotkeys{Action: "Ctrl+G"},
+		MaxTokens: 256,
+		TimeoutMs: 30000,
+	}
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var loaded Config
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if len(loaded.Providers) != 2 {
+		t.Errorf("expected 2 providers, got %d", len(loaded.Providers))
+	}
+	if len(loaded.Models) != 2 {
+		t.Errorf("expected 2 models, got %d", len(loaded.Models))
+	}
+	if loaded.DefaultModel != "claude" {
+		t.Errorf("expected default_model 'claude', got %q", loaded.DefaultModel)
+	}
+	me, ok := loaded.Models["claude"]
+	if !ok {
+		t.Fatal("expected 'claude' model entry")
+	}
+	if me.Provider != "anthropic" {
+		t.Errorf("expected provider 'anthropic', got %q", me.Provider)
+	}
+	if me.Model != "claude-sonnet-4-5-20250929" {
+		t.Errorf("expected model 'claude-sonnet-4-5-20250929', got %q", me.Model)
+	}
+	if me.MaxTokens != 512 {
+		t.Errorf("expected max_tokens 512, got %d", me.MaxTokens)
+	}
+}
+
+func TestLLMProviderDefStandalone(t *testing.T) {
+	// LLMProviderDef is still used by the LLM package as a merge type.
+	def := LLMProviderDef{
+		Provider:     "openai",
+		APIKey:       "sk-test",
+		Model:        "gpt-4o",
+		APIEndpoint:  "https://api.openai.com/v1",
+		MaxTokens:    1024,
+		TimeoutMs:    30000,
+		RefreshToken: "rt-test",
+		KeepAlive:    true,
+	}
+
+	data, err := json.Marshal(def)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+
+	var loaded LLMProviderDef
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+
+	if loaded.Provider != "openai" {
+		t.Errorf("expected provider 'openai', got %q", loaded.Provider)
+	}
+	if loaded.APIKey != "sk-test" {
+		t.Errorf("expected api_key 'sk-test', got %q", loaded.APIKey)
+	}
+	if loaded.Model != "gpt-4o" {
+		t.Errorf("expected model 'gpt-4o', got %q", loaded.Model)
+	}
+	if loaded.RefreshToken != "rt-test" {
+		t.Errorf("expected refresh_token 'rt-test', got %q", loaded.RefreshToken)
+	}
+	if !loaded.KeepAlive {
+		t.Error("expected keep_alive true")
+	}
+}
+
+func TestMigrateLegacyFlatFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
+	// Old flat-field format with llm_provider + api_key
 	cfg := map[string]interface{}{
 		"llm_provider": "openai",
 		"api_key":      "sk-test-key",
@@ -348,27 +508,39 @@ func TestLLMProvidersSynthesizedFromFlat(t *testing.T) {
 	data, _ := json.MarshalIndent(cfg, "", "  ")
 	os.WriteFile(path, data, 0644)
 
-	loaded, err := Load(path)
+	loaded, err := LoadRaw(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if loaded.DefaultLLM != "default" {
-		t.Errorf("expected default_llm 'default', got %q", loaded.DefaultLLM)
+	// Should have migrated to new providers+models format.
+	if len(loaded.Providers) != 1 {
+		t.Fatalf("expected 1 provider, got %d", len(loaded.Providers))
 	}
-	if len(loaded.LLMProviders) != 1 {
-		t.Fatalf("expected 1 synthesized provider, got %d", len(loaded.LLMProviders))
-	}
-	def, ok := loaded.LLMProviders["default"]
+	prov, ok := loaded.Providers["openai"]
 	if !ok {
-		t.Fatal("expected llm_providers to contain 'default' key")
+		t.Fatal("expected 'openai' in providers")
 	}
-	if def.Provider != "openai" {
-		t.Errorf("expected provider 'openai', got %q", def.Provider)
+	if prov.APIKey != "sk-test-key" {
+		t.Errorf("expected api_key 'sk-test-key', got %q", prov.APIKey)
+	}
+
+	if loaded.DefaultModel != "default" {
+		t.Errorf("expected default_model 'default', got %q", loaded.DefaultModel)
+	}
+	me, ok := loaded.Models["default"]
+	if !ok {
+		t.Fatal("expected 'default' model entry")
+	}
+	if me.Provider != "openai" {
+		t.Errorf("expected provider 'openai', got %q", me.Provider)
+	}
+	if me.Model != "gpt-4o" {
+		t.Errorf("expected model 'gpt-4o', got %q", me.Model)
 	}
 }
 
-func TestLoadLLMProviders(t *testing.T) {
+func TestMigrateLegacyLLMProviders(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
@@ -393,32 +565,55 @@ func TestLoadLLMProviders(t *testing.T) {
 	data, _ := json.MarshalIndent(cfg, "", "  ")
 	os.WriteFile(path, data, 0644)
 
-	loaded, err := Load(path)
+	loaded, err := LoadRaw(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(loaded.LLMProviders) != 2 {
-		t.Fatalf("expected 2 providers, got %d", len(loaded.LLMProviders))
+	// Should have migrated to new providers+models.
+	if len(loaded.Providers) != 2 {
+		t.Fatalf("expected 2 providers, got %d", len(loaded.Providers))
 	}
-	if loaded.DefaultLLM != "claude" {
-		t.Errorf("expected default_llm 'claude', got %q", loaded.DefaultLLM)
+	if _, ok := loaded.Providers["anthropic"]; !ok {
+		t.Error("expected 'anthropic' in providers")
+	}
+	if _, ok := loaded.Providers["openai"]; !ok {
+		t.Error("expected 'openai' in providers")
+	}
+
+	if len(loaded.Models) != 2 {
+		t.Fatalf("expected 2 models, got %d", len(loaded.Models))
+	}
+	if loaded.DefaultModel != "claude" {
+		t.Errorf("expected default_model 'claude', got %q", loaded.DefaultModel)
+	}
+
+	me, ok := loaded.Models["claude"]
+	if !ok {
+		t.Fatal("expected 'claude' model entry")
+	}
+	if me.Provider != "anthropic" {
+		t.Errorf("expected provider 'anthropic', got %q", me.Provider)
 	}
 }
 
-func TestValidateInvalidLLMLabel(t *testing.T) {
+func TestValidateInvalidDefaultModel(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_providers": map[string]interface{}{
+		"providers": map[string]interface{}{
+			"anthropic": map[string]interface{}{
+				"api_key": "sk-ant-test",
+			},
+		},
+		"models": map[string]interface{}{
 			"claude": map[string]interface{}{
 				"provider": "anthropic",
-				"api_key":  "sk-ant-test",
 				"model":    "claude-sonnet-4-5-20250929",
 			},
 		},
-		"default_llm": "nonexistent",
+		"default_model": "nonexistent",
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 		},
@@ -428,7 +623,36 @@ func TestValidateInvalidLLMLabel(t *testing.T) {
 
 	_, err := Load(path)
 	if err == nil {
-		t.Fatal("expected validation error for invalid default_llm label")
+		t.Fatal("expected validation error for invalid default_model label")
+	}
+}
+
+func TestValidateModelReferencesProvider(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+
+	cfg := map[string]interface{}{
+		"providers": map[string]interface{}{
+			"openai": map[string]interface{}{
+				"api_key": "sk-test",
+			},
+		},
+		"models": map[string]interface{}{
+			"claude": map[string]interface{}{
+				"provider": "anthropic",
+				"model":    "claude-sonnet-4-5-20250929",
+			},
+		},
+		"prompts": []map[string]interface{}{
+			{"name": "Correct", "prompt": "Fix errors."},
+		},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.WriteFile(path, data, 0644)
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected validation error: model references provider not in providers map")
 	}
 }
 
@@ -487,6 +711,14 @@ func TestMigrateOldFormat(t *testing.T) {
 	if loaded.Hotkeys.CyclePrompt != "Ctrl+T" {
 		t.Errorf("expected cycle_prompt hotkey 'Ctrl+T', got '%s'", loaded.Hotkeys.CyclePrompt)
 	}
+
+	// LLM fields should have been migrated to providers+models
+	if _, ok := loaded.Providers["ollama"]; !ok {
+		t.Error("expected 'ollama' in providers after old config migration")
+	}
+	if loaded.DefaultModel != "default" {
+		t.Errorf("expected default_model 'default', got %q", loaded.DefaultModel)
+	}
 }
 
 func TestNewFormatLoadsDirect(t *testing.T) {
@@ -494,8 +726,15 @@ func TestNewFormatLoadsDirect(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider": "ollama",
-		"model":        "mistral",
+		"providers": map[string]interface{}{
+			"ollama": map[string]interface{}{},
+		},
+		"models": map[string]interface{}{
+			"mistral": map[string]interface{}{
+				"provider": "ollama",
+				"model":    "mistral",
+			},
+		},
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
 			{"name": "Polish", "prompt": "Polish the text."},
@@ -528,8 +767,9 @@ func TestActivePromptClamped(t *testing.T) {
 	path := filepath.Join(dir, "config.json")
 
 	cfg := map[string]interface{}{
-		"llm_provider":  "ollama",
-		"model":         "mistral",
+		"providers": map[string]interface{}{
+			"ollama": map[string]interface{}{},
+		},
 		"active_prompt": 99,
 		"prompts": []map[string]interface{}{
 			{"name": "Correct", "prompt": "Fix errors."},
@@ -545,5 +785,48 @@ func TestActivePromptClamped(t *testing.T) {
 
 	if loaded.ActivePrompt != 0 {
 		t.Errorf("expected active_prompt clamped to 0, got %d", loaded.ActivePrompt)
+	}
+}
+
+func TestModelTimeoutInheritsFromProvider(t *testing.T) {
+	cfg := Config{
+		Providers: map[string]ProviderConfig{
+			"openai": {APIKey: "sk-test", TimeoutMs: 45000},
+		},
+		Models: map[string]ModelEntry{
+			"gpt4o": {Provider: "openai", Model: "gpt-4o"},
+		},
+		Prompts: []PromptEntry{
+			{Name: "Correct", Prompt: "Fix errors."},
+		},
+		TimeoutMs: 30000,
+	}
+
+	applyDefaults(&cfg)
+
+	me := cfg.Models["gpt4o"]
+	if me.TimeoutMs != 45000 {
+		t.Errorf("expected model timeout 45000 (from provider), got %d", me.TimeoutMs)
+	}
+}
+
+func TestModelTimeoutDefaultsOllama(t *testing.T) {
+	cfg := Config{
+		Providers: map[string]ProviderConfig{
+			"ollama": {},
+		},
+		Models: map[string]ModelEntry{
+			"mistral": {Provider: "ollama", Model: "mistral"},
+		},
+		Prompts: []PromptEntry{
+			{Name: "Correct", Prompt: "Fix errors."},
+		},
+	}
+
+	applyDefaults(&cfg)
+
+	me := cfg.Models["mistral"]
+	if me.TimeoutMs != 120000 {
+		t.Errorf("expected ollama model timeout 120000, got %d", me.TimeoutMs)
 	}
 }

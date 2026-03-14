@@ -202,10 +202,16 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 
 	// Work on a copy so cancelled edits don't corrupt the live config.
 	cfgCopy := *cfg
-	if cfg.LLMProviders != nil {
-		cfgCopy.LLMProviders = make(map[string]config.LLMProviderDef, len(cfg.LLMProviders))
-		for k, v := range cfg.LLMProviders {
-			cfgCopy.LLMProviders[k] = v
+	if cfg.Providers != nil {
+		cfgCopy.Providers = make(map[string]config.ProviderConfig, len(cfg.Providers))
+		for k, v := range cfg.Providers {
+			cfgCopy.Providers[k] = v
+		}
+	}
+	if cfg.Models != nil {
+		cfgCopy.Models = make(map[string]config.ModelEntry, len(cfg.Models))
+		for k, v := range cfg.Models {
+			cfgCopy.Models[k] = v
 		}
 	}
 

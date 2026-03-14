@@ -177,9 +177,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					router.ResetClients()
 				}
 				// If we had an init error and the user fixed the config, try to init the router.
-				if router == nil && initErr != nil && cfg.DefaultLLM != "" {
-					def := cfg.LLMProviders[cfg.DefaultLLM]
-					client, clientErr := llm.NewClientFromDef(def)
+				if router == nil && initErr != nil && cfg.DefaultModel != "" {
+					client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
 					if clientErr == nil {
 						router = mode.NewRouter(cfg, client)
 						initErr = nil
@@ -192,7 +191,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		},
 		OnModelSelect: func(label string) {
 			mu.Lock()
-			cfg.DefaultLLM = label
+			cfg.DefaultModel = label
 			mu.Unlock()
 			config.WriteDefault(configPath, cfg)
 			slog.Info("Default model changed", "label", label)
@@ -246,12 +245,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			mu.Lock()
 			defer mu.Unlock()
 			var labels []tray.ModelLabel
-			for label, def := range cfg.LLMProviders {
+			for label, me := range cfg.Models {
 				labels = append(labels, tray.ModelLabel{
 					Label:     label,
-					Provider:  def.Provider,
-					Model:     def.Model,
-					IsDefault: label == cfg.DefaultLLM,
+					Provider:  me.Provider,
+					Model:     me.Model,
+					IsDefault: label == cfg.DefaultModel,
 				})
 			}
 			sort.Slice(labels, func(i, j int) bool { return labels[i].Label < labels[j].Label })
@@ -323,11 +322,10 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				}
 
 				var client llm.Client
-				if cfg.DefaultLLM != "" {
-					def := cfg.LLMProviders[cfg.DefaultLLM]
-					client, err = llm.NewClientFromDef(def)
+				if cfg.DefaultModel != "" {
+					client, err = newClientFromConfig(cfg, cfg.DefaultModel)
 				} else {
-					client, err = llm.NewClient(cfg)
+					err = fmt.Errorf("no default_model configured")
 				}
 				if err != nil {
 					slog.Error("Failed to init LLM client after wizard", "error", err)
