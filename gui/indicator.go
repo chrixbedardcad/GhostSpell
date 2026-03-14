@@ -1,16 +1,19 @@
 package gui
 
 import (
+	"fmt"
 	"log/slog"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var (
-	indicatorWin *application.WebviewWindow
-	indicatorMu  sync.Mutex
+	indicatorWin  *application.WebviewWindow
+	indicatorMu   sync.Mutex
+	indicatorDone chan struct{} // closed to stop the timer goroutine
 )
 
 // CreateIndicator creates a small, hidden, frameless overlay window showing an
@@ -78,16 +81,12 @@ func ShowIndicator() {
 			win.SetPosition(x, y)
 		}
 	}
-	// Show window FIRST so the WebView is active, then reset timer.
-	// On Windows, WebView2 silently drops ExecJS calls when the window
-	// is hidden, so we must show before executing JS.
+
 	win.Show()
-	win.ExecJS("resetTimer()")
+	startIndicatorTimer()
 }
 
-// HideIndicator hides the floating ghost overlay and stops the elapsed timer.
-// ExecJS runs BEFORE Hide() so the WebView is still active and processes the
-// JS. This ensures the DOM reads "0s" when the window is next shown.
+// HideIndicator hides the floating ghost overlay.
 func HideIndicator() {
 	indicatorMu.Lock()
 	win := indicatorWin
@@ -95,6 +94,73 @@ func HideIndicator() {
 	if win == nil {
 		return
 	}
-	win.ExecJS("stopTimer()")
+
+	stopIndicatorTimer()
 	win.Hide()
+}
+
+// startIndicatorTimer launches a goroutine that drives the elapsed timer
+// display from Go. This replaces the old JS-side setInterval approach which
+// was unreliable: ExecJS calls on hidden/transitioning Wails WebViews get
+// silently dropped, causing the JS interval to leak and accumulate stale
+// values (200s+). With Go owning the timer, if one ExecJS update is dropped,
+// the next one (1 second later) self-corrects.
+func startIndicatorTimer() {
+	stopIndicatorTimer() // ensure no stale goroutine
+
+	indicatorMu.Lock()
+	win := indicatorWin
+	done := make(chan struct{})
+	indicatorDone = done
+	indicatorMu.Unlock()
+
+	if win == nil {
+		return
+	}
+
+	start := time.Now()
+
+	go func() {
+		// Immediately set "0s" — try a few times in quick succession to
+		// make sure at least one ExecJS call lands even if the WebView
+		// is still transitioning from hidden → visible.
+		for i := 0; i < 3; i++ {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			win.ExecJS(`document.getElementById('t').textContent='0s'`)
+			time.Sleep(30 * time.Millisecond)
+		}
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				s := int(time.Since(start).Seconds())
+				win.ExecJS(fmt.Sprintf(`document.getElementById('t').textContent='%ds'`, s))
+			}
+		}
+	}()
+}
+
+// stopIndicatorTimer stops the Go-side timer goroutine.
+func stopIndicatorTimer() {
+	indicatorMu.Lock()
+	done := indicatorDone
+	indicatorDone = nil
+	indicatorMu.Unlock()
+
+	if done != nil {
+		select {
+		case <-done: // already closed
+		default:
+			close(done)
+		}
+	}
 }

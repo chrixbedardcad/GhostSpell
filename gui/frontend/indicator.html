@@ -53,36 +53,7 @@
   <div class="ghost-wrap">
     <img src="/ghostspell-ghost.png" alt="">
   </div>
-  <div class="timer" id="timer">0s</div>
+  <div class="timer" id="t">0s</div>
 </div>
-<script>
-var startTime = Date.now();
-var timerEl = document.getElementById('timer');
-var interval = null;
-
-function updateTimer() {
-  var s = Math.floor((Date.now() - startTime) / 1000);
-  // Safety net: if timer shows an absurd value (>600s = 10min), the
-  // stopTimer/resetTimer calls were likely dropped by a hidden WebView.
-  // Auto-reset to avoid showing stale values like "200s".
-  if (s > 600) { startTime = Date.now(); s = 0; }
-  timerEl.textContent = s + 's';
-}
-
-function resetTimer() {
-  startTime = Date.now();
-  timerEl.textContent = '0s';
-  if (interval) clearInterval(interval);
-  interval = setInterval(updateTimer, 1000);
-}
-
-function stopTimer() {
-  if (interval) clearInterval(interval);
-  interval = null;
-  timerEl.textContent = '0s';
-}
-
-resetTimer();
-</script>
 </body>
 </html>
