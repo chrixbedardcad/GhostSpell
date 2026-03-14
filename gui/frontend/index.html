@@ -1223,30 +1223,10 @@ async function saveCloudProvider(type) {
   var statusId = type === 'openai' ? 'prov-openai-status' : 'prov-cloud-status';
   var key = document.getElementById(type === 'openai' ? 'prov-openai-apikey' : 'prov-cloud-apikey').value.trim();
   if (!key) { setStatus(statusId, 'error', 'API key required'); return; }
-  // Find existing model label for this provider type, or create default
-  var models = configData.models || {};
-  var existingLabel = '';
-  for (var label in models) {
-    if (models[label].provider === type) { existingLabel = label; break; }
-  }
-  var autoLabels = {anthropic:'claude', openai:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek'};
-  var saveLabel = existingLabel || autoLabels[type] || type;
-  // Get default model for this provider
-  var model = '';
-  var raw = await goCall('getKnownModels', type);
-  if (raw) {
-    try {
-      var models = JSON.parse(raw);
-      for (var i = 0; i < models.length; i++) {
-        var m = models[i];
-        if (typeof m === 'object' && m.tag === 'recommended') { model = m.name; break; }
-      }
-      if (!model && models.length > 0) model = typeof models[0] === 'string' ? models[0] : models[0].name;
-    } catch(e) {}
-  }
-  var result = await goCall('saveProvider', saveLabel, type, key, model, '', existingLabel);
+  // AI Providers tab ONLY saves credentials — model entries are created in the Models tab.
+  var result = await goCall('saveProviderConfig', type, key, '', '', false);
   if (result && result.startsWith('ok')) {
-    setStatus(statusId, 'success', 'Provider saved!');
+    setStatus(statusId, 'success', 'Provider saved! Add a model in the Models tab.');
     await reloadConfig();
     renderProviders();
   } else {
@@ -1416,14 +1396,8 @@ async function onProvLocalRefresh() {
 
 function provLocalSelectModel(name) {
   provSelectedModel['local'] = name;
-  // Auto-save provider with this model
-  var cfgModels = configData.models || {};
-  var existingLabel = '';
-  for (var label in cfgModels) {
-    if (cfgModels[label].provider === 'local') { existingLabel = label; break; }
-  }
-  var saveLabel = existingLabel || 'ghost-ai';
-  goCall('saveProvider', saveLabel, 'local', '', name, '', existingLabel).then(function(result) {
+  // AI Providers tab ONLY saves provider credentials — model entries are in Models tab.
+  goCall('saveProviderConfig', 'local', '', '', '', false).then(function(result) {
     if (result && result.startsWith('ok')) reloadConfig();
   });
   onProvLocalRefresh();
@@ -1587,17 +1561,10 @@ function provOllamaNotInstalled(container) {
 
 async function saveOllamaProvider() {
   var endpoint = document.getElementById('prov-ollama-endpoint').value.trim();
-  var model = provSelectedModel['ollama'] || '';
-  if (!model) { setStatus('prov-ollama-status', 'error', 'Select a model first'); return; }
-  var cfgModels = configData.models || {};
-  var existingLabel = '';
-  for (var label in cfgModels) {
-    if (cfgModels[label].provider === 'ollama') { existingLabel = label; break; }
-  }
-  var saveLabel = existingLabel || 'ollama';
-  var result = await goCall('saveProvider', saveLabel, 'ollama', '', model, endpoint, existingLabel);
+  // AI Providers tab ONLY saves provider credentials — model entries are in Models tab.
+  var result = await goCall('saveProviderConfig', 'ollama', '', endpoint, '', false);
   if (result && result.startsWith('ok')) {
-    setStatus('prov-ollama-status', 'success', 'Ollama provider saved!');
+    setStatus('prov-ollama-status', 'success', 'Ollama saved! Add a model in the Models tab.');
     await reloadConfig();
     renderProviders();
   } else {
@@ -1627,15 +1594,10 @@ async function refreshLMStudioSetup() {
 async function saveLMStudioProvider() {
   var endpoint = document.getElementById('prov-lmstudio-endpoint').value.trim();
   if (!endpoint) { setStatus('prov-lmstudio-status', 'error', 'Endpoint required'); return; }
-  var cfgModels = configData.models || {};
-  var existingLabel = '';
-  for (var label in cfgModels) {
-    if (cfgModels[label].provider === 'lmstudio') { existingLabel = label; break; }
-  }
-  var saveLabel = existingLabel || 'lmstudio';
-  var result = await goCall('saveProvider', saveLabel, 'lmstudio', '', 'default', endpoint, existingLabel);
+  // AI Providers tab ONLY saves provider credentials — model entries are in Models tab.
+  var result = await goCall('saveProviderConfig', 'lmstudio', '', endpoint, '', false);
   if (result && result.startsWith('ok')) {
-    setStatus('prov-lmstudio-status', 'success', 'LM Studio provider saved!');
+    setStatus('prov-lmstudio-status', 'success', 'LM Studio saved! Add a model in the Models tab.');
     await reloadConfig();
     renderProviders();
   } else {
@@ -1757,21 +1719,21 @@ function showAddModel() {
 function populateModelFormProviders() {
   var select = document.getElementById('model-form-provider');
   select.innerHTML = '';
-  // Show ALL provider types, not just configured
-  var allTypes = [
-    {value:'local', label:'Ghost-AI (Built-in)'},
-    {value:'ollama', label:'Ollama'},
-    {value:'lmstudio', label:'LM Studio'},
-    {value:'openai', label:'OpenAI'},
-    {value:'anthropic', label:'Anthropic'},
-    {value:'gemini', label:'Google Gemini'},
-    {value:'xai', label:'xAI'},
-    {value:'deepseek', label:'DeepSeek'},
-  ];
-  allTypes.forEach(function(t) {
+  var providers = configData.providers || {};
+  var configuredTypes = Object.keys(providers);
+  if (configuredTypes.length === 0) {
     var opt = document.createElement('option');
-    opt.value = t.value;
-    opt.textContent = t.label;
+    opt.value = '';
+    opt.textContent = '— No providers configured —';
+    select.appendChild(opt);
+    return;
+  }
+  // Only show CONFIGURED providers
+  var typeLabels = {local:'Ghost-AI (Built-in)', ollama:'Ollama', lmstudio:'LM Studio', openai:'OpenAI', anthropic:'Anthropic', gemini:'Google Gemini', xai:'xAI', deepseek:'DeepSeek'};
+  configuredTypes.forEach(function(t) {
+    var opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = typeLabels[t] || t;
     select.appendChild(opt);
   });
 }
@@ -1862,13 +1824,11 @@ async function saveModelForm() {
   var model = document.getElementById('model-form-model').value;
   var label = document.getElementById('model-form-name').value.trim();
   var original = document.getElementById('model-edit-original').value;
+  if (!provider) { setStatus('model-form-status', 'error', 'Select a provider'); return; }
   if (!label) { setStatus('model-form-status', 'error', 'Label required'); return; }
   if (!model) { setStatus('model-form-status', 'error', 'Select a model'); return; }
-  // Get existing API key and endpoint for this provider type from config
-  var prov = (configData.providers || {})[provider];
-  var apiKey = prov ? (prov.api_key || '') : '';
-  var endpoint = prov ? (prov.api_endpoint || '') : '';
-  var result = await goCall('saveProvider', label, provider, apiKey, model, endpoint, original);
+  // Models tab saves ONLY the model entry — provider credentials are in AI Providers tab.
+  var result = await goCall('saveModel', label, provider, model, original);
   if (result && result.startsWith('ok')) {
     document.getElementById('model-form').style.display = 'none';
     renderModels();
