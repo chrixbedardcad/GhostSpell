@@ -1998,15 +1998,13 @@ function buildInlineForm(idx, p) {
   for (const label of Object.keys(models)) {
     llmOpts += '<option value="' + esc(label) + '"' + (label === (p.llm || '') ? ' selected' : '') + '>' + esc(label) + '</option>';
   }
-  const iconChoices = ['\u270F\uFE0F','\uD83D\uDC8E','\uD83D\uDE04','\uD83D\uDCDD','\u2702\uFE0F','\uD83C\uDF10','\uD83D\uDCA1','\uD83D\uDD25','\uD83C\uDFAF','\u2728','\uD83D\uDE80','\uD83E\uDDE0','\uD83D\uDCAC','\uD83D\uDD0D','\uD83C\uDFA8'];
   const currentIcon = p.icon || '';
-  let iconPicker = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">';
-  iconPicker += '<span class="icon-choice' + (!currentIcon ? ' selected' : '') + '" onclick="selectPromptIcon(this, \'\')" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid ' + (!currentIcon ? '#89b4fa' : '#45475a') + ';font-size:0.85em;color:#6c7086">none</span>';
-  for (const ic of iconChoices) {
-    const sel = ic === currentIcon;
-    iconPicker += '<span class="icon-choice' + (sel ? ' selected' : '') + '" onclick="selectPromptIcon(this, \'' + ic + '\')" style="cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid ' + (sel ? '#89b4fa' : '#45475a') + ';font-size:1.1em">' + ic + '</span>';
-  }
+  let iconPicker = '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">';
+  iconPicker += '<span id="pe-icon-preview" style="font-size:1.5em;min-width:32px;text-align:center;cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid #45475a;background:#1e1e2e" onclick="toggleEmojiPicker()" title="Click to pick emoji">' + (currentIcon || '<span style="font-size:0.6em;color:#6c7086">none</span>') + '</span>';
+  iconPicker += '<button class="btn btn-secondary btn-sm" type="button" onclick="toggleEmojiPicker()" style="font-size:0.8em">Pick Emoji</button>';
+  iconPicker += '<button class="btn btn-secondary btn-sm" type="button" onclick="clearPromptIcon()" style="font-size:0.8em;color:#6c7086">Clear</button>';
   iconPicker += '</div>';
+  iconPicker += '<div id="pe-emoji-picker" style="display:none;margin-top:8px;background:#1e1e2e;border:1px solid #45475a;border-radius:8px;padding:8px;max-height:220px;overflow-y:auto"></div>';
   return `<div class="inline-edit">
     <div class="form-group">
       <label>Name</label>
@@ -2042,10 +2040,60 @@ function cancelInlineEdit() {
   renderPrompts();
 }
 
-function selectPromptIcon(el, icon) {
+function selectPromptIcon(icon) {
   document.getElementById('pe-icon').value = icon;
-  el.parentElement.querySelectorAll('.icon-choice').forEach(s => s.style.borderColor = '#45475a');
-  el.style.borderColor = '#89b4fa';
+  var preview = document.getElementById('pe-icon-preview');
+  preview.innerHTML = icon || '<span style="font-size:0.6em;color:#6c7086">none</span>';
+  var picker = document.getElementById('pe-emoji-picker');
+  if (picker) picker.style.display = 'none';
+}
+
+function clearPromptIcon() {
+  selectPromptIcon('');
+}
+
+var _emojiPickerBuilt = false;
+function toggleEmojiPicker() {
+  var picker = document.getElementById('pe-emoji-picker');
+  if (!picker) return;
+  if (picker.style.display !== 'none') { picker.style.display = 'none'; return; }
+  if (!_emojiPickerBuilt) {
+    _emojiPickerBuilt = true;
+    var categories = {
+      'Smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😋','😛','😜','🤪','😎','🤓','🧐','😏','😒','😞','😔','😟','😕','😤','😠','😡','🤯','😳','🥺','😢','😭','😱','😈','👻'],
+      'Gestures': ['👍','👎','👌','✌️','🤞','🤟','🤘','👋','🤚','✋','👊','✊','🤜','🤛','👏','🙌','👐','🤝','🙏','💪','🫶'],
+      'Objects': ['✏️','📝','📄','📎','📌','📍','🔍','🔎','💡','🔥','⚡','✨','💫','🌟','⭐','🎯','🎨','🎭','🎪','🏆','🏅','🥇','🎖️','📊','📈','📉','🗂️','📁','📂'],
+      'Symbols': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💎','💬','💭','🗯️','♻️','⚠️','❌','✅','❓','❗','💯','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪'],
+      'Nature': ['🌍','🌎','🌏','🌐','🌈','☀️','🌙','⭐','🌸','🌺','🌻','🌹','🍀','🌿','🌱','🌳','🌴','🍄','🐱','🐶','🦊','🐻','🐼','🦁','🐸','🐙','🦋'],
+      'Tech': ['💻','🖥️','📱','⌨️','🖱️','🔧','🔨','⚙️','🛠️','🔬','🔭','📡','🤖','👾','🚀','🛸','🧠','🧬','🧪','📦','🗃️','💾','📀']
+    };
+    var html = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">';
+    var catNames = Object.keys(categories);
+    for (var ci = 0; ci < catNames.length; ci++) {
+      html += '<button class="btn btn-sm" onclick="showEmojiCat(\'' + catNames[ci] + '\')" style="font-size:0.72em;padding:3px 8px;background:#313244;color:#bac2de;border:1px solid #45475a" id="ecat-' + catNames[ci] + '">' + catNames[ci] + '</button>';
+    }
+    html += '</div><div id="pe-emoji-grid"></div>';
+    picker.innerHTML = html;
+    window._emojiCategories = categories;
+    showEmojiCat(catNames[0]);
+  }
+  picker.style.display = 'block';
+}
+
+function showEmojiCat(cat) {
+  var emojis = window._emojiCategories[cat] || [];
+  var grid = document.getElementById('pe-emoji-grid');
+  if (!grid) return;
+  var html = '<div style="display:flex;gap:3px;flex-wrap:wrap">';
+  for (var i = 0; i < emojis.length; i++) {
+    html += '<span onclick="selectPromptIcon(\'' + emojis[i] + '\')" style="cursor:pointer;font-size:1.3em;padding:4px;border-radius:4px;line-height:1;transition:background 0.15s" onmouseenter="this.style.background=\'#313244\'" onmouseleave="this.style.background=\'transparent\'">' + emojis[i] + '</span>';
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+  // Highlight active tab
+  document.querySelectorAll('[id^="ecat-"]').forEach(function(b) { b.style.background = '#313244'; b.style.color = '#bac2de'; });
+  var btn = document.getElementById('ecat-' + cat);
+  if (btn) { btn.style.background = '#89b4fa'; btn.style.color = '#1e1e2e'; }
 }
 
 function addPromptInline() {
