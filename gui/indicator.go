@@ -106,3 +106,45 @@ func HideIndicator() {
 	slog.Debug("[indicator] HideIndicator called")
 	win.Hide()
 }
+
+// PopIndicator briefly shows the indicator pill with the prompt icon and name
+// (no timer), then auto-hides after a short delay. Used for visual feedback
+// when cycling prompts via hotkey.
+func PopIndicator(promptIcon, promptName string) {
+	indicatorMu.Lock()
+	win := indicatorWin
+	indicatorMu.Unlock()
+	if win == nil {
+		return
+	}
+
+	// Position bottom-right of the primary screen's work area.
+	app := application.Get()
+	if app != nil {
+		screen := app.Screen.GetPrimary()
+		if screen != nil {
+			x := screen.WorkArea.X + screen.WorkArea.Width - 276
+			y := screen.WorkArea.Y + screen.WorkArea.Height - 68
+			win.SetPosition(x, y)
+		}
+	}
+
+	slog.Debug("[indicator] PopIndicator called", "prompt", promptName, "icon", promptIcon)
+
+	// Use the pop variant — shows prompt info without a timer.
+	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName) + "&pop=1"
+	win.SetURL(u)
+	time.Sleep(100 * time.Millisecond)
+	win.Show()
+
+	// Auto-hide after 1.5 seconds.
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		indicatorMu.Lock()
+		w := indicatorWin
+		indicatorMu.Unlock()
+		if w != nil {
+			w.Hide()
+		}
+	}()
+}

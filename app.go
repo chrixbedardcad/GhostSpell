@@ -393,6 +393,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				slog.Info("Prompt cycled", "index", idx, "name", name)
 				fmt.Printf("Active prompt: %s\n", name)
 				sound.PlayToggle()
+				// Show a brief pop of the indicator pill with the new prompt.
+				icon := ""
+				if idx >= 0 && idx < len(cfg.Prompts) {
+					icon = cfg.Prompts[idx].Icon
+				}
+				gui.PopIndicator(icon, name)
 			}); err != nil {
 				slog.Error("Failed to register cycle-prompt hotkey", "key", cfg.Hotkeys.CyclePrompt, "error", err)
 				fmt.Fprintf(os.Stderr, "Error: failed to register hotkey %s: %v\n", cfg.Hotkeys.CyclePrompt, err)
