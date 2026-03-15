@@ -120,18 +120,11 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 	}
 	thinking := isThinkingModel(c.modelName)
 	if thinking {
-		// Thinking models need room for <think> blocks + actual output.
-		// Use 3x the requested tokens (capped to context size) to allow
-		// thinking overhead without wasting minutes on runaway generation.
-		thinkMax := maxTokens * 3
-		if thinkMax < 512 {
-			thinkMax = 512
-		}
-		ctxSize := c.engine.Config().ContextSize
-		if thinkMax > ctxSize {
-			thinkMax = ctxSize
-		}
-		maxTokens = thinkMax
+		// Thinking models need generous room — the <think> block can easily
+		// consume 500-2000 tokens before the model produces the actual answer.
+		// Use the full context window (like Ollama/LM Studio do) so the model
+		// can finish thinking and produce the answer without being cut off.
+		maxTokens = c.engine.Config().ContextSize
 	} else {
 		// Non-thinking models: cap to ~2x input length to avoid wasted generation.
 		inputWords := len(strings.Fields(req.Text))
@@ -171,8 +164,14 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 	text = cleanLocalModelResponse(text)
 	if strings.TrimSpace(text) == "" {
 		// Model produced output but it was all thinking/formatting tokens.
-		slog.Warn("[ghost-ai] cleaned response is empty", "raw_len", len(raw), "raw_preview", truncate(raw, 200))
-		return nil, fmt.Errorf("ghost-ai returned empty content (model output was all thinking tokens — try a larger model or increase max_tokens)")
+		// Try to extract useful content from inside the last <think> block —
+		// often the corrected text appears near the end of the thinking.
+		text = extractFromThinking(raw)
+		if strings.TrimSpace(text) == "" {
+			slog.Warn("[ghost-ai] cleaned response is empty", "raw_len", len(raw), "raw_preview", truncate(raw, 200))
+			return nil, fmt.Errorf("ghost-ai returned empty content (model output was all thinking tokens — try a larger model or increase max_tokens)")
+		}
+		slog.Info("[ghost-ai] extracted answer from thinking block", "text_len", len(text))
 	}
 
 	slog.Info("[ghost-ai] complete",
@@ -253,6 +252,52 @@ func cleanLocalModelResponse(s string) string {
 	}
 
 	return strings.TrimSpace(s)
+}
+
+// extractFromThinking tries to find the corrected/processed text inside
+// a <think> block when the model's entire output was thinking content.
+// Thinking models often put the final answer near the end of the thinking
+// block, preceded by markers like "Corrected:", "Answer:", "Result:", etc.
+func extractFromThinking(raw string) string {
+	// Find content inside <think>...</think>
+	start := strings.Index(raw, "<think>")
+	if start == -1 {
+		return ""
+	}
+	content := raw[start+7:]
+	if end := strings.Index(content, "</think>"); end != -1 {
+		content = content[:end]
+	}
+
+	// Look for common answer markers near the end of the thinking block.
+	lines := strings.Split(content, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		for _, marker := range []string{
+			"Corrected text:", "Corrected:", "Corrected Text:",
+			"Answer:", "Result:", "Output:", "Fixed:",
+			"Final answer:", "Final:", "Response:",
+		} {
+			if strings.HasPrefix(line, marker) {
+				answer := strings.TrimSpace(line[len(marker):])
+				// If the answer continues on subsequent lines, collect them.
+				for j := i + 1; j < len(lines); j++ {
+					next := strings.TrimSpace(lines[j])
+					if next == "" || strings.HasPrefix(next, "**") || strings.HasPrefix(next, "---") {
+						break
+					}
+					answer += "\n" + next
+				}
+				if answer != "" {
+					return cleanLocalModelResponse(answer)
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // truncate returns the first n bytes of s, appending "…" if truncated.
