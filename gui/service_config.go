@@ -239,9 +239,11 @@ func (s *SettingsService) TestConnection(provider, apiKey, model, endpoint strin
 	// They also need more max_tokens because thinking models (Qwen3/3.5, DeepSeek)
 	// can consume 200-400 tokens on <think> blocks even with /no_think — larger
 	// models like qwen3.5-4b are especially heavy thinkers.
-	timeout := 10 * time.Second
-	maxTokens := 64
-	timeoutMs := 10000
+	// Cloud providers need enough max_tokens for reasoning models (gpt-5-mini,
+	// o1, etc.) that consume tokens on internal chain-of-thought.
+	timeout := 15 * time.Second
+	maxTokens := 256
+	timeoutMs := 15000
 	if provider == "ollama" || provider == "local" {
 		timeout = 120 * time.Second
 		maxTokens = 128
@@ -324,9 +326,9 @@ func (s *SettingsService) TestProviderConnection(providerType string) string {
 	guiLog("[GUI] TestProviderConnection: provider=%s model=%s endpoint=%q", providerType, model, prov.APIEndpoint)
 
 	// Ollama and local need much longer timeout — first request loads model into memory.
-	timeout := 10 * time.Second
-	maxTokens := 64
-	timeoutMs := 10000
+	timeout := 15 * time.Second
+	maxTokens := 256
+	timeoutMs := 15000
 	if providerType == "ollama" || providerType == "local" {
 		timeout = 120 * time.Second
 		maxTokens = 512
@@ -389,9 +391,9 @@ func (s *SettingsService) TestProvider(label string) string {
 	guiLog("[GUI] TestProvider: provider=%s model=%s endpoint=%q", me.Provider, me.Model, prov.APIEndpoint)
 
 	// Ollama and local need much longer timeout — first request loads model into memory.
-	timeout := 10 * time.Second
-	maxTokens := 64
-	timeoutMs := 10000
+	timeout := 15 * time.Second
+	maxTokens := 256
+	timeoutMs := 15000
 	if me.Provider == "ollama" || me.Provider == "local" {
 		timeout = 120 * time.Second
 		maxTokens = 512
@@ -439,10 +441,11 @@ func (s *SettingsService) TestProvider(label string) string {
 // SetRefreshToken stores an OAuth refresh token for a provider type.
 func (s *SettingsService) SetRefreshToken(providerType, token string) string {
 	guiLog("[GUI] JS called: SetRefreshToken(%s)", providerType)
-	prov, ok := s.cfgCopy.Providers[providerType]
-	if !ok {
-		return "error: provider not found"
+	if s.cfgCopy.Providers == nil {
+		s.cfgCopy.Providers = make(map[string]config.ProviderConfig)
 	}
+	// Preserve existing provider fields (especially API key) — only update the refresh token.
+	prov := s.cfgCopy.Providers[providerType]
 	prov.RefreshToken = token
 	s.cfgCopy.Providers[providerType] = prov
 	if err := s.validateAndSave(); err != nil {
