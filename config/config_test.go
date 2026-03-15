@@ -19,8 +19,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Hotkeys.Action != "Ctrl+G" {
 		t.Errorf("expected default action hotkey 'Ctrl+G', got '%s'", cfg.Hotkeys.Action)
 	}
-	if len(cfg.Prompts) != 6 {
-		t.Errorf("expected 6 default prompts, got %d", len(cfg.Prompts))
+	if len(cfg.Prompts) != 7 {
+		t.Errorf("expected 7 default prompts, got %d", len(cfg.Prompts))
 	}
 	expectedNames := []string{"Correct", "Polish", "Funny", "Elaborate", "Shorten", "Translate"}
 	for i, name := range expectedNames {
@@ -77,8 +77,8 @@ func TestLoadCreatesDefaultWhenMissing(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(cfg.Prompts) != 6 {
-		t.Errorf("expected 6 default prompts, got %d", len(cfg.Prompts))
+	if len(cfg.Prompts) != 7 {
+		t.Errorf("expected 7 default prompts, got %d", len(cfg.Prompts))
 	}
 
 	// Verify file was created
@@ -394,8 +394,8 @@ func TestWriteDefault(t *testing.T) {
 	if loaded.Hotkeys.Action != "Ctrl+G" {
 		t.Errorf("expected hotkey 'Ctrl+G' in written file, got '%s'", loaded.Hotkeys.Action)
 	}
-	if len(loaded.Prompts) != 6 {
-		t.Errorf("expected 6 prompts in written file, got %d", len(loaded.Prompts))
+	if len(loaded.Prompts) != 7 {
+		t.Errorf("expected 7 prompts in written file, got %d", len(loaded.Prompts))
 	}
 }
 

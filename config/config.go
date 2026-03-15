@@ -103,6 +103,7 @@ const (
 	DefaultElaboratePrompt = "Expand the following text by adding relevant detail, context, and completeness while preserving the original meaning and intent. Flesh out terse or incomplete points into well-developed statements. Maintain the same tone and style as the original. Keep the text in its original language — never translate it. Return ONLY the elaborated text with no explanation."
 	DefaultShortenPrompt   = "Condense the following text to be as concise as possible while preserving all essential meaning and key information. Remove redundancy, filler words, and unnecessary qualifiers. Keep the same tone and intent. Keep the text in its original language — never translate it. Return ONLY the shortened text with no explanation."
 	DefaultTranslatePrompt = "Translate the following text to English regardless of its source language. Return ONLY the translated text with no explanation."
+	DefaultAskPrompt       = "Answer this question clearly and concisely. Return the question and then the answer."
 )
 
 // DefaultPrompts returns the default prompt list.
@@ -114,6 +115,7 @@ func DefaultPrompts() []PromptEntry {
 		{Name: "Elaborate", Prompt: DefaultElaboratePrompt, Icon: "\U0001F4DD"},
 		{Name: "Shorten", Prompt: DefaultShortenPrompt, Icon: "\u2702\uFE0F"},
 		{Name: "Translate", Prompt: DefaultTranslatePrompt, Icon: "\U0001F310"},
+		{Name: "Ask", Prompt: DefaultAskPrompt, Icon: "\u2753"},
 	}
 }
 
@@ -499,6 +501,7 @@ func applyDefaults(cfg *Config) {
 		"Elaborate": "\U0001F4DD",
 		"Shorten":   "\u2702\uFE0F",
 		"Translate": "\U0001F310",
+		"Ask":       "\u2753",
 	}
 	for i := range cfg.Prompts {
 		if cfg.Prompts[i].Icon == "" {
