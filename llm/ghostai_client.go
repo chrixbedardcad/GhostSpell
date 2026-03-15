@@ -121,9 +121,17 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 	thinking := isThinkingModel(c.modelName)
 	if thinking {
 		// Thinking models need room for <think> blocks + actual output.
-		// Don't cap — let them use the full context window. The C bridge
-		// clamps max_tokens to context_size - prompt_tokens automatically.
-		maxTokens = c.engine.Config().ContextSize
+		// Use 3x the requested tokens (capped to context size) to allow
+		// thinking overhead without wasting minutes on runaway generation.
+		thinkMax := maxTokens * 3
+		if thinkMax < 512 {
+			thinkMax = 512
+		}
+		ctxSize := c.engine.Config().ContextSize
+		if thinkMax > ctxSize {
+			thinkMax = ctxSize
+		}
+		maxTokens = thinkMax
 	} else {
 		// Non-thinking models: cap to ~2x input length to avoid wasted generation.
 		inputWords := len(strings.Fields(req.Text))

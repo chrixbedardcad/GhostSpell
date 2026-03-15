@@ -56,6 +56,7 @@ func processMode(
 		}
 		gui.HideIndicator()
 		sound.PlayCancel()
+		gui.PopIndicator("\U0001F6D1", "Cancelled")
 		return
 	}
 	processingActive.Store(true)
@@ -195,9 +196,15 @@ func processMode(
 		slog.Error("LLM processing failed", "prompt", promptName, "error", err)
 		sound.StopWorkingLoop()
 
-		// User cancelled with second Ctrl+G — restore silently, no error paste.
+		// User cancelled with second Ctrl+G — deselect text, show cancel
+		// indicator, and restore clipboard to initial state.
 		if ctx.Err() == context.Canceled && !strings.Contains(err.Error(), "deadline exceeded") {
 			slog.Info("Request cancelled by user", "prompt", promptName)
+			// Deselect text (Right arrow collapses selection to cursor).
+			kb.PressRight()
+			time.Sleep(50 * time.Millisecond)
+			// Brief cancel indicator.
+			gui.PopIndicator("\U0001F6D1", "Cancelled")
 			cb.Restore()
 			return
 		}

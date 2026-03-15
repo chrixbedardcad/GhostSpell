@@ -422,7 +422,7 @@
       <div class="provider-card" id="prov-card-local">
         <div class="provider-card-header">
           <img src="/ghostAI.png" width="22" height="22" style="flex-shrink:0">
-          <strong>Ghost-AI</strong>
+          <strong>GhostAI</strong>
           <span class="provider-status inactive" id="prov-status-local">&#9675; Not configured</span>
         </div>
         <div class="provider-card-meta" id="prov-meta-local">Runs 100% on your machine &mdash; private, offline, free forever.</div>
@@ -548,10 +548,10 @@
       </div>
     </div><!-- /providers-grid -->
 
-    <!-- ======== Ghost-AI Setup ======== -->
+    <!-- ======== GhostAI Setup ======== -->
     <div id="provider-setup-local" style="display:none">
       <button class="btn btn-secondary btn-sm" onclick="backToProviders()" style="margin-bottom:10px">&larr; Back to providers</button>
-      <h2><img src="/ghostAI.png" width="24" height="24" style="vertical-align:middle;margin-right:6px"> Ghost-AI Setup</h2>
+      <h2><img src="/ghostAI.png" width="24" height="24" style="vertical-align:middle;margin-right:6px"> GhostAI Setup</h2>
       <p style="font-size:0.82em;color:#a6adc8;margin-bottom:12px">Runs 100% on your machine &mdash; private, offline, no account needed.</p>
 
       <div id="prov-local-status-bar" class="ollama-status-bar checking">
@@ -823,7 +823,7 @@
     </div>
 
     <div class="section" id="local-keepalive-section" style="display:none">
-      <h2>Ghost-AI Engine</h2>
+      <h2>GhostAI Engine</h2>
       <div class="toggle-row">
         <div>
           <div class="label">Keep Model Loaded</div>
@@ -958,7 +958,7 @@
       <p>• GhostSpell works in any application — browsers, editors, chat apps, email.</p>
       <p>• The text is always processed in its original language (except the Translate prompt).</p>
       <p>• Clipboard contents are preserved and restored after processing.</p>
-      <p>• You can set up multiple AI providers (OpenAI, Anthropic, Gemini, xAI, DeepSeek, Ollama, Ghost-AI) in the AI Providers tab.</p>
+      <p>• You can set up multiple AI providers (OpenAI, Anthropic, Gemini, xAI, DeepSeek, Ollama, GhostAI) in the AI Providers tab.</p>
       <p>• For local/private processing, set up Ollama with a local model — your text never leaves your machine.</p>
     </div>
 
@@ -993,7 +993,7 @@
         <div style="margin-bottom:6px">
           <strong>llama.cpp</strong> — MIT License<br>
           Copyright (c) 2023-2026 The ggml authors.<br>
-          Local AI inference engine used by Ghost-AI.
+          Local AI inference engine used by GhostAI.
           <a href="#" onclick="wails.Browser.OpenURL('https://github.com/ggml-org/llama.cpp'); return false;" style="color:#89b4fa;text-decoration:none;margin-left:4px">Source</a>
         </div>
         <div style="margin-bottom:6px">
@@ -1005,13 +1005,13 @@
         <div style="margin-bottom:6px">
           <strong>Qwen3 / Qwen3.5 Models</strong> — Apache 2.0 License<br>
           Copyright (c) Alibaba Cloud.<br>
-          Language models used by Ghost-AI.
+          Language models used by GhostAI.
           <a href="#" onclick="wails.Browser.OpenURL('https://huggingface.co/Qwen'); return false;" style="color:#89b4fa;text-decoration:none;margin-left:4px">Source</a>
         </div>
         <div>
           <strong>Phi-4 Mini</strong> — MIT License<br>
           Copyright (c) Microsoft Corporation.<br>
-          Language model used by Ghost-AI.
+          Language model used by GhostAI.
           <a href="#" onclick="wails.Browser.OpenURL('https://huggingface.co/microsoft/Phi-4-mini-instruct'); return false;" style="color:#89b4fa;text-decoration:none;margin-left:4px">Source</a>
         </div>
       </div>
@@ -1131,7 +1131,7 @@ async function reloadConfig() {
 var currentCloudProvider = ''; // which cloud provider's setup is open
 var provSelectedModel = {}; // track selected model per provider in setup views: {local:'qwen3.5-2b', ollama:'qwen3.5:4b'}
 
-const PROVIDER_NAMES = {local:'Ghost-AI', ollama:'Ollama', lmstudio:'LM Studio', openai:'OpenAI', anthropic:'Anthropic Claude', gemini:'Google Gemini', xai:'xAI Grok', deepseek:'DeepSeek'};
+const PROVIDER_NAMES = {local:'GhostAI', ollama:'Ollama', lmstudio:'LM Studio', openai:'OpenAI', anthropic:'Anthropic Claude', gemini:'Google Gemini', xai:'xAI Grok', deepseek:'DeepSeek'};
 
 async function renderProviders() {
   await reloadConfig();
@@ -1259,7 +1259,7 @@ async function testProviderConnection(type) {
   var resultEl = document.getElementById('prov-result-' + type);
   var testResultEl = document.getElementById('prov-' + type + '-test-result');
 
-  // For local (Ghost-AI), use TestProviderConnection which picks a default test model
+  // For local (GhostAI), use TestProviderConnection which picks a default test model
   // even if no model entry exists yet. Same for ollama/lmstudio setup pages.
   if (type === 'local' || type === 'ollama' || type === 'lmstudio') {
     // Disable both card and setup page test buttons
@@ -1409,7 +1409,7 @@ async function saveProviderKeepAlive(enabled) {
   if (localLabel) await goCall('setLocalKeepAlive', localLabel, enabled);
 }
 
-// ---- Ghost-AI provider setup ----
+// ---- GhostAI provider setup ----
 async function onProvLocalRefresh() {
   var bar = document.getElementById('prov-local-status-bar');
   var text = document.getElementById('prov-local-status-text');
@@ -1435,9 +1435,9 @@ async function onProvLocalRefresh() {
   }
 
   if (models.length > 0) {
-    bar.className = 'ollama-status-bar running'; text.textContent = 'Ghost-AI ready \u2014 Engine ' + esc(engineVersion);
+    bar.className = 'ollama-status-bar running'; text.textContent = 'GhostAI ready \u2014 Engine ' + esc(engineVersion);
   } else {
-    bar.className = 'ollama-status-bar installed'; text.textContent = 'Ghost-AI ready \u2014 pick a model';
+    bar.className = 'ollama-status-bar installed'; text.textContent = 'GhostAI ready \u2014 pick a model';
   }
 
   // Build unified model list
@@ -1496,10 +1496,10 @@ async function provLocalSelectModel(name) {
   // Save provider credentials.
   var r1 = await goCall('saveProviderConfig', 'local', '', '', '', false);
   if (!r1 || !r1.startsWith('ok')) return;
-  // Also create/update the model entry so Ghost-AI is usable immediately.
-  var r2 = await goCall('saveModel', 'Ghost-AI', 'local', name, '');
+  // Also create/update the model entry so GhostAI is usable immediately.
+  var r2 = await goCall('saveModel', 'GhostAI', 'local', name, '');
   if (r2 && r2.startsWith('ok')) {
-    await goCall('setDefaultModel', 'Ghost-AI');
+    await goCall('setDefaultModel', 'GhostAI');
   }
   await reloadConfig();
   onProvLocalRefresh();
@@ -1839,7 +1839,7 @@ function populateModelFormProviders() {
     return;
   }
   // Only show CONFIGURED providers
-  var typeLabels = {local:'Ghost-AI (Built-in)', ollama:'Ollama', lmstudio:'LM Studio', openai:'OpenAI', anthropic:'Anthropic', gemini:'Google Gemini', xai:'xAI', deepseek:'DeepSeek'};
+  var typeLabels = {local:'GhostAI (Built-in)', ollama:'Ollama', lmstudio:'LM Studio', openai:'OpenAI', anthropic:'Anthropic', gemini:'Google Gemini', xai:'xAI', deepseek:'DeepSeek'};
   configuredTypes.forEach(function(t) {
     var opt = document.createElement('option');
     opt.value = t;
@@ -1856,7 +1856,7 @@ async function onModelProviderChange() {
   // Auto-fill label
   var nameEl = document.getElementById('model-form-name');
   if (!nameEl.value.trim()) {
-    var autoLabels = {anthropic:'claude', openai:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek', ollama:'ollama', local:'Ghost-AI', lmstudio:'lmstudio'};
+    var autoLabels = {anthropic:'claude', openai:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek', ollama:'ollama', local:'GhostAI', lmstudio:'lmstudio'};
     nameEl.value = autoLabels[provider] || provider;
   }
 }
@@ -2171,12 +2171,23 @@ async function deletePrompt(idx) {
   }
 }
 
+var _resetConfirming = false;
 async function resetPrompts() {
-  if (!confirm('Reset all prompts to defaults? This cannot be undone.')) return;
+  // Two-click confirm (confirm() can be blocked by WebView).
+  if (!_resetConfirming) {
+    _resetConfirming = true;
+    var btn = document.querySelector('[onclick="resetPrompts()"]');
+    if (btn) { btn.textContent = 'Confirm Reset?'; btn.style.color = '#f38ba8'; }
+    setTimeout(function() { _resetConfirming = false; if (btn) { btn.textContent = 'Reset Defaults'; btn.style.color = ''; } }, 4000);
+    return;
+  }
+  _resetConfirming = false;
+  var btn = document.querySelector('[onclick="resetPrompts()"]');
+  if (btn) { btn.textContent = 'Reset Defaults'; btn.style.color = ''; }
   const result = await goCall('resetPrompts');
   if (result && result.startsWith('ok')) {
     promptEditIdx = -1;
-    renderPrompts();
+    await renderPrompts();
     setStatus('prompt-status', 'success', 'Defaults restored');
   } else {
     setStatus('prompt-status', 'error', result || 'Reset failed');

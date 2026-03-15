@@ -520,7 +520,7 @@ func applyDefaults(cfg *Config) {
 
 	// Migrate "ghost-ai" model entries that incorrectly point to "ollama".
 	// Before v0.15.0, the settings page could create a "ghost-ai" model with
-	// provider "ollama" instead of "local". Fix it and rename to "Ghost-AI".
+	// provider "ollama" instead of "local". Fix it and rename to "GhostAI".
 	if me, ok := cfg.Models["ghost-ai"]; ok && me.Provider == "ollama" {
 		if _, hasLocal := cfg.Providers["local"]; hasLocal {
 			slog.Info("Migrating ghost-ai model from ollama to local provider")
@@ -528,14 +528,14 @@ func applyDefaults(cfg *Config) {
 			// Convert Ollama model name (colon) to Ghost-AI name (dash).
 			// e.g. "qwen3.5:4b" → "qwen3.5-4b"
 			model := strings.ReplaceAll(me.Model, ":", "-")
-			cfg.Models["Ghost-AI"] = ModelEntry{
+			cfg.Models["GhostAI"] = ModelEntry{
 				Provider:  "local",
 				Model:     model,
 				MaxTokens: me.MaxTokens,
 				TimeoutMs: me.TimeoutMs,
 			}
 			if cfg.DefaultModel == "ghost-ai" {
-				cfg.DefaultModel = "Ghost-AI"
+				cfg.DefaultModel = "GhostAI"
 			}
 		}
 	}
