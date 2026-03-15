@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"time"
 
@@ -186,6 +187,19 @@ func main() {
 	// First-launch check: if no provider is configured, the wizard will
 	// run on the tray Wails app (no separate app to avoid goroutine leaks).
 	needsSetup := config.NeedsSetup(cfg)
+
+	// On macOS, force wizard if Accessibility or Input Monitoring is not granted.
+	// These are mandatory — the app cannot function without them.
+	if runtime.GOOS == "darwin" {
+		axOK := checkAccessibility()
+		postOK := checkPostEventAccess()
+		if !axOK || !postOK {
+			slog.Info("macOS permissions missing, forcing setup wizard", "accessibility", axOK, "postEvent", postOK)
+			fmt.Printf("macOS permissions: accessibility=%v postEvent=%v — opening wizard\n", axOK, postOK)
+			needsSetup = true
+		}
+	}
+
 	slog.Info("First-launch check", "needs_setup", needsSetup, "providers", len(cfg.Providers), "default_model", cfg.DefaultModel)
 	fmt.Printf("First-launch check: needs_setup=%v providers=%d default_model=%q\n", needsSetup, len(cfg.Providers), cfg.DefaultModel)
 

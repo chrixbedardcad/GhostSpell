@@ -347,14 +347,18 @@
     </div>
 
     <div style="font-size:0.78em;color:#6c7086;line-height:1.5;margin-bottom:12px">
-      In System Settings, find <strong>GhostSpell</strong> in the list and toggle it <strong>ON</strong>.<br>
-      The status above updates automatically &mdash; no need to refresh.
+      macOS will show a prompt asking to grant access. Click <strong>Allow</strong> or find <strong>GhostSpell</strong> in the list and toggle it <strong>ON</strong>.<br>
+      The status above updates automatically.
+    </div>
+
+    <div style="background:#2a2d42;border-radius:8px;padding:10px;font-size:0.78em;color:#f38ba8;line-height:1.5;margin-bottom:12px">
+      <strong>Required:</strong> GhostSpell cannot work without Accessibility permission. It is needed to capture and paste text.
     </div>
 
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goToStep('welcome')">Back</button>
       <div style="display:flex;gap:8px;align-items:center">
-        <a href="#" onclick="skipPermissions();return false" style="font-size:0.82em;color:#6c7086;text-decoration:underline">Skip for now</a>
+        <button class="btn btn-secondary" onclick="goCall('closeWindow')" style="color:#6c7086">Quit</button>
         <button class="btn btn-primary" id="perm-ax-next-btn" onclick="axNext()">Next</button>
       </div>
     </div>
@@ -392,19 +396,31 @@
         <span class="perm-status denied" id="perm-im-status">Not granted</span>
       </div>
       <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:12px">
-        This lets GhostSpell detect when you press the hotkey, so it can start processing your text.
+        This lets GhostSpell detect when you press the hotkey (<span class="hk">Ctrl+G</span>), so it knows when to process your text.
       </div>
       <button class="btn btn-primary btn-sm" onclick="openImPaneAndMark()" style="width:100%">Open Input Monitoring Settings</button>
     </div>
 
-    <div style="background:#2a2d42;border-radius:8px;padding:12px;font-size:0.78em;color:#f9e2af;line-height:1.5;margin-bottom:12px">
-      <strong>Note:</strong> After granting this permission, GhostSpell needs to restart so macOS can activate the hotkey listener.
+    <div style="background:#313244;border-radius:8px;padding:12px;font-size:0.82em;color:#cdd6f4;line-height:1.6;margin-bottom:12px">
+      <strong>How to add GhostSpell:</strong><br>
+      1. Click the <strong>+</strong> button at the bottom of the list<br>
+      2. Navigate to <strong>Applications</strong> &rarr; <strong>GhostSpell</strong><br>
+      3. Click <strong>Open</strong> to add it<br>
+      4. Make sure the toggle next to GhostSpell is <strong>ON</strong>
+    </div>
+
+    <div style="background:#2a2d42;border-radius:8px;padding:10px;font-size:0.78em;color:#f9e2af;line-height:1.5;margin-bottom:12px">
+      <strong>Note:</strong> After granting this permission, GhostSpell needs to <strong>restart</strong> so macOS can activate the hotkey listener. Click <strong>Next</strong> to proceed to restart.
+    </div>
+
+    <div style="background:#2a2d42;border-radius:8px;padding:10px;font-size:0.78em;color:#f38ba8;line-height:1.5;margin-bottom:12px">
+      <strong>Required:</strong> Without Input Monitoring, the hotkey will not work. GhostSpell cannot process text without it.
     </div>
 
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goToStep('perm-ax')">Back</button>
       <div style="display:flex;gap:8px;align-items:center">
-        <a href="#" onclick="skipPermissions();return false" style="font-size:0.82em;color:#6c7086;text-decoration:underline">Skip for now</a>
+        <button class="btn btn-secondary" onclick="goCall('closeWindow')" style="color:#6c7086">Quit</button>
         <button class="btn btn-primary" id="perm-im-next-btn" onclick="imNext()">Next</button>
       </div>
     </div>
@@ -1801,12 +1817,17 @@ async function openImPaneAndMark() {
   }
 }
 
-// Step 0a → 0b: Accessibility granted → move to Input Monitoring
+// Step 0a → 0b: Accessibility MUST be granted before proceeding.
 async function axNext() {
   const perms = await checkPerms();
   if (!perms.accessibility) {
-    // Not granted yet — warn but allow proceeding
-    if (!confirm('Accessibility is not granted yet. GhostSpell won\'t be able to capture or paste text. Continue anyway?')) return;
+    // Not granted — cannot proceed. Show warning.
+    var statusEl = document.getElementById('perm-ax-status');
+    if (statusEl) {
+      statusEl.textContent = 'Required — click "Open Accessibility Settings" above';
+      statusEl.className = 'perm-status denied';
+    }
+    return;
   }
   goToStep('perm-im');
 }
@@ -1823,9 +1844,7 @@ async function imNext() {
   }
 }
 
-function skipPermissions() {
-  goToStep(1);
-}
+// skipPermissions removed — permissions are mandatory on macOS.
 
 async function doRestart() {
   const btn = document.querySelector('#step-restart .btn-primary');
