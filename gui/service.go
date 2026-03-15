@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -212,214 +210,24 @@ func (s *SettingsService) CheckForUpdate() string {
 	return string(data)
 }
 
-// updateProgress tracks download progress for the UI.
-var updateProgress atomic.Value // *updateDLProgress
-
-type updateDLProgress struct {
-	Downloaded int64   `json:"downloaded"`
-	Total      int64   `json:"total"`
-	Percent    float64 `json:"percent"`
-	Status     string  `json:"status"` // "downloading", "installing", "done", "error"
-	Error      string  `json:"error,omitempty"`
-}
-
-// UpdateNow downloads the latest release with progress tracking, then installs
-// and restarts. The Settings window stays open during download.
+// UpdateNow launches the proven platform install script in a detached process
+// and exits the app. The install script handles downloading, killing the old
+// process, installing, and relaunching. This is the battle-tested approach.
 func (s *SettingsService) UpdateNow() string {
 	guiLog("[GUI] JS called: UpdateNow")
 
-	// Get the latest version tag.
-	raw := s.CheckForUpdate()
-	var info struct {
-		Latest    string `json:"latest"`
-		HasUpdate bool   `json:"has_update"`
-	}
-	json.Unmarshal([]byte(raw), &info)
-	if !info.HasUpdate || info.Latest == "" {
-		return "error: no update available"
-	}
-
-	tag := "v" + info.Latest
 	const repo = "chrixbedardcad/GhostSpell"
-
-	// Determine the asset filename for this platform.
-	var assetName string
-	switch runtime.GOOS {
-	case "darwin":
-		assetName = fmt.Sprintf("GhostSpell-darwin-%s.dmg", runtime.GOARCH)
-	case "windows":
-		assetName = "ghostspell-windows-amd64.exe"
-	case "linux":
-		assetName = fmt.Sprintf("ghostspell-linux-%s", runtime.GOARCH)
-	default:
-		return "error: unsupported platform"
-	}
-
-	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repo, tag, assetName)
-	guiLog("[GUI] UpdateNow: downloading %s", url)
-
-	// Reset progress.
-	updateProgress.Store(&updateDLProgress{Status: "downloading"})
-
-	// Download in background with panic recovery.
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.Error("[update] download goroutine panicked", "panic", r)
-				updateProgress.Store(&updateDLProgress{Status: "error", Error: fmt.Sprintf("internal error: %v", r)})
-			}
-		}()
-
-		tmpDir := os.TempDir()
-		tmpPath := filepath.Join(tmpDir, assetName)
-
-		err := downloadWithProgress(url, tmpPath, func(downloaded, total int64) {
-			pct := 0.0
-			if total > 0 {
-				pct = float64(downloaded) / float64(total) * 100
-			}
-			updateProgress.Store(&updateDLProgress{
-				Downloaded: downloaded,
-				Total:      total,
-				Percent:    pct,
-				Status:     "downloading",
-			})
-		})
-
-		if err != nil {
-			guiLog("[GUI] UpdateNow: download failed: %v", err)
-			updateProgress.Store(&updateDLProgress{Status: "error", Error: err.Error()})
-			return
-		}
-
-		guiLog("[GUI] UpdateNow: download complete, installing from %s", tmpPath)
-		updateProgress.Store(&updateDLProgress{Status: "installing", Percent: 100})
-
-		// Launch platform-specific install from the downloaded file.
-		if err := installFromFile(tmpPath); err != nil {
-			guiLog("[GUI] UpdateNow: install failed: %v", err)
-			updateProgress.Store(&updateDLProgress{Status: "error", Error: err.Error()})
-			return
-		}
-
-		updateProgress.Store(&updateDLProgress{Status: "done", Percent: 100})
-
-		// Exit after a brief delay — give the install script time to start.
-		go func() {
-			time.Sleep(2 * time.Second)
-			os.Exit(0)
-		}()
-	}()
-
-	return "ok"
-}
-
-// GetUpdateProgress returns the current update download progress as JSON.
-func (s *SettingsService) GetUpdateProgress() string {
-	p, _ := updateProgress.Load().(*updateDLProgress)
-	if p == nil {
-		return ""
-	}
-	data, _ := json.Marshal(p)
-	return string(data)
-}
-
-// downloadWithProgress downloads a URL to a file, calling progressFn periodically.
-func downloadWithProgress(url, dest string, progressFn func(downloaded, total int64)) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("download request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
-	}
-
-	total := resp.ContentLength
-	out, err := os.Create(dest)
-	if err != nil {
-		return fmt.Errorf("create file: %w", err)
-	}
-	defer out.Close()
-
-	buf := make([]byte, 32*1024)
-	var downloaded int64
-	for {
-		n, readErr := resp.Body.Read(buf)
-		if n > 0 {
-			if _, writeErr := out.Write(buf[:n]); writeErr != nil {
-				return fmt.Errorf("write file: %w", writeErr)
-			}
-			downloaded += int64(n)
-			if progressFn != nil {
-				progressFn(downloaded, total)
-			}
-		}
-		if readErr != nil {
-			if readErr == io.EOF {
-				break
-			}
-			return fmt.Errorf("read response: %w", readErr)
-		}
-	}
-	return nil
-}
-
-// installFromFile installs the update from a pre-downloaded file and relaunches.
-func installFromFile(path string) error {
-	execPath, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("cannot determine executable path: %w", err)
-	}
-	slog.Info("[update] installFromFile", "downloaded", path, "target", execPath, "os", runtime.GOOS)
-
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
-	case "darwin":
-		// On macOS, execPath is inside the .app bundle. Derive the .app path.
-		appPath := execPath
-		if idx := strings.Index(execPath, ".app/"); idx != -1 {
-			appPath = execPath[:idx+4]
-		}
-		installDir := filepath.Dir(appPath) // e.g. /Applications
-		// Mount DMG, copy .app, unmount, relaunch.
-		script := fmt.Sprintf(
-			`hdiutil attach '%s' -nobrowse -quiet && `+
-				`cp -R /Volumes/GhostSpell/GhostSpell.app '%s/' && `+
-				`hdiutil detach /Volumes/GhostSpell -quiet && `+
-				`xattr -dr com.apple.quarantine '%s/GhostSpell.app' 2>/dev/null; `+
-				`sleep 1 && open '%s/GhostSpell.app'`,
-			path, installDir, installDir, installDir)
-		cmd = exec.Command("bash", "-c", script)
-
 	case "windows":
-		// Write a batch script that waits for exit, copies, and relaunches.
-		batPath := filepath.Join(os.TempDir(), "ghostspell-update.bat")
-		bat := fmt.Sprintf(
-			"@echo off\r\n"+
-				"timeout /t 3 /nobreak >nul\r\n"+
-				"copy /y \"%s\" \"%s\" >nul\r\n"+
-				"start \"\" \"%s\"\r\n"+
-				"del \"%%~f0\"\r\n",
-			path, execPath, execPath)
-		if err := os.WriteFile(batPath, []byte(bat), 0644); err != nil {
-			return fmt.Errorf("write bat: %w", err)
-		}
-		cmd = exec.Command("cmd", "/c", "start", "/b", batPath)
-
-	case "linux":
-		// Copy binary, chmod, relaunch.
-		script := fmt.Sprintf(
-			`sleep 2 && cp '%s' '%s' && `+
-				`chmod +x '%s' && `+
-				`nohup '%s' >/dev/null 2>&1 &`,
-			path, execPath, execPath, execPath)
+		script := fmt.Sprintf("irm https://raw.githubusercontent.com/%s/main/scripts/install.ps1 | iex", repo)
+		cmd = exec.Command("powershell", "-NoProfile", "-Command", script)
+	case "darwin", "linux":
+		script := fmt.Sprintf("curl -fsSL https://raw.githubusercontent.com/%s/main/scripts/install.sh | bash", repo)
 		cmd = exec.Command("bash", "-c", script)
-
 	default:
-		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+		return "error: unsupported platform"
 	}
 
 	cmd.Stdout = nil
@@ -428,10 +236,19 @@ func installFromFile(path string) error {
 	detachProcess(cmd)
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start installer: %w", err)
+		guiLog("[GUI] UpdateNow: failed to start installer: %v", err)
+		return fmt.Sprintf("error: %v", err)
 	}
-	guiLog("[GUI] installFromFile: installer launched (PID %d)", cmd.Process.Pid)
-	return nil
+
+	guiLog("[GUI] UpdateNow: installer launched (PID %d), exiting app...", cmd.Process.Pid)
+
+	// Give the install script a moment to start, then exit.
+	go func() {
+		time.Sleep(2 * time.Second)
+		os.Exit(0)
+	}()
+
+	return "ok"
 }
 
 // --- Debug tools -----------------------------------------------------------
