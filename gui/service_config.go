@@ -72,6 +72,45 @@ func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, ref
 		KeepAlive:    keepAlive,
 	}
 
+	// Auto-create a default model entry if none exists for this provider.
+	hasModel := false
+	for _, me := range s.cfgCopy.Models {
+		if me.Provider == providerType {
+			hasModel = true
+			break
+		}
+	}
+	if !hasModel {
+		models := KnownModels(providerType)
+		if len(models) > 0 {
+			modelName := models[0].Name
+			for _, m := range models {
+				if m.Tag == "recommended" {
+					modelName = m.Name
+					break
+				}
+			}
+			labels := map[string]string{
+				"local": "GhostAI", "chatgpt": "chatgpt", "openai": "openai",
+				"anthropic": "claude", "gemini": "gemini", "xai": "grok",
+				"deepseek": "deepseek", "ollama": "ollama", "lmstudio": "lmstudio",
+			}
+			label := labels[providerType]
+			if label == "" {
+				label = providerType
+			}
+			if s.cfgCopy.Models == nil {
+				s.cfgCopy.Models = make(map[string]config.ModelEntry)
+			}
+			s.cfgCopy.Models[label] = config.ModelEntry{
+				Provider: providerType,
+				Model:    modelName,
+			}
+			s.cfgCopy.DefaultModel = label
+			guiLog("[GUI] Auto-created model: label=%s provider=%s model=%s", label, providerType, modelName)
+		}
+	}
+
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
@@ -103,16 +142,14 @@ func (s *SettingsService) SaveModel(label, providerType, modelName, originalLabe
 		Model:    modelName,
 	}
 
-	// Auto-set DefaultModel if this is the first model.
-	if len(s.cfgCopy.Models) == 1 || s.cfgCopy.DefaultModel == "" {
-		s.cfgCopy.DefaultModel = label
-	}
+	// Last model added becomes the default.
+	s.cfgCopy.DefaultModel = label
 
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
 
-	guiLog("[GUI] Model saved: label=%s provider=%s model=%s", label, providerType, modelName)
+	guiLog("[GUI] Model saved: label=%s provider=%s model=%s (set as default)", label, providerType, modelName)
 	return "ok"
 }
 
@@ -204,6 +241,67 @@ func (s *SettingsService) DeleteModel(label string) string {
 func (s *SettingsService) DeleteProvider(label string) string {
 	guiLog("[GUI] JS called: DeleteProvider(%s)", label)
 	return s.DeleteModel(label)
+}
+
+// ResetModels rebuilds the model list from configured providers. Each provider
+// gets one model entry with the recommended model. Default priority:
+// GhostAI > ChatGPT > OpenAI > Anthropic > Gemini > xAI > DeepSeek > Ollama > LM Studio
+func (s *SettingsService) ResetModels() string {
+	guiLog("[GUI] JS called: ResetModels")
+
+	// Priority order for default model selection.
+	priority := []struct {
+		provider string
+		label    string
+	}{
+		{"local", "GhostAI"},
+		{"chatgpt", "chatgpt"},
+		{"openai", "openai"},
+		{"anthropic", "claude"},
+		{"gemini", "gemini"},
+		{"xai", "grok"},
+		{"deepseek", "deepseek"},
+		{"ollama", "ollama"},
+		{"lmstudio", "lmstudio"},
+	}
+
+	// Clear all existing models.
+	s.cfgCopy.Models = make(map[string]config.ModelEntry)
+	s.cfgCopy.DefaultModel = ""
+
+	// Create one model per configured provider with the recommended model.
+	for _, p := range priority {
+		if _, ok := s.cfgCopy.Providers[p.provider]; !ok {
+			continue
+		}
+		models := KnownModels(p.provider)
+		if len(models) == 0 {
+			continue
+		}
+		// Pick the recommended model, or the first one.
+		modelName := models[0].Name
+		for _, m := range models {
+			if m.Tag == "recommended" {
+				modelName = m.Name
+				break
+			}
+		}
+		s.cfgCopy.Models[p.label] = config.ModelEntry{
+			Provider: p.provider,
+			Model:    modelName,
+		}
+		// First model in priority order becomes the default.
+		if s.cfgCopy.DefaultModel == "" {
+			s.cfgCopy.DefaultModel = p.label
+		}
+	}
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+
+	guiLog("[GUI] Models reset: %d models created, default=%s", len(s.cfgCopy.Models), s.cfgCopy.DefaultModel)
+	return "ok"
 }
 
 // SetDefaultModel sets the default model.

@@ -691,7 +691,10 @@
   <div id="tab-models" class="tab-panel">
     <div class="toolbar">
       <h2 style="margin-bottom:0">Models</h2>
-      <button class="btn btn-primary btn-sm" onclick="showAddModel()">+ Add Model</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary btn-sm" onclick="resetModels()">Reset Models</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddModel()">+ Add Model</button>
+      </div>
     </div>
     <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
       &#129504; A <strong style="color:#cdd6f4">model</strong> is the specific AI brain that processes your text. Smaller models are faster, larger models produce better results. Each model belongs to a provider.
@@ -1789,6 +1792,24 @@ async function renderModels() {
     html += '</div></div></div>';
   });
   container.innerHTML = html;
+}
+
+var _resetModelsConfirming = false;
+async function resetModels() {
+  if (!_resetModelsConfirming) {
+    _resetModelsConfirming = true;
+    var btn = document.querySelector('[onclick="resetModels()"]');
+    if (btn) { btn.textContent = 'Confirm Reset?'; btn.style.color = '#f38ba8'; }
+    setTimeout(function() { _resetModelsConfirming = false; if (btn) { btn.textContent = 'Reset Models'; btn.style.color = ''; } }, 4000);
+    return;
+  }
+  _resetModelsConfirming = false;
+  var btn = document.querySelector('[onclick="resetModels()"]');
+  if (btn) { btn.textContent = 'Reset Models'; btn.style.color = ''; }
+  var result = await goCall('resetModels');
+  if (result && result.startsWith('ok')) {
+    await renderModels();
+  }
 }
 
 async function setModelDefault(label) {
