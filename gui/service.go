@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -359,7 +360,6 @@ func (s *SettingsService) QuitForRestart() string {
 	execPath, err := os.Executable()
 	if err != nil {
 		guiLog("[GUI] QuitForRestart: could not get executable path: %v", err)
-		// Fall back to just quitting — user will reopen manually.
 		go func() {
 			time.Sleep(300 * time.Millisecond)
 			os.Exit(0)
@@ -367,14 +367,28 @@ func (s *SettingsService) QuitForRestart() string {
 		return "ok"
 	}
 
-	// Launch a new instance after a short delay to allow this one to exit.
-	go func() {
-		time.Sleep(800 * time.Millisecond)
-		cmd := exec.Command(execPath)
-		cmd.Start()
-	}()
+	// On macOS .app bundles, derive the .app path for `open` command.
+	// execPath is like /Applications/GhostSpell.app/Contents/MacOS/GhostSpell
+	appPath := execPath
+	if idx := strings.Index(execPath, ".app/"); idx != -1 {
+		appPath = execPath[:idx+4] // "/Applications/GhostSpell.app"
+	}
 
-	// Quit the current instance.
+	// Launch a shell process that waits 1 second then reopens the app.
+	// The shell process is independent — it survives os.Exit(0).
+	var relaunchCmd *exec.Cmd
+	if runtime.GOOS == "darwin" && strings.HasSuffix(appPath, ".app") {
+		relaunchCmd = exec.Command("sh", "-c", "sleep 1 && open '"+appPath+"'")
+	} else {
+		relaunchCmd = exec.Command("sh", "-c", "sleep 1 && '"+execPath+"'")
+	}
+	if err := relaunchCmd.Start(); err != nil {
+		guiLog("[GUI] QuitForRestart: failed to schedule relaunch: %v", err)
+	} else {
+		guiLog("[GUI] QuitForRestart: relaunch scheduled (PID %d)", relaunchCmd.Process.Pid)
+	}
+
+	// Quit the current instance after a short delay for the JS response.
 	go func() {
 		time.Sleep(300 * time.Millisecond)
 		os.Exit(0)
