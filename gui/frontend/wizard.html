@@ -1371,6 +1371,8 @@ async function localDownloadModel(name) {
 
   if (result && result.startsWith('ok')) {
     localSelectedModel = name;
+    // Auto-save and proceed — don't make the user click a separate "Use" button.
+    await saveLocalProvider(name);
     localRefresh();
   } else {
     setStatus('local-action-status', 'error', 'Download failed: ' + (result || 'unknown error'));
