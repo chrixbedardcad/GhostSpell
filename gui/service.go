@@ -261,8 +261,15 @@ func (s *SettingsService) UpdateNow() string {
 	// Reset progress.
 	updateProgress.Store(&updateDLProgress{Status: "downloading"})
 
-	// Download in background.
+	// Download in background with panic recovery.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("[update] download goroutine panicked", "panic", r)
+				updateProgress.Store(&updateDLProgress{Status: "error", Error: fmt.Sprintf("internal error: %v", r)})
+			}
+		}()
+
 		tmpDir := os.TempDir()
 		tmpPath := filepath.Join(tmpDir, assetName)
 
@@ -297,9 +304,9 @@ func (s *SettingsService) UpdateNow() string {
 
 		updateProgress.Store(&updateDLProgress{Status: "done", Percent: 100})
 
-		// Exit after a brief delay.
+		// Exit after a brief delay — give the install script time to start.
 		go func() {
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 			os.Exit(0)
 		}()
 	}()
@@ -361,25 +368,42 @@ func downloadWithProgress(url, dest string, progressFn func(downloaded, total in
 
 // installFromFile installs the update from a pre-downloaded file and relaunches.
 func installFromFile(path string) error {
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("cannot determine executable path: %w", err)
+	}
+	slog.Info("[update] installFromFile", "downloaded", path, "target", execPath, "os", runtime.GOOS)
+
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "darwin":
+		// On macOS, execPath is inside the .app bundle. Derive the .app path.
+		appPath := execPath
+		if idx := strings.Index(execPath, ".app/"); idx != -1 {
+			appPath = execPath[:idx+4]
+		}
+		installDir := filepath.Dir(appPath) // e.g. /Applications
 		// Mount DMG, copy .app, unmount, relaunch.
 		script := fmt.Sprintf(
 			`hdiutil attach '%s' -nobrowse -quiet && `+
-				`cp -R /Volumes/GhostSpell/GhostSpell.app /Applications/ && `+
+				`cp -R /Volumes/GhostSpell/GhostSpell.app '%s/' && `+
 				`hdiutil detach /Volumes/GhostSpell -quiet && `+
-				`xattr -dr com.apple.quarantine /Applications/GhostSpell.app 2>/dev/null; `+
-				`sleep 1 && open /Applications/GhostSpell.app`,
-			path)
+				`xattr -dr com.apple.quarantine '%s/GhostSpell.app' 2>/dev/null; `+
+				`sleep 1 && open '%s/GhostSpell.app'`,
+			path, installDir, installDir, installDir)
 		cmd = exec.Command("bash", "-c", script)
 
 	case "windows":
-		// Write a small batch script that waits, copies, and relaunches.
-		exePath := filepath.Join(os.Getenv("LOCALAPPDATA"), "GhostSpell", "ghostspell.exe")
+		// Write a batch script that waits for exit, copies, and relaunches.
 		batPath := filepath.Join(os.TempDir(), "ghostspell-update.bat")
-		bat := fmt.Sprintf("@echo off\r\ntimeout /t 2 /nobreak >nul\r\ncopy /y \"%s\" \"%s\"\r\nstart \"\" \"%s\"\r\ndel \"%%~f0\"\r\n", path, exePath, exePath)
+		bat := fmt.Sprintf(
+			"@echo off\r\n"+
+				"timeout /t 3 /nobreak >nul\r\n"+
+				"copy /y \"%s\" \"%s\" >nul\r\n"+
+				"start \"\" \"%s\"\r\n"+
+				"del \"%%~f0\"\r\n",
+			path, execPath, execPath)
 		if err := os.WriteFile(batPath, []byte(bat), 0644); err != nil {
 			return fmt.Errorf("write bat: %w", err)
 		}
@@ -388,10 +412,10 @@ func installFromFile(path string) error {
 	case "linux":
 		// Copy binary, chmod, relaunch.
 		script := fmt.Sprintf(
-			`sleep 1 && cp '%s' /usr/local/bin/ghostspell && `+
-				`chmod +x /usr/local/bin/ghostspell && `+
-				`nohup ghostspell >/dev/null 2>&1 &`,
-			path)
+			`sleep 2 && cp '%s' '%s' && `+
+				`chmod +x '%s' && `+
+				`nohup '%s' >/dev/null 2>&1 &`,
+			path, execPath, execPath, execPath)
 		cmd = exec.Command("bash", "-c", script)
 
 	default:
