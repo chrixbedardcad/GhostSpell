@@ -84,13 +84,15 @@ func ShowIndicator(promptIcon, promptName string) {
 
 	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon)
 
-	// Pass prompt data via URL query parameters. This is 100% reliable on
-	// all platforms — no ExecJS needed. The page is tiny and loads instantly.
-	// SetURL on a hidden window works because it's a navigation request,
-	// not JS injection. The JS parses the URL on load to display the prompt.
+	// Pass prompt data via URL query parameters. The page is tiny and loads
+	// instantly. Show the window first so it's visible during navigation —
+	// on Windows WebView2, navigating a hidden window can cause blank renders.
 	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName)
 	win.SetURL(u)
-	time.Sleep(100 * time.Millisecond) // let the page load
+	time.Sleep(150 * time.Millisecond) // let the page load
+	win.Show()
+	// Second show attempt after page should be fully loaded — belt and suspenders.
+	time.Sleep(50 * time.Millisecond)
 	win.Show()
 }
 
