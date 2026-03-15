@@ -365,9 +365,9 @@ func TestLoadOptionalHotkeysEmpty(t *testing.T) {
 	if loaded.Hotkeys.Action != "Ctrl+G" {
 		t.Errorf("expected action hotkey 'Ctrl+G', got '%s'", loaded.Hotkeys.Action)
 	}
-	// CyclePrompt should remain empty
-	if loaded.Hotkeys.CyclePrompt != "" {
-		t.Errorf("expected cycle_prompt hotkey empty, got '%s'", loaded.Hotkeys.CyclePrompt)
+	// CyclePrompt should have default
+	if loaded.Hotkeys.CyclePrompt != "Ctrl+Shift+T" {
+		t.Errorf("expected cycle_prompt hotkey 'Ctrl+Shift+T', got '%s'", loaded.Hotkeys.CyclePrompt)
 	}
 }
 

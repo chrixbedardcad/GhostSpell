@@ -478,7 +478,10 @@ func applyDefaults(cfg *Config) {
 		cfg.SoundEnabled = boolPtr(true)
 	}
 	if cfg.Hotkeys.Action == "" {
-		cfg.Hotkeys.Action = "Ctrl+G"
+		cfg.Hotkeys.Action = defaultActionHotkey
+	}
+	if cfg.Hotkeys.CyclePrompt == "" {
+		cfg.Hotkeys.CyclePrompt = defaultCycleHotkey
 	}
 
 	// Default prompts if empty.
