@@ -38,7 +38,7 @@ func CreateIndicator(app *application.App) {
 		BackgroundType:    bgType,
 		BackgroundColour:  application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 		DisableResize:     true,
-		Hidden:            false,
+		Hidden:            true, // starts hidden, shown after positioning off-screen
 		IgnoreMouseEvents: ignoreMouse,
 		URL:               "/indicator.html",
 		Windows: application.WindowsWindow{
@@ -51,7 +51,10 @@ func CreateIndicator(app *application.App) {
 			WindowLevel: application.MacWindowLevelFloating,
 		},
 	})
+	// Position off-screen first, then make visible. This prevents the
+	// brief flash at the default position during first render.
 	indicatorWin.SetPosition(offScreenX, 0)
+	indicatorWin.Show()
 	slog.Info("[gui] Indicator overlay window created (off-screen)")
 }
 
