@@ -51,9 +51,10 @@ func CreateIndicator(app *application.App) {
 			WindowLevel: application.MacWindowLevelFloating,
 		},
 	})
-	// Position off-screen first, then make visible. This prevents the
-	// brief flash at the default position during first render.
+	// Position off-screen first, wait for the position to take effect,
+	// then make visible. This prevents the flash at the default position.
 	indicatorWin.SetPosition(offScreenX, 0)
+	time.Sleep(100 * time.Millisecond)
 	indicatorWin.Show()
 	slog.Info("[gui] Indicator overlay window created (off-screen)")
 }
@@ -63,8 +64,10 @@ func getIndicatorPosition() (int, int) {
 	if app != nil {
 		screen := app.Screen.GetPrimary()
 		if screen != nil {
-			return screen.WorkArea.X + screen.WorkArea.Width - 276,
-				screen.WorkArea.Y + screen.WorkArea.Height - 68
+			// Center horizontally, position in the upper third vertically.
+			x := screen.WorkArea.X + (screen.WorkArea.Width-260)/2
+			y := screen.WorkArea.Y + screen.WorkArea.Height/3
+			return x, y
 		}
 	}
 	return 100, 100
