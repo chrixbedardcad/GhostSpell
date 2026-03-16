@@ -2482,7 +2482,7 @@ async function renderStats() {
     document.getElementById('stats-models').innerHTML = '<div style="font-size:0.82em;color:#6c7086;padding:12px;text-align:center">No model data yet.</div>';
   } else {
     var html = '<table style="width:100%;font-size:0.82em;border-collapse:collapse">';
-    html += '<tr style="color:#6c7086;text-align:left"><th style="padding:6px">Model</th><th>Requests</th><th>Avg Time</th><th>Avg Input</th><th>Success</th></tr>';
+    html += '<tr style="color:#6c7086;text-align:left"><th style="padding:6px">Model</th><th>Requests</th><th>Avg Time</th><th>Avg Input</th><th>Avg Output</th><th>Success</th></tr>';
     models.sort(function(a, b) { return b.requests - a.requests; });
     for (var i = 0; i < models.length; i++) {
       var m = models[i];
@@ -2493,6 +2493,7 @@ async function renderStats() {
       html += '<td style="padding:6px">' + m.requests + '</td>';
       html += '<td style="padding:6px;color:' + timeColor + '">' + (m.avg_duration_ms / 1000).toFixed(1) + 's</td>';
       html += '<td style="padding:6px">' + m.avg_input + ' chars</td>';
+      html += '<td style="padding:6px">' + m.avg_output + ' chars</td>';
       html += '<td style="padding:6px">' + m.success_rate.toFixed(0) + '%</td>';
       html += '</tr>';
     }
