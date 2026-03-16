@@ -134,6 +134,26 @@ func captureText(
 		}
 	}
 
+	// --- Strategy 2.6: osascript Copy (macOS, Chrome/browsers) ---
+	// CGEventPost and AX both failed. Try System Events which routes through
+	// the macOS scripting layer — this is the only mechanism that reliably
+	// reaches Chrome's renderer process on some macOS versions.
+	slog.Debug("captureText: trying osascript Copy for selection")
+	if err := cb.Clear(); err == nil {
+		time.Sleep(30 * time.Millisecond)
+		if err := kb.CopyScript(); err == nil {
+			time.Sleep(200 * time.Millisecond)
+			scriptText, readErr := cb.Read()
+			if readErr == nil && scriptText != "" {
+				slog.Info("Selection detected via osascript Copy", "prompt", promptName, "len", len(scriptText))
+				return captureResult{Text: scriptText, HasAX: true, Method: captureViaScript}
+			}
+			slog.Debug("captureText: osascript Copy also empty")
+		} else {
+			slog.Debug("captureText: osascript Copy not available", "error", err)
+		}
+	}
+
 	// No selection detected by any Copy method — fall back to select-all.
 	slog.Debug("No selection detected, falling back to select-all", "prompt", promptName)
 	if err := kb.SelectAll(); err != nil {
