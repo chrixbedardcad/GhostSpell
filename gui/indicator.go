@@ -1,8 +1,8 @@
 package gui
 
 import (
+	"fmt"
 	"log/slog"
-	"net/url"
 	"runtime"
 	"sync"
 	"time"
@@ -84,16 +84,26 @@ func ShowIndicator(promptIcon, promptName string) {
 
 	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon)
 
-	// Pass prompt data via URL query parameters. The page is tiny and loads
-	// instantly. Show the window first so it's visible during navigation —
-	// on Windows WebView2, navigating a hidden window can cause blank renders.
-	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName)
-	win.SetURL(u)
-	time.Sleep(150 * time.Millisecond) // let the page load
+	// Show the window first, then update content via ExecJS. The indicator
+	// page is pre-loaded at creation time (/indicator.html) — no SetURL
+	// navigation needed. SetURL was causing blank renders on Windows WebView2
+	// because the translucent window wouldn't repaint after navigation.
 	win.Show()
-	// Second show attempt after page should be fully loaded — belt and suspenders.
 	time.Sleep(50 * time.Millisecond)
-	win.Show()
+	js := fmt.Sprintf(
+		`document.getElementById('pi').textContent=%q;`+
+			`document.getElementById('pn').textContent=%q;`+
+			`document.getElementById('sep').style.display='';`+
+			`document.getElementById('t').style.display='';`+
+			`document.getElementById('t').textContent='0s';`+
+			`var _s=Date.now();if(window._iv)clearInterval(window._iv);`+
+			`window._iv=setInterval(function(){document.getElementById('t').textContent=Math.floor((Date.now()-_s)/1000)+'s'},1000);`,
+		promptIcon, promptName)
+	// Burst 3 times to ensure at least one lands.
+	for i := 0; i < 3; i++ {
+		win.ExecJS(js)
+		time.Sleep(30 * time.Millisecond)
+	}
 }
 
 // HideIndicator hides the floating ghost overlay.
@@ -133,11 +143,17 @@ func PopIndicator(promptIcon, promptName string) {
 
 	slog.Debug("[indicator] PopIndicator called", "prompt", promptName, "icon", promptIcon)
 
-	// Use the pop variant — shows prompt info without a timer.
-	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName) + "&pop=1"
-	win.SetURL(u)
-	time.Sleep(100 * time.Millisecond)
+	// Show the window, then update content — no timer for pop mode.
 	win.Show()
+	time.Sleep(50 * time.Millisecond)
+	js := fmt.Sprintf(
+		`document.getElementById('pi').textContent=%q;`+
+			`document.getElementById('pn').textContent=%q;`+
+			`document.getElementById('sep').style.display='none';`+
+			`document.getElementById('t').style.display='none';`+
+			`if(window._iv)clearInterval(window._iv);`,
+		promptIcon, promptName)
+	win.ExecJS(js)
 
 	// Auto-hide after 1.5 seconds.
 	go func() {
