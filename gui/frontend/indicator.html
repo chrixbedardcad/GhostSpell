@@ -80,9 +80,23 @@
   <div class="timer" id="t">0s</div>
 </div>
 <script>
-// Timer and prompt are controlled entirely by ExecJS from Go.
-// No auto-start — the page just renders the static ghost animation.
-// Go calls ExecJS to set prompt icon/name and start/stop the timer.
+var _p = new URLSearchParams(window.location.search);
+var _icon = _p.get('i') || '';
+var _name = _p.get('n') || '';
+var _pop = _p.get('pop') === '1';
+
+document.getElementById('pi').textContent = _icon;
+document.getElementById('pn').textContent = _name;
+
+if (_pop) {
+  document.getElementById('sep').style.display = 'none';
+  document.getElementById('t').style.display = 'none';
+} else {
+  var _start = Date.now();
+  setInterval(function() {
+    document.getElementById('t').textContent = Math.floor((Date.now() - _start) / 1000) + 's';
+  }, 1000);
+}
 </script>
 </body>
 </html>
