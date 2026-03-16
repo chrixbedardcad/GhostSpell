@@ -19,6 +19,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/internal/version"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/stats"
 	"github.com/chrixbedardcad/GhostSpell/tray"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -69,6 +70,22 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	if debugState != nil {
 		settingsSvc.GetStatsFn = func() string { return appStats.GetSummary() }
 		settingsSvc.ClearStatsFn = func() { appStats.Clear() }
+		settingsSvc.RecordStatFn = func(prompt, promptIcon, provider, model, label, status, errMsg, output string, inputChars, durationMs int) {
+			appStats.Record(stats.Entry{
+				Timestamp:  time.Now(),
+				Prompt:     prompt,
+				PromptIcon: promptIcon,
+				Provider:   provider,
+				Model:      model,
+				ModelLabel: label,
+				InputChars: inputChars,
+				OutputChars: len(output),
+				DurationMs: int64(durationMs),
+				Status:     status,
+				Error:      errMsg,
+				Changed:    output != "" && status == "success",
+			})
+		}
 		settingsSvc.DebugEnableFn = debugState.Enable
 		settingsSvc.DebugDisableFn = debugState.Disable
 		settingsSvc.DebugEnabledFn = debugState.Enabled

@@ -140,19 +140,36 @@ func (s *SettingsService) RunBenchmark() string {
 
 			benchMu.Lock()
 			result.Models[i].DurationMs = elapsed.Milliseconds()
+			var status, errMsg, output string
 			if err != nil {
 				if ctx.Err() == context.DeadlineExceeded {
 					result.Models[i].Status = "timeout"
 					result.Models[i].Error = fmt.Sprintf("timed out after %ds", int(timeout.Seconds()))
+					status = "timeout"
+					errMsg = result.Models[i].Error
 				} else {
 					result.Models[i].Status = "error"
 					result.Models[i].Error = err.Error()
+					status = "error"
+					errMsg = err.Error()
 				}
 			} else {
 				result.Models[i].Status = "success"
 				result.Models[i].Output = resp.Text
+				status = "success"
+				output = resp.Text
 			}
 			benchMu.Unlock()
+
+			// Record benchmark result into usage stats.
+			if s.RecordStatFn != nil {
+				s.RecordStatFn(
+					"Benchmark", "\U0001F3AF", // 🎯
+					me.Provider, me.Model, label,
+					status, errMsg, output,
+					len(benchmarkTestText), int(elapsed.Milliseconds()),
+				)
+			}
 		}
 
 		benchMu.Lock()

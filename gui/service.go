@@ -44,8 +44,9 @@ type SettingsService struct {
 	DebugTailFn    func() (string, error)
 
 	// Stats callbacks.
-	GetStatsFn   func() string
-	ClearStatsFn func()
+	GetStatsFn    func() string
+	ClearStatsFn  func()
+	RecordStatFn  func(prompt, promptIcon, provider, model, label, status, errMsg, output string, inputChars, durationMs int)
 
 	// Permission callbacks — set by app.go for macOS permission checks.
 	CheckAccessibilityFn      func() bool
