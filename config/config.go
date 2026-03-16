@@ -12,10 +12,11 @@ import (
 
 // PromptEntry defines a named prompt with an optional per-prompt LLM override.
 type PromptEntry struct {
-	Name   string `json:"name"`
-	Prompt string `json:"prompt"`
-	LLM    string `json:"llm,omitempty"`
-	Icon   string `json:"icon,omitempty"` // emoji icon shown in tray menu (e.g. "✏️")
+	Name      string `json:"name"`
+	Prompt    string `json:"prompt"`
+	LLM       string `json:"llm,omitempty"`
+	Icon      string `json:"icon,omitempty"`      // emoji icon shown in tray menu (e.g. "✏️")
+	TimeoutMs int    `json:"timeout_ms,omitempty"` // per-prompt timeout override (0 = use model default)
 }
 
 // LLMProviderDef defines a named LLM provider configuration.

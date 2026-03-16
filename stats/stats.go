@@ -174,9 +174,11 @@ func buildSummary(entries []Entry) Summary {
 		promptCounts[e.Prompt]++
 		modelCounts[e.ModelLabel]++
 
-		key := e.ModelLabel
+		// Composite key groups by label+provider+model so that stats are
+		// accurate even if a label is repointed to a different provider/model.
+		key := e.ModelLabel + "|" + e.Provider + "|" + e.Model
 		if _, ok := modelData[key]; !ok {
-			modelData[key] = &modelAgg{provider: e.Provider, model: e.Model}
+			modelData[key] = &modelAgg{label: e.ModelLabel, provider: e.Provider, model: e.Model}
 		}
 		md := modelData[key]
 		md.requests++
@@ -209,13 +211,13 @@ func buildSummary(entries []Entry) Summary {
 	}
 
 	// Model stats.
-	for label, md := range modelData {
+	for _, md := range modelData {
 		rate := 0.0
 		if md.requests > 0 {
 			rate = float64(md.successes) / float64(md.requests) * 100
 		}
 		s.Models = append(s.Models, ModelStats{
-			Label:       label,
+			Label:       md.label,
 			Provider:    md.provider,
 			Model:       md.model,
 			Requests:    md.requests,
@@ -242,6 +244,7 @@ func buildSummary(entries []Entry) Summary {
 }
 
 type modelAgg struct {
+	label         string
 	provider      string
 	model         string
 	requests      int

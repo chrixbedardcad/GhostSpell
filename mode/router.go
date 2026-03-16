@@ -34,13 +34,14 @@ func NewRouter(cfg *config.Config, client llm.Client) *Router {
 }
 
 // Process sends text through the LLM using the prompt at the given index.
-func (r *Router) Process(ctx context.Context, promptIdx int, text string) (string, error) {
+// Returns the full LLM response (with Provider/Model metadata) for stats tracking.
+func (r *Router) Process(ctx context.Context, promptIdx int, text string) (*llm.Response, error) {
 	if strings.TrimSpace(text) == "" {
-		return "", fmt.Errorf("nothing to process: empty text")
+		return nil, fmt.Errorf("nothing to process: empty text")
 	}
 
 	if promptIdx < 0 || promptIdx >= len(r.cfg.Prompts) {
-		return "", fmt.Errorf("invalid prompt index: %d (have %d prompts)", promptIdx, len(r.cfg.Prompts))
+		return nil, fmt.Errorf("invalid prompt index: %d (have %d prompts)", promptIdx, len(r.cfg.Prompts))
 	}
 
 	entry := r.cfg.Prompts[promptIdx]
@@ -49,7 +50,7 @@ func (r *Router) Process(ctx context.Context, promptIdx int, text string) (strin
 	label := r.llmLabelForPrompt(promptIdx)
 	client, err := r.resolveClient(label)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	truncatedPrompt := prompt
@@ -64,12 +65,13 @@ func (r *Router) Process(ctx context.Context, promptIdx int, text string) (strin
 	})
 	if err != nil {
 		slog.Debug("LLM request failed", "prompt", entry.Name, "llm", label, "input_len", len(text), "error", err)
-		return "", fmt.Errorf("LLM request failed: %w", err)
+		return nil, fmt.Errorf("LLM request failed: %w", err)
 	}
 
 	slog.Debug("LLM response received", "provider", resp.Provider, "model", resp.Model, "llm", label, "response_len", len(resp.Text))
 
-	return strings.TrimSpace(resp.Text), nil
+	resp.Text = strings.TrimSpace(resp.Text)
+	return resp, nil
 }
 
 // ResetClients clears all cached LLM clients so that the next request
@@ -173,8 +175,15 @@ func (r *Router) resolveClient(label string) (llm.Client, error) {
 }
 
 // TimeoutForPrompt returns the timeout (in ms) for the provider that will handle
-// the given prompt. Uses the per-model or per-provider timeout_ms if set, otherwise the global.
+// the given prompt. Priority: per-prompt override > per-model > per-provider > global.
 func (r *Router) TimeoutForPrompt(promptIdx int) int {
+	// Check per-prompt timeout override first.
+	if promptIdx >= 0 && promptIdx < len(r.cfg.Prompts) {
+		if r.cfg.Prompts[promptIdx].TimeoutMs > 0 {
+			return r.cfg.Prompts[promptIdx].TimeoutMs
+		}
+	}
+
 	label := r.llmLabelForPrompt(promptIdx)
 	if label != "" {
 		if model, ok := r.cfg.Models[label]; ok {

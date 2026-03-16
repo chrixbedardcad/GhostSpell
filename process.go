@@ -188,7 +188,7 @@ func processMode(
 	// Send to LLM via mode router.
 	slog.Debug("Sending to LLM...", "prompt", promptName, "text_len", len(cap.Text))
 	llmStart := time.Now()
-	result, err := router.Process(ctx, promptIdx, cap.Text)
+	resp, err := router.Process(ctx, promptIdx, cap.Text)
 	llmElapsed := time.Since(llmStart)
 
 	// LLM call complete — hide the overlay and restore focus to the target
@@ -198,6 +198,19 @@ func processMode(
 	// processing, or the indicator may have recaptured focus.
 	gui.HideIndicator()
 	kb.RestoreForegroundWindow()
+
+	// Extract provider/model metadata from response (if available).
+	respProvider, respModel := "", ""
+	if resp != nil {
+		respProvider = resp.Provider
+		respModel = resp.Model
+	}
+
+	// Resolve the model label for this prompt (per-prompt LLM override or default).
+	llmLabel := cfg.DefaultModel
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].LLM != "" {
+		llmLabel = cfg.Prompts[promptIdx].LLM
+	}
 
 	// Helper to record stats non-intrusively.
 	recordStat := func(status, errMsg, output string) {
@@ -209,9 +222,9 @@ func processMode(
 			Timestamp:  time.Now(),
 			Prompt:     promptName,
 			PromptIcon: promptIcon,
-			Provider:   "",
-			Model:      "",
-			ModelLabel:  cfg.DefaultModel,
+			Provider:   respProvider,
+			Model:      respModel,
+			ModelLabel:  llmLabel,
 			InputChars:  len(cap.Text),
 			InputWords:  len(strings.Fields(cap.Text)),
 			OutputChars: len(output),
@@ -247,6 +260,10 @@ func processMode(
 			status = "timeout"
 		}
 		recordStat(status, err.Error(), "")
+		// Collapse selection to end (Right arrow) so the original text is
+		// preserved — the emoji is appended after it, not replacing it.
+		kb.PressRight()
+		time.Sleep(50 * time.Millisecond)
 		if werr := cb.Write(indicator); werr != nil {
 			slog.Error("Failed to write error indicator to clipboard", "error", werr)
 		}
@@ -258,6 +275,7 @@ func processMode(
 	}
 
 	// Result received — stop working loop.
+	result := resp.Text
 	sound.StopWorkingLoop()
 
 	// If the LLM returned identical text, signal "no changes needed"

@@ -53,13 +53,13 @@ func TestRouter_ProcessCorrect(t *testing.T) {
 	}
 	router := NewRouter(cfg, mock)
 
-	result, err := router.Process(context.Background(), 0, "Helo, how are yu?")
+	resp, err := router.Process(context.Background(), 0, "Helo, how are yu?")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result != "Hello, how are you?" {
-		t.Errorf("expected 'Hello, how are you?', got '%s'", result)
+	if resp.Text != "Hello, how are you?" {
+		t.Errorf("expected 'Hello, how are you?', got '%s'", resp.Text)
 	}
 
 	if mock.lastReq.Prompt != cfg.Prompts[0].Prompt {
@@ -74,13 +74,13 @@ func TestRouter_ProcessPolish(t *testing.T) {
 	}
 	router := NewRouter(cfg, mock)
 
-	result, err := router.Process(context.Background(), 1, "Some rough text")
+	resp, err := router.Process(context.Background(), 1, "Some rough text")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result != "Polished text here" {
-		t.Errorf("expected polished text, got '%s'", result)
+	if resp.Text != "Polished text here" {
+		t.Errorf("expected polished text, got '%s'", resp.Text)
 	}
 
 	if mock.lastReq.Prompt != cfg.Prompts[1].Prompt {
@@ -95,13 +95,13 @@ func TestRouter_ProcessTranslate(t *testing.T) {
 	}
 	router := NewRouter(cfg, mock)
 
-	result, err := router.Process(context.Background(), 2, "Bonjour")
+	resp, err := router.Process(context.Background(), 2, "Bonjour")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result != "Translated text" {
-		t.Errorf("expected translated text, got '%s'", result)
+	if resp.Text != "Translated text" {
+		t.Errorf("expected translated text, got '%s'", resp.Text)
 	}
 
 	if mock.lastReq.Prompt != cfg.Prompts[2].Prompt {
@@ -332,5 +332,35 @@ func TestRouter_TimeoutForPrompt(t *testing.T) {
 	// Out-of-range falls back to default model's provider timeout (claude -> 15000)
 	if timeout := router.TimeoutForPrompt(99); timeout != 15000 {
 		t.Errorf("expected default provider timeout 15000 for invalid index, got %d", timeout)
+	}
+}
+
+func TestRouter_TimeoutForPromptOverride(t *testing.T) {
+	cfg := &config.Config{
+		Providers: map[string]config.ProviderConfig{
+			"anthropic": {APIKey: "sk-ant", TimeoutMs: 15000},
+		},
+		Models: map[string]config.ModelEntry{
+			"claude": {Provider: "anthropic", Model: "claude-sonnet-4-5-20250929"},
+		},
+		DefaultModel: "claude",
+		Prompts: []config.PromptEntry{
+			{Name: "Correct", Prompt: "Fix errors."},
+			{Name: "Ask", Prompt: "Answer this.", TimeoutMs: 60000},
+		},
+		TimeoutMs: 30000,
+		MaxTokens: 256,
+	}
+	mock := &mockClient{}
+	router := NewRouter(cfg, mock)
+
+	// Prompt without timeout override uses model/provider timeout (15000)
+	if timeout := router.TimeoutForPrompt(0); timeout != 15000 {
+		t.Errorf("expected timeout 15000 for prompt 0, got %d", timeout)
+	}
+
+	// Prompt with per-prompt timeout override takes priority
+	if timeout := router.TimeoutForPrompt(1); timeout != 60000 {
+		t.Errorf("expected timeout 60000 for prompt 1 (per-prompt override), got %d", timeout)
 	}
 }

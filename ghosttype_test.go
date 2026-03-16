@@ -57,17 +57,17 @@ func TestFullCorrectionPipeline(t *testing.T) {
 	router := mode.NewRouter(cfg, client)
 
 	inputText := "Helo, how are yu tday?"
-	result, err := router.Process(context.Background(), 0, inputText)
+	resp, err := router.Process(context.Background(), 0, inputText)
 	if err != nil {
 		t.Fatalf("Correction failed: %v", err)
 	}
 
-	if result == "" {
+	if resp.Text == "" {
 		t.Fatal("Expected non-empty correction result")
 	}
 
 	t.Logf("Input:  %s", inputText)
-	t.Logf("Output: %s", result)
+	t.Logf("Output: %s", resp.Text)
 }
 
 // TestFullPolishPipeline tests the polish prompt workflow.
@@ -107,16 +107,16 @@ func TestFullPolishPipeline(t *testing.T) {
 
 	router := mode.NewRouter(cfg, client)
 
-	result, err := router.Process(context.Background(), 1, "some rough text here")
+	resp, err := router.Process(context.Background(), 1, "some rough text here")
 	if err != nil {
 		t.Fatalf("Polish failed: %v", err)
 	}
 
-	if result == "" {
+	if resp.Text == "" {
 		t.Fatal("Expected non-empty polish result")
 	}
 
-	t.Logf("Output: %s", result)
+	t.Logf("Output: %s", resp.Text)
 }
 
 // TestClipboardPreservation tests clipboard save/restore behavior.
@@ -221,13 +221,13 @@ func TestOpenAIPipeline(t *testing.T) {
 
 	router := mode.NewRouter(cfg, client)
 
-	result, err := router.Process(context.Background(), 0, "Helo wrold")
+	resp, err := router.Process(context.Background(), 0, "Helo wrold")
 	if err != nil {
 		t.Fatalf("OpenAI correction failed: %v", err)
 	}
 
-	if result != "Corrected text from GPT." {
-		t.Errorf("Expected 'Corrected text from GPT.', got '%s'", result)
+	if resp.Text != "Corrected text from GPT." {
+		t.Errorf("Expected 'Corrected text from GPT.', got '%s'", resp.Text)
 	}
 }
 

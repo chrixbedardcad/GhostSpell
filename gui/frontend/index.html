@@ -927,7 +927,10 @@
   <div id="tab-stats" class="tab-panel">
     <div class="toolbar">
       <h2 style="margin-bottom:0">Usage Stats</h2>
-      <button class="btn btn-secondary btn-sm" onclick="clearStats()">Clear Stats</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="runBenchmark()" id="bench-btn">Run Benchmark</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearStats()">Clear Stats</button>
+      </div>
     </div>
     <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
       &#128202; Track how you use GhostSpell &mdash; which models are fastest, which prompts you use most.
@@ -957,6 +960,11 @@
 
     <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:8px">Prompt Usage</h3>
     <div id="stats-prompts"></div>
+
+    <div id="bench-results" style="display:none;margin-top:16px">
+      <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:8px">Benchmark Results</h3>
+      <div id="bench-table"></div>
+    </div>
   </div>
 
   <div id="tab-debug" class="tab-panel">
@@ -2142,6 +2150,7 @@ async function renderPrompts() {
         <div>
           ${p.icon ? '<span style="margin-right:4px">' + esc(p.icon) + '</span>' : ''}<span class="name">${esc(p.name)}</span>
           ${p.llm ? '<span class="llm-badge">' + esc(p.llm) + '</span>' : ''}
+          ${p.timeout_ms ? '<span class="llm-badge" style="background:#45475a">' + (p.timeout_ms / 1000) + 's</span>' : ''}
         </div>
         <div class="actions">`;
     if (isEditing) {
@@ -2193,6 +2202,10 @@ function buildInlineForm(idx, p) {
     <div class="form-group">
       <label>LLM Override (optional)</label>
       <select id="pe-llm">${llmOpts}</select>
+    </div>
+    <div class="form-group">
+      <label>Max Processing Time (seconds, 0 = use model default)</label>
+      <input type="number" id="pe-timeout" min="0" max="300" step="1" value="${p.timeout_ms ? Math.round(p.timeout_ms / 1000) : 0}" style="width:100px">
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary btn-sm" onclick="cancelInlineEdit()">Cancel</button>
@@ -2271,7 +2284,7 @@ function addPromptInline() {
   // Add a blank prompt, then open it for editing
   const prompts = configData.prompts || [];
   const newIdx = prompts.length;
-  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '').then(result => {
+  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '', 0).then(result => {
     if (result && result.startsWith('ok')) {
       promptEditIdx = newIdx;
       renderPrompts();
@@ -2286,9 +2299,10 @@ async function saveInlinePrompt(idx) {
   const promptText = document.getElementById('pe-text').value.trim();
   const llm = document.getElementById('pe-llm').value;
   const icon = document.getElementById('pe-icon') ? document.getElementById('pe-icon').value : '';
+  const timeoutSec = parseInt(document.getElementById('pe-timeout')?.value) || 0;
   if (!name) { setStatus('prompt-status', 'error', 'Name is required'); return; }
   if (!promptText) { setStatus('prompt-status', 'error', 'Prompt is required'); return; }
-  const result = await goCall('savePrompt', idx, name, promptText, llm, icon);
+  const result = await goCall('savePrompt', idx, name, promptText, llm, icon, timeoutSec);
   if (result && result.startsWith('ok')) {
     promptEditIdx = -1;
     renderPrompts();
@@ -2491,6 +2505,64 @@ async function renderStats() {
 async function clearStats() {
   await goCall('clearStats');
   renderStats();
+}
+
+// ---- Benchmark ----
+var _benchPollTimer = null;
+
+async function runBenchmark() {
+  var btn = document.getElementById('bench-btn');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  var result = await goCall('runBenchmark');
+  if (result && result.startsWith('error')) {
+    btn.disabled = false;
+    btn.textContent = 'Run Benchmark';
+    alert(result);
+    return;
+  }
+  document.getElementById('bench-results').style.display = 'block';
+  _benchPollTimer = setInterval(pollBenchmark, 1000);
+  pollBenchmark();
+}
+
+async function pollBenchmark() {
+  var raw = await goCall('getBenchmarkResult');
+  if (!raw || raw === '{}') return;
+  var b;
+  try { b = JSON.parse(raw); } catch(e) { return; }
+
+  var html = '<table style="width:100%;font-size:0.82em;border-collapse:collapse">';
+  html += '<tr style="color:#6c7086;text-align:left"><th style="padding:6px">Model</th><th>Time</th><th>Status</th><th>Output</th></tr>';
+  var models = b.models || [];
+  for (var i = 0; i < models.length; i++) {
+    var m = models[i];
+    var statusIcon = m.status === 'success' ? '<span style="color:#a6e3a1">&#10003;</span>' :
+                     m.status === 'error' ? '<span style="color:#f38ba8">&#10007;</span>' :
+                     m.status === 'timeout' ? '<span style="color:#f9e2af">&#8987;</span>' :
+                     m.status === 'running' ? '<span style="color:#89b4fa">&#9881;</span>' :
+                     '<span style="color:#6c7086">&#8230;</span>';
+    var timeColor = m.duration_ms > 0 ? (m.duration_ms < 2000 ? '#a6e3a1' : m.duration_ms < 5000 ? '#f9e2af' : '#f38ba8') : '#6c7086';
+    var timeStr = m.duration_ms > 0 ? (m.duration_ms / 1000).toFixed(1) + 's' : '—';
+    var outputPreview = m.output ? (m.output.length > 60 ? m.output.slice(0, 60) + '...' : m.output) : (m.error || '—');
+    var provLogo = (PROVIDER_SVGS[m.provider] || '');
+    html += '<tr style="border-top:1px solid #313244">';
+    html += '<td style="padding:6px"><div style="display:flex;align-items:center;gap:6px">' + provLogo + '<div><strong style="color:#cdd6f4">' + esc(m.label) + '</strong><br><span style="color:#6c7086;font-size:0.85em">' + esc(m.provider) + ' · ' + esc(m.model) + '</span></div></div></td>';
+    html += '<td style="padding:6px;color:' + timeColor + '">' + timeStr + '</td>';
+    html += '<td style="padding:6px">' + statusIcon + '</td>';
+    html += '<td style="padding:6px;font-size:0.9em;color:#a6adc8;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(m.output || m.error || '') + '">' + esc(outputPreview) + '</td>';
+    html += '</tr>';
+  }
+  html += '</table>';
+  document.getElementById('bench-table').innerHTML = html;
+
+  if (b.done || !b.running) {
+    clearInterval(_benchPollTimer);
+    _benchPollTimer = null;
+    var btn = document.getElementById('bench-btn');
+    btn.disabled = false;
+    btn.textContent = 'Run Benchmark';
+  }
 }
 async function onIndicatorPosChange(val) { await goCall('setIndicatorPosition', val); }
 async function onLogLevelChange(level) { await goCall('setLogLevel', level); }

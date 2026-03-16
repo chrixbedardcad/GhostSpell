@@ -570,12 +570,13 @@ func (s *SettingsService) SetRefreshToken(providerType, token string) string {
 // --- Prompt management -----------------------------------------------------
 
 // SavePrompt updates an existing prompt at the given index, or appends if index == -1.
-func (s *SettingsService) SavePrompt(index int, name, prompt, llmLabel, icon string) string {
-	guiLog("[GUI] JS called: SavePrompt(idx=%d, name=%s, icon=%s)", index, name, icon)
+func (s *SettingsService) SavePrompt(index int, name, prompt, llmLabel, icon string, timeoutSec int) string {
+	guiLog("[GUI] JS called: SavePrompt(idx=%d, name=%s, icon=%s, timeout=%ds)", index, name, icon, timeoutSec)
 	if name == "" || prompt == "" {
 		return "error: name and prompt are required"
 	}
-	entry := config.PromptEntry{Name: name, Prompt: prompt, LLM: llmLabel, Icon: icon}
+	timeoutMs := timeoutSec * 1000
+	entry := config.PromptEntry{Name: name, Prompt: prompt, LLM: llmLabel, Icon: icon, TimeoutMs: timeoutMs}
 	if index < 0 || index >= len(s.cfgCopy.Prompts) {
 		s.cfgCopy.Prompts = append(s.cfgCopy.Prompts, entry)
 	} else {
