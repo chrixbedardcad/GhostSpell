@@ -43,10 +43,11 @@ func TestOpenAIClient_Send_Success(t *testing.T) {
 				Message struct {
 					Content string `json:"content"`
 				} `json:"message"`
+				FinishReason string `json:"finish_reason"`
 			}{
 				{Message: struct {
 					Content string `json:"content"`
-				}{Content: "Hello, how are you?"}},
+				}{Content: "Hello, how are you?"}, FinishReason: "stop"},
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -114,6 +115,7 @@ func TestOpenAIClient_Send_EmptyChoices(t *testing.T) {
 				Message struct {
 					Content string `json:"content"`
 				} `json:"message"`
+				FinishReason string `json:"finish_reason"`
 			}{},
 		}
 		w.Header().Set("Content-Type", "application/json")

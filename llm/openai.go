@@ -87,7 +87,13 @@ type openaiResponse struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
+	Usage *struct {
+		CompletionTokensDetails *struct {
+			ReasoningTokens int `json:"reasoning_tokens"`
+		} `json:"completion_tokens_details"`
+	} `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
@@ -167,7 +173,16 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	slog.Debug(c.providerName+": parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
 
 	if strings.TrimSpace(text) == "" {
-		return nil, fmt.Errorf("API returned empty content (model=%s)", c.model)
+		// Detect reasoning models that exhaust tokens on chain-of-thought.
+		finishReason := apiResp.Choices[0].FinishReason
+		reasoningTokens := 0
+		if apiResp.Usage != nil && apiResp.Usage.CompletionTokensDetails != nil {
+			reasoningTokens = apiResp.Usage.CompletionTokensDetails.ReasoningTokens
+		}
+		if finishReason == "length" && reasoningTokens > 0 {
+			return nil, fmt.Errorf("model %s used all %d tokens for reasoning with no visible output — increase max_tokens in model settings", c.model, reasoningTokens)
+		}
+		return nil, fmt.Errorf("API returned empty content (model=%s, finish_reason=%s)", c.model, finishReason)
 	}
 
 	return &Response{

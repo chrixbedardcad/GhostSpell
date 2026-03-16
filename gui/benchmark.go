@@ -107,10 +107,11 @@ func (s *SettingsService) RunBenchmark() string {
 				RefreshToken: prov.RefreshToken,
 				KeepAlive:    prov.KeepAlive,
 			}
+			// Only set MaxTokens if the model has a custom value. Otherwise
+			// let each provider client use its own default (e.g., OpenAI
+			// defaults to 2048 for reasoning models like gpt-5-mini).
 			if me.MaxTokens > 0 {
 				def.MaxTokens = me.MaxTokens
-			} else {
-				def.MaxTokens = cfg.MaxTokens
 			}
 
 			client, err := llm.NewClientFromDef(def)
