@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -157,10 +158,34 @@ func main() {
 	fmt.Printf("App data: %s\n", appDir)
 	cfg, err := config.LoadRaw(configPath)
 	if err != nil {
+		// Config corrupted — try restoring from backup (created before updates).
+		backupPath := configPath + ".bak"
+		if bdata, berr := os.ReadFile(backupPath); berr == nil {
+			fmt.Println("Config corrupted, restoring from backup...")
+			os.WriteFile(configPath, bdata, 0644)
+			cfg, err = config.LoadRaw(configPath)
+		}
+	}
+	if err != nil {
 		logStartupError(filepath.Dir(configPath), "Failed to load config", err)
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		fmt.Println("A default config.json has been created. Please add your API key and restart.")
 		os.Exit(1)
+	}
+
+	// Check if config lost providers (e.g., empty after partial write).
+	// Restore from backup if the backup has more providers.
+	backupPath := configPath + ".bak"
+	if len(cfg.Providers) == 0 {
+		if bdata, berr := os.ReadFile(backupPath); berr == nil {
+			var backupCfg config.Config
+			if json.Unmarshal(bdata, &backupCfg) == nil && len(backupCfg.Providers) > 0 {
+				fmt.Printf("Config has no providers but backup has %d — restoring\n", len(backupCfg.Providers))
+				slog.Info("Restoring providers from config backup", "backup_providers", len(backupCfg.Providers))
+				os.WriteFile(configPath, bdata, 0644)
+				cfg, _ = config.LoadRaw(configPath)
+			}
+		}
 	}
 
 	// Derive the base directory from the config file for resolving relative paths.

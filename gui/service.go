@@ -239,6 +239,17 @@ func (s *SettingsService) UpdateNow() string {
 		return "error: unsupported platform"
 	}
 
+	// Safety: save current config and create a backup before updating.
+	// Protects against config loss if the process is killed during update.
+	if s.cfgCopy != nil && s.configPath != "" {
+		_ = config.WriteDefault(s.configPath, s.cfgCopy)
+		backupPath := s.configPath + ".bak"
+		if data, err := os.ReadFile(s.configPath); err == nil {
+			os.WriteFile(backupPath, data, 0644)
+			guiLog("[GUI] UpdateNow: config backed up to %s", backupPath)
+		}
+	}
+
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	cmd.Stdin = nil

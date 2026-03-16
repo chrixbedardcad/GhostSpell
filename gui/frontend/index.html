@@ -110,7 +110,7 @@
   .btn-danger { background: #f38ba8; color: #1e1e2e; }
   .btn-danger:hover:not(:disabled) { background: #eba0ac; }
   .btn-sm { padding: 5px 10px; font-size: 0.78em; }
-  .btn-link { background: none; border: 1px solid #45475a; color: #89b4fa; padding: 3px 10px; border-radius: 12px; font-size: 0.82em; cursor: pointer; font-family: inherit; transition: background 0.15s, border-color 0.15s; display: inline-block; }
+  .btn-link { background: none; border: 1px solid #45475a; color: #89b4fa; padding: 3px 10px; border-radius: 12px; font-size: 0.82em; cursor: pointer; font-family: inherit; transition: background 0.15s, border-color 0.15s; display: inline-block; margin-top: 6px; }
   .btn-link:hover { background: #313244; border-color: #89b4fa; }
   .btn-row { display: flex; gap: 8px; margin-top: 14px; }
 
@@ -372,6 +372,7 @@
   .provider-status { font-size: 0.78em; margin-left: auto; white-space: nowrap; }
   .provider-status.active { color: #a6e3a1; }
   .provider-status.inactive { color: #6c7086; }
+  .provider-status.error { color: #f38ba8; }
   .provider-card-meta { font-size: 0.8em; color: #a6adc8; margin-bottom: 8px; }
   .provider-card-actions { display: flex; gap: 6px; }
   .provider-test-result { font-size: 0.78em; margin-top: 6px; padding: 4px 8px; border-radius: 4px; display: none; }
@@ -1440,6 +1441,7 @@ async function testProviderConnection(type) {
       if (result && result.startsWith('ok')) setStatus(testResultEl.id, 'success', 'Connection successful!');
       else setStatus(testResultEl.id, 'error', result || 'Connection failed');
     }
+    updateProviderStatusAfterTest(type, result && result.startsWith('ok'));
     return;
   }
 
@@ -1474,6 +1476,20 @@ async function testProviderConnection(type) {
     } else {
       setStatus(testResultEl.id, 'error', result || 'Connection failed');
     }
+  }
+  updateProviderStatusAfterTest(type, result && result.startsWith('ok'));
+}
+
+// Update the provider card status badge after a test result.
+function updateProviderStatusAfterTest(type, passed) {
+  var statusEl = document.getElementById('prov-status-' + type);
+  if (!statusEl) return;
+  if (passed) {
+    statusEl.textContent = '\u25CF Connected';
+    statusEl.className = 'provider-status active';
+  } else {
+    statusEl.textContent = '\u25CF Error';
+    statusEl.className = 'provider-status error';
   }
 }
 

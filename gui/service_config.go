@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
@@ -270,8 +271,17 @@ func (s *SettingsService) ResetModels() string {
 	s.cfgCopy.DefaultModel = ""
 
 	// Create one model per configured provider with the best available model.
+	// Skip providers that have no valid credentials (empty API key and no
+	// refresh token) — these would fail at runtime anyway.
 	for _, p := range priority {
-		if _, ok := s.cfgCopy.Providers[p.provider]; !ok {
+		prov, ok := s.cfgCopy.Providers[p.provider]
+		if !ok {
+			continue
+		}
+		// Local providers (local, ollama, lmstudio) don't need API keys.
+		needsKey := p.provider != "local" && p.provider != "ollama" && p.provider != "lmstudio"
+		if needsKey && prov.APIKey == "" && prov.RefreshToken == "" {
+			slog.Info("[GUI] ResetModels: skipping provider with no credentials", "provider", p.provider)
 			continue
 		}
 
