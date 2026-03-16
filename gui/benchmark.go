@@ -14,10 +14,12 @@ import (
 
 // BenchmarkResult holds the result of benchmarking all models.
 type BenchmarkResult struct {
-	Running bool                `json:"running"`
-	Done    bool                `json:"done"`
-	Models  []BenchmarkModelRes `json:"models"`
-	Error   string              `json:"error,omitempty"`
+	Running    bool                `json:"running"`
+	Done       bool                `json:"done"`
+	PromptName string              `json:"prompt_name"`
+	PromptIcon string              `json:"prompt_icon"`
+	Models     []BenchmarkModelRes `json:"models"`
+	Error      string              `json:"error,omitempty"`
 }
 
 // BenchmarkModelRes holds the benchmark result for one model.
@@ -54,14 +56,18 @@ func (s *SettingsService) RunBenchmark() string {
 		return "error: no models configured"
 	}
 
-	// Get the active prompt text.
+	// Get the active prompt.
 	promptText := config.DefaultCorrectPrompt
+	promptName := "Correct"
+	promptIcon := "\u270F\uFE0F"
 	if cfg.ActivePrompt >= 0 && cfg.ActivePrompt < len(cfg.Prompts) {
 		promptText = cfg.Prompts[cfg.ActivePrompt].Prompt
+		promptName = cfg.Prompts[cfg.ActivePrompt].Name
+		promptIcon = cfg.Prompts[cfg.ActivePrompt].Icon
 	}
 
 	// Initialize results.
-	result := &BenchmarkResult{Running: true}
+	result := &BenchmarkResult{Running: true, PromptName: promptName, PromptIcon: promptIcon}
 	for label, me := range cfg.Models {
 		result.Models = append(result.Models, BenchmarkModelRes{
 			Label:    label,
@@ -165,7 +171,7 @@ func (s *SettingsService) RunBenchmark() string {
 			// Record benchmark result into usage stats.
 			if s.RecordStatFn != nil {
 				s.RecordStatFn(
-					"Benchmark", "\U0001F3AF", // 🎯
+					promptName, promptIcon,
 					me.Provider, me.Model, label,
 					status, errMsg, output,
 					len(benchmarkTestText), int(elapsed.Milliseconds()),

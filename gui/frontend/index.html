@@ -962,7 +962,8 @@
     <div id="stats-prompts"></div>
 
     <div id="bench-results" style="display:none;margin-top:16px">
-      <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:8px">Benchmark Results</h3>
+      <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:4px">Benchmark Results</h3>
+      <div id="bench-prompt-info" style="font-size:0.78em;color:#6c7086;margin-bottom:8px"></div>
       <div id="bench-table"></div>
     </div>
   </div>
@@ -2531,6 +2532,12 @@ async function pollBenchmark() {
   if (!raw || raw === '{}') return;
   var b;
   try { b = JSON.parse(raw); } catch(e) { return; }
+
+  // Show which prompt was used.
+  var promptInfo = document.getElementById('bench-prompt-info');
+  if (promptInfo && b.prompt_name) {
+    promptInfo.textContent = (b.prompt_icon || '') + ' Prompt: ' + b.prompt_name;
+  }
 
   var html = '<table style="width:100%;font-size:0.82em;border-collapse:collapse">';
   html += '<tr style="color:#6c7086;text-align:left"><th style="padding:6px">Model</th><th>Time</th><th>Status</th><th>Output</th></tr>';
