@@ -52,7 +52,10 @@ func newOllamaFromDef(def config.LLMProviderDef) *OllamaClient {
 	endpoint := normalizeOllamaEndpoint(def.APIEndpoint)
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
-		maxTokens = 256
+		// Higher default than global 256: Ollama runs thinking models
+		// (Qwen3.5, DeepSeek) where num_predict caps total output
+		// including any thinking tokens that leak through despite /no_think.
+		maxTokens = 1024
 	}
 	timeoutMs := def.TimeoutMs
 	if timeoutMs == 0 {
