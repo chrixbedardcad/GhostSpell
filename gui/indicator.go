@@ -31,6 +31,8 @@ func CreateIndicator(app *application.App) {
 	indicatorWin = app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:              "ghostspell-indicator",
 		Title:             "",
+		X:                 offScreenX,
+		Y:                 0,
 		Width:             260,
 		Height:            52,
 		Frameless:         true,
