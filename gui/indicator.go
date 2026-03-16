@@ -114,6 +114,9 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 		return
 	}
 
+	// Restore full size (was shrunk to 1x1 in HideIndicator to avoid blocking clicks).
+	win.SetSize(260, 52)
+
 	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName) + "&m=" + url.QueryEscape(modelLabel)
 	win.SetURL(u)
 	time.Sleep(150 * time.Millisecond) // let page load
@@ -133,7 +136,10 @@ func HideIndicator() {
 
 	slog.Debug("[indicator] HideIndicator called")
 	// Navigate to bare URL (no params) → page renders with opacity:0 (invisible).
+	// Shrink to 1x1 so the invisible window doesn't intercept mouse clicks
+	// on other windows (AlwaysOnTop + IgnoreMouseEvents=false on Windows).
 	win.SetURL("/indicator.html")
+	win.SetSize(1, 1)
 }
 
 func PopIndicator(promptIcon, promptName string) {
@@ -145,6 +151,8 @@ func PopIndicator(promptIcon, promptName string) {
 	}
 
 	slog.Debug("[indicator] PopIndicator called", "prompt", promptName, "icon", promptIcon)
+
+	win.SetSize(260, 52)
 
 	u := "/indicator.html?i=" + url.QueryEscape(promptIcon) + "&n=" + url.QueryEscape(promptName) + "&pop=1"
 	win.SetURL(u)
@@ -160,6 +168,7 @@ func PopIndicator(promptIcon, promptName string) {
 		indicatorMu.Unlock()
 		if w != nil {
 			w.SetURL("/indicator.html")
+			w.SetSize(1, 1)
 		}
 	}()
 }
