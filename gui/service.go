@@ -204,7 +204,10 @@ func (s *SettingsService) CheckForUpdate() string {
 	if len(latest) > 0 && latest[0] == 'v' {
 		latest = latest[1:]
 	}
-	hasUpdate := latest != current
+	// Compare versions properly: only show update if latest > current.
+	// Simple != comparison falsely triggers when the user is ahead of
+	// the latest GitHub release (e.g. rapid release cycles).
+	hasUpdate := versionGreater(latest, current)
 
 	result := map[string]interface{}{
 		"current":    current,
@@ -486,4 +489,27 @@ func OpenFile(path string) {
 	if err := cmd.Start(); err != nil {
 		guiLog("[GUI] ERROR: Failed to open file: %v", err)
 	}
+}
+
+// versionGreater returns true if a > b using semantic versioning.
+// Compares each numeric segment left to right (e.g. "0.26.13" > "0.26.11").
+func versionGreater(a, b string) bool {
+	as := strings.Split(a, ".")
+	bs := strings.Split(b, ".")
+	for i := 0; i < len(as) || i < len(bs); i++ {
+		var ai, bi int
+		if i < len(as) {
+			fmt.Sscan(as[i], &ai)
+		}
+		if i < len(bs) {
+			fmt.Sscan(bs[i], &bi)
+		}
+		if ai > bi {
+			return true
+		}
+		if ai < bi {
+			return false
+		}
+	}
+	return false
 }
