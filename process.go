@@ -15,7 +15,11 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/stats"
 )
+
+// appStats is the global stats tracker, set from app.go.
+var appStats *stats.Stats
 
 // processingGuard prevents concurrent processMode execution.
 // macOS Carbon RegisterEventHotKey can send multiple Keydown events for a
@@ -183,7 +187,9 @@ func processMode(
 
 	// Send to LLM via mode router.
 	slog.Debug("Sending to LLM...", "prompt", promptName, "text_len", len(cap.Text))
+	llmStart := time.Now()
 	result, err := router.Process(ctx, promptIdx, cap.Text)
+	llmElapsed := time.Since(llmStart)
 
 	// LLM call complete — hide the overlay and restore focus to the target
 	// window before any keyboard simulation (paste, select-all, etc).
@@ -193,6 +199,30 @@ func processMode(
 	gui.HideIndicator()
 	kb.RestoreForegroundWindow()
 
+	// Helper to record stats non-intrusively.
+	recordStat := func(status, errMsg, output string) {
+		if appStats == nil {
+			return
+		}
+		outWords := len(strings.Fields(output))
+		appStats.Record(stats.Entry{
+			Timestamp:  time.Now(),
+			Prompt:     promptName,
+			PromptIcon: promptIcon,
+			Provider:   "",
+			Model:      "",
+			ModelLabel:  cfg.DefaultModel,
+			InputChars:  len(cap.Text),
+			InputWords:  len(strings.Fields(cap.Text)),
+			OutputChars: len(output),
+			OutputWords: outWords,
+			DurationMs:  llmElapsed.Milliseconds(),
+			Status:      status,
+			Error:       errMsg,
+			Changed:     output != "" && strings.TrimSpace(output) != strings.TrimSpace(cap.Text),
+		})
+	}
+
 	if err != nil {
 		slog.Error("LLM processing failed", "prompt", promptName, "error", err)
 		sound.StopWorkingLoop()
@@ -201,20 +231,22 @@ func processMode(
 		// indicator, and restore clipboard to initial state.
 		if ctx.Err() == context.Canceled && !strings.Contains(err.Error(), "deadline exceeded") {
 			slog.Info("Request cancelled by user", "prompt", promptName)
-			// Deselect text (Right arrow collapses selection to cursor).
 			kb.PressRight()
 			time.Sleep(50 * time.Millisecond)
-			// Brief cancel indicator.
 			gui.PopIndicator("\U0001F6D1", "Cancelled")
+			recordStat("cancelled", "", "")
 			cb.Restore()
 			return
 		}
 
 		// Distinguish timeout from other errors.
+		status := "error"
 		indicator := "\U0001F47B\u274C" // 👻❌ (generic error)
 		if ctx.Err() == context.DeadlineExceeded || strings.Contains(err.Error(), "deadline exceeded") {
 			indicator = "\U0001F47B\u23F3" // 👻⏳ (timeout)
+			status = "timeout"
 		}
+		recordStat(status, err.Error(), "")
 		if werr := cb.Write(indicator); werr != nil {
 			slog.Error("Failed to write error indicator to clipboard", "error", werr)
 		}
@@ -232,6 +264,7 @@ func processMode(
 	// instead of replacing with the same content.
 	if strings.TrimSpace(result) == strings.TrimSpace(cap.Text) {
 		slog.Info("LLM returned identical text (no changes needed)", "prompt", promptName)
+		recordStat("identical", "", result)
 		kb.PressRight()
 		time.Sleep(50 * time.Millisecond)
 		if werr := cb.Write("\U0001F47B\u2705"); werr == nil { // 👻✅
@@ -244,6 +277,7 @@ func processMode(
 	}
 
 	sound.PlaySuccess()
+	recordStat("success", "", result)
 
 	// --- Write result back ---
 	written := false

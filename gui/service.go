@@ -43,6 +43,10 @@ type SettingsService struct {
 	DebugLogPathFn func() string
 	DebugTailFn    func() (string, error)
 
+	// Stats callbacks.
+	GetStatsFn   func() string
+	ClearStatsFn func()
+
 	// Permission callbacks — set by app.go for macOS permission checks.
 	CheckAccessibilityFn      func() bool
 	CheckPostEventAccessFn    func() bool
@@ -254,6 +258,22 @@ func (s *SettingsService) UpdateNow() string {
 // --- Debug tools -----------------------------------------------------------
 
 // EnableDebug activates debug-level logging. Returns the log file path.
+// GetStats returns usage statistics as JSON.
+func (s *SettingsService) GetStats() string {
+	if s.GetStatsFn != nil {
+		return s.GetStatsFn()
+	}
+	return "{}"
+}
+
+// ClearStats resets all usage statistics.
+func (s *SettingsService) ClearStats() string {
+	if s.ClearStatsFn != nil {
+		s.ClearStatsFn()
+	}
+	return "ok"
+}
+
 func (s *SettingsService) EnableDebug() string {
 	guiLog("[GUI] JS called: EnableDebug")
 	if s.DebugEnableFn == nil {

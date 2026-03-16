@@ -16,6 +16,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/stats"
 )
 
 // appDataDir returns the OS-standard directory for GhostSpell's config, logs,
@@ -167,6 +168,9 @@ func main() {
 
 	// Initialise the debug log system. Honours config's log_level on startup.
 	debugState = debuglog.New(configDir)
+
+	// Initialize usage stats tracker.
+	appStats = stats.New(configDir)
 	debugState.InitFromConfig(cfg.LogLevel)
 
 	slog.Info("GhostSpell starting",

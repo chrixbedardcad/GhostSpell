@@ -426,6 +426,7 @@
   <button onclick="switchTab('models')">Models</button>
   <button onclick="switchTab('prompts')">Prompts</button>
   <button onclick="switchTab('hotkeys')">Hotkeys</button>
+  <button onclick="switchTab('stats')">Stats</button>
   <button onclick="switchTab('debug')">Debug</button>
   <button onclick="switchTab('help')">Help</button>
 </div>
@@ -922,6 +923,42 @@
   </div>
 
   <!-- ============ DEBUG TAB ============ -->
+  <!-- ============ STATS TAB ============ -->
+  <div id="tab-stats" class="tab-panel">
+    <div class="toolbar">
+      <h2 style="margin-bottom:0">Usage Stats</h2>
+      <button class="btn btn-secondary btn-sm" onclick="clearStats()">Clear Stats</button>
+    </div>
+    <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
+      &#128202; Track how you use GhostSpell &mdash; which models are fastest, which prompts you use most.
+    </div>
+
+    <div id="stats-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:#313244;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1.4em;font-weight:700;color:#cdd6f4" id="stat-total">0</div>
+        <div style="font-size:0.75em;color:#6c7086">Total Corrections</div>
+      </div>
+      <div style="background:#313244;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1.4em;font-weight:700;color:#cdd6f4" id="stat-avg-time">0s</div>
+        <div style="font-size:0.75em;color:#6c7086">Avg Response Time</div>
+      </div>
+      <div style="background:#313244;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1em;font-weight:600;color:#a6e3a1" id="stat-top-prompt">—</div>
+        <div style="font-size:0.75em;color:#6c7086">Most Used Prompt</div>
+      </div>
+      <div style="background:#313244;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1em;font-weight:600;color:#89b4fa" id="stat-top-model">—</div>
+        <div style="font-size:0.75em;color:#6c7086">Most Used Model</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:8px">Model Performance</h3>
+    <div id="stats-models" style="margin-bottom:14px"></div>
+
+    <h3 style="font-size:0.9em;color:#bac2de;margin-bottom:8px">Prompt Usage</h3>
+    <div id="stats-prompts"></div>
+  </div>
+
   <div id="tab-debug" class="tab-panel">
     <div class="section">
       <h2>Logging</h2>
@@ -1139,7 +1176,7 @@ async function goCall(fn, ...args) {
 }
 
 // ---- Tabs ----
-var TAB_NAMES = {about:'About', general:'General', providers:'Providers', models:'Models', prompts:'Prompts', hotkeys:'Hotkeys', debug:'Debug', help:'Help'};
+var TAB_NAMES = {about:'About', general:'General', providers:'Providers', models:'Models', prompts:'Prompts', hotkeys:'Hotkeys', stats:'Stats', debug:'Debug', help:'Help'};
 function switchTab(name) {
   document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1155,6 +1192,7 @@ function switchTab(name) {
   if (name === 'prompts') renderPrompts();
   if (name === 'hotkeys') renderGeneral();
   if (name === 'general') { renderGeneral(); onCheckPermissions(); }
+  if (name === 'stats') renderStats();
   if (name === 'debug') renderDebug();
   if (name === 'about') autoCheckForUpdate();
 }
@@ -2385,6 +2423,74 @@ async function onOpenPermissions() {
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }
 async function onToggleClipboard(enabled) { await goCall('setPreserveClipboard', enabled); }
 async function onMaxCharsChange(val) { await goCall('setMaxInputChars', parseInt(val) || 0); }
+
+// ---- Stats ----
+async function renderStats() {
+  var raw = await goCall('getStats');
+  if (!raw || raw === '{}') {
+    document.getElementById('stat-total').textContent = '0';
+    document.getElementById('stat-avg-time').textContent = '—';
+    document.getElementById('stat-top-prompt').textContent = '—';
+    document.getElementById('stat-top-model').textContent = '—';
+    document.getElementById('stats-models').innerHTML = '<div style="font-size:0.82em;color:#6c7086;padding:12px;text-align:center">No data yet. Use Ctrl+G to start tracking.</div>';
+    document.getElementById('stats-prompts').innerHTML = '';
+    return;
+  }
+  var s;
+  try { s = JSON.parse(raw); } catch(e) { return; }
+
+  document.getElementById('stat-total').textContent = s.total_requests || 0;
+  document.getElementById('stat-avg-time').textContent = s.avg_duration_ms ? (s.avg_duration_ms / 1000).toFixed(1) + 's' : '—';
+  document.getElementById('stat-top-prompt').textContent = s.most_used_prompt || '—';
+  document.getElementById('stat-top-model').textContent = s.most_used_model || '—';
+
+  // Model table.
+  var models = s.models || [];
+  if (models.length === 0) {
+    document.getElementById('stats-models').innerHTML = '<div style="font-size:0.82em;color:#6c7086;padding:12px;text-align:center">No model data yet.</div>';
+  } else {
+    var html = '<table style="width:100%;font-size:0.82em;border-collapse:collapse">';
+    html += '<tr style="color:#6c7086;text-align:left"><th style="padding:6px">Model</th><th>Requests</th><th>Avg Time</th><th>Avg Input</th><th>Success</th></tr>';
+    models.sort(function(a, b) { return b.requests - a.requests; });
+    for (var i = 0; i < models.length; i++) {
+      var m = models[i];
+      var timeColor = m.avg_duration_ms < 2000 ? '#a6e3a1' : m.avg_duration_ms < 5000 ? '#f9e2af' : '#f38ba8';
+      html += '<tr style="border-top:1px solid #313244">';
+      html += '<td style="padding:6px"><strong style="color:#cdd6f4">' + esc(m.label) + '</strong><br><span style="color:#6c7086;font-size:0.85em">' + esc(m.provider) + ' · ' + esc(m.model) + '</span></td>';
+      html += '<td style="padding:6px">' + m.requests + '</td>';
+      html += '<td style="padding:6px;color:' + timeColor + '">' + (m.avg_duration_ms / 1000).toFixed(1) + 's</td>';
+      html += '<td style="padding:6px">' + m.avg_input + ' chars</td>';
+      html += '<td style="padding:6px">' + m.success_rate.toFixed(0) + '%</td>';
+      html += '</tr>';
+    }
+    html += '</table>';
+    document.getElementById('stats-models').innerHTML = html;
+  }
+
+  // Prompt usage.
+  var prompts = s.prompts || [];
+  if (prompts.length > 0) {
+    prompts.sort(function(a, b) { return b.requests - a.requests; });
+    var maxReq = prompts[0].requests;
+    var html = '';
+    for (var i = 0; i < prompts.length; i++) {
+      var p = prompts[i];
+      var pct = maxReq > 0 ? (p.requests / maxReq * 100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+      html += '<span style="min-width:24px;text-align:center">' + (p.icon || '') + '</span>';
+      html += '<span style="min-width:80px;font-size:0.85em;color:#cdd6f4">' + esc(p.name) + '</span>';
+      html += '<div style="flex:1;background:#313244;border-radius:4px;height:14px;overflow:hidden"><div style="width:' + pct.toFixed(0) + '%;height:100%;background:#89b4fa;border-radius:4px"></div></div>';
+      html += '<span style="font-size:0.78em;color:#6c7086;min-width:30px;text-align:right">' + p.requests + '</span>';
+      html += '</div>';
+    }
+    document.getElementById('stats-prompts').innerHTML = html;
+  }
+}
+
+async function clearStats() {
+  await goCall('clearStats');
+  renderStats();
+}
 async function onIndicatorPosChange(val) { await goCall('setIndicatorPosition', val); }
 async function onLogLevelChange(level) { await goCall('setLogLevel', level); }
 

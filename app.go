@@ -67,6 +67,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 	// Wire debug callbacks so the Settings GUI can control debug logging.
 	if debugState != nil {
+		settingsSvc.GetStatsFn = func() string { return appStats.GetSummary() }
+		settingsSvc.ClearStatsFn = func() { appStats.Clear() }
 		settingsSvc.DebugEnableFn = debugState.Enable
 		settingsSvc.DebugDisableFn = debugState.Disable
 		settingsSvc.DebugEnabledFn = debugState.Enabled
