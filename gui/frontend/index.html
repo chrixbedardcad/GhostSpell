@@ -672,11 +672,13 @@
       <p style="font-size:0.82em;color:#a6adc8;margin-bottom:12px">Connect to a local LM Studio server. Uses OpenAI-compatible API. <button class="btn-link" onclick="wails.Browser.OpenURL('https://lmstudio.ai')">Download LM Studio &#8599;</button></p>
 
       <div style="background:#313244;border-radius:8px;padding:12px;margin-bottom:14px;font-size:0.82em;color:#a6adc8;line-height:1.6">
-        <strong style="color:#cdd6f4">How to start LM Studio's server:</strong><br>
-        1. Open LM Studio and load a model<br>
-        2. Go to the <strong style="color:#cdd6f4">Developer</strong> tab<br>
-        3. Click <strong style="color:#a6e3a1">Start Server</strong> (the server does not start automatically)<br>
-        4. The default endpoint is <code style="background:#1e1e2e;padding:2px 6px;border-radius:4px">http://127.0.0.1:1234/v1</code>
+        <strong style="color:#cdd6f4">How to connect LM Studio:</strong><br>
+        1. Open <strong style="color:#cdd6f4">LM Studio</strong> and download/load a model<br>
+        2. Go to the <strong style="color:#cdd6f4">Developer</strong> tab (left sidebar)<br>
+        3. Click <strong style="color:#a6e3a1">Start Server</strong> &mdash; the server does <em>not</em> start automatically<br>
+        4. Verify the server is running (green status)<br>
+        5. Come back here, set endpoint to <code style="background:#1e1e2e;padding:2px 6px;border-radius:4px">http://127.0.0.1:1234/v1</code> and click <strong style="color:#cdd6f4">Test</strong><br>
+        GhostSpell will use whatever model is currently loaded in LM Studio.
       </div>
 
       <div class="form-group">

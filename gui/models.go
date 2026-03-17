@@ -84,6 +84,12 @@ func KnownModels(provider string) []ModelInfo {
 			{Name: "gemma2"},
 			{Name: "phi3"},
 		}
+	case "lmstudio":
+		// LM Studio serves whatever model is loaded. Use a placeholder —
+		// the actual model name doesn't matter for LM Studio's API.
+		return []ModelInfo{
+			{Name: "default", Tag: "recommended"},
+		}
 	default:
 		return nil
 	}
