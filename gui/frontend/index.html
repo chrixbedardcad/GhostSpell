@@ -2011,6 +2011,7 @@ function filterModels() {
     });
   }
 
+  _lastFilteredModels = filtered;
   renderModelGrid(filtered);
 }
 
@@ -2087,7 +2088,8 @@ function renderModelGrid(models) {
     } else if (liveStatus === 'error') {
       html += '<div style="font-size:0.68em;color:#f38ba8">failed</div>';
     } else if (speedStr) {
-      html += '<div style="font-size:0.78em;font-weight:600;color:' + speedColor + '">' + speedStr + '</div>';
+      var promptLabel = m.speed_prompt ? ' <span style="font-size:0.85em;color:#6c7086">' + esc(m.speed_prompt) + '</span>' : '';
+      html += '<div style="font-size:0.78em;font-weight:600;color:' + speedColor + '">' + speedStr + promptLabel + '</div>';
     } else {
       html += '<div style="font-size:0.68em;color:#585b70">no benchmark</div>';
     }
@@ -2106,11 +2108,21 @@ async function setModelDefaultByModel(provider, model) {
 }
 
 var _benchLiveData = null;
+var _lastFilteredModels = [];
 async function runModelsBenchmark() {
   var btn = document.getElementById('models-bench-btn');
   btn.disabled = true;
   btn.textContent = 'Running...';
-  var result = await goCall('runBenchmark');
+  // Pass the currently visible (filtered) models in display order.
+  var modelsToTest = _lastFilteredModels.map(function(m) {
+    return {provider: m.provider, model: m.model, name: m.name};
+  });
+  var result;
+  if (modelsToTest.length > 0) {
+    result = await goCall('runBenchmarkFiltered', JSON.stringify(modelsToTest));
+  } else {
+    result = await goCall('runBenchmark');
+  }
   if (result && result.startsWith('error')) {
     btn.disabled = false;
     btn.textContent = 'Benchmark All';

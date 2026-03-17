@@ -232,6 +232,153 @@ func (s *SettingsService) RunBenchmark() string {
 	return "ok"
 }
 
+// RunBenchmarkFiltered benchmarks only the specified models in the given order.
+// modelsJSON is a JSON array of {provider, model, name} objects.
+func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
+	guiLog("[GUI] JS called: RunBenchmarkFiltered")
+
+	benchMu.Lock()
+	if benchResult != nil && benchResult.Running {
+		benchMu.Unlock()
+		return "error: benchmark already running"
+	}
+
+	cfg := s.cfgCopy
+
+	type modelSpec struct {
+		Provider string `json:"provider"`
+		Model    string `json:"model"`
+		Name     string `json:"name"`
+	}
+	var specs []modelSpec
+	if err := json.Unmarshal([]byte(modelsJSON), &specs); err != nil {
+		benchMu.Unlock()
+		return "error: invalid model list"
+	}
+	if len(specs) == 0 {
+		benchMu.Unlock()
+		return "error: no models to benchmark"
+	}
+
+	promptText := config.DefaultCorrectPrompt
+	promptName := "Correct"
+	promptIcon := "\u270F\uFE0F"
+	if cfg.ActivePrompt >= 0 && cfg.ActivePrompt < len(cfg.Prompts) {
+		promptText = cfg.Prompts[cfg.ActivePrompt].Prompt
+		promptName = cfg.Prompts[cfg.ActivePrompt].Name
+		promptIcon = cfg.Prompts[cfg.ActivePrompt].Icon
+	}
+
+	result := &BenchmarkResult{Running: true, PromptName: promptName, PromptIcon: promptIcon}
+	for _, sp := range specs {
+		result.Models = append(result.Models, BenchmarkModelRes{
+			Label:    sp.Name,
+			Provider: sp.Provider,
+			Model:    sp.Model,
+			Status:   "pending",
+		})
+	}
+	benchResult = result
+	benchMu.Unlock()
+
+	go func() {
+		for i := range result.Models {
+			benchMu.Lock()
+			result.Models[i].Status = "running"
+			benchMu.Unlock()
+
+			provider := result.Models[i].Provider
+			model := result.Models[i].Model
+
+			prov, ok := cfg.Providers[provider]
+			if !ok {
+				benchMu.Lock()
+				result.Models[i].Status = "error"
+				result.Models[i].Error = "provider not configured"
+				benchMu.Unlock()
+				continue
+			}
+
+			def := config.LLMProviderDef{
+				Provider:     provider,
+				APIKey:       prov.APIKey,
+				Model:        model,
+				APIEndpoint:  prov.APIEndpoint,
+				RefreshToken: prov.RefreshToken,
+				KeepAlive:    prov.KeepAlive,
+			}
+
+			client, err := llm.NewClientFromDef(def)
+			if err != nil {
+				slog.Error("[benchmark] client creation failed", "provider", provider, "model", model, "error", err)
+				benchMu.Lock()
+				result.Models[i].Status = "error"
+				result.Models[i].Error = err.Error()
+				benchMu.Unlock()
+				continue
+			}
+
+			timeout := 30 * time.Second
+			if prov.TimeoutMs > 0 {
+				timeout = time.Duration(prov.TimeoutMs) * time.Millisecond
+			}
+			if provider == "local" || provider == "ollama" || provider == "lmstudio" {
+				timeout = 120 * time.Second
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			start := time.Now()
+			resp, err := client.Send(ctx, llm.Request{
+				Prompt: promptText,
+				Text:   benchmarkTestText,
+			})
+			elapsed := time.Since(start)
+			cancel()
+			client.Close()
+
+			benchMu.Lock()
+			result.Models[i].DurationMs = elapsed.Milliseconds()
+			var status, errMsg, output string
+			if err != nil {
+				if ctx.Err() == context.DeadlineExceeded {
+					result.Models[i].Status = "timeout"
+					result.Models[i].Error = fmt.Sprintf("timed out after %ds", int(timeout.Seconds()))
+					status = "timeout"
+					errMsg = result.Models[i].Error
+				} else {
+					result.Models[i].Status = "error"
+					result.Models[i].Error = err.Error()
+					status = "error"
+					errMsg = err.Error()
+				}
+			} else {
+				result.Models[i].Status = "success"
+				result.Models[i].Output = resp.Text
+				status = "success"
+				output = resp.Text
+			}
+			benchMu.Unlock()
+
+			if s.RecordStatFn != nil {
+				s.RecordStatFn(
+					promptName, promptIcon,
+					provider, model, result.Models[i].Label,
+					status, errMsg, output,
+					len(benchmarkTestText), int(elapsed.Milliseconds()),
+				)
+			}
+		}
+
+		benchMu.Lock()
+		result.Running = false
+		result.Done = true
+		benchMu.Unlock()
+		slog.Info("[benchmark] filtered complete")
+	}()
+
+	return "ok"
+}
+
 // GetBenchmarkResult returns the current benchmark result as JSON.
 func (s *SettingsService) GetBenchmarkResult() string {
 	benchMu.Lock()

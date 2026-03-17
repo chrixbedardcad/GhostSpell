@@ -42,6 +42,7 @@ type CatalogEntry struct {
 	IsDefault      bool   `json:"is_default"`      // is the default model
 	ConfigLabel    string `json:"config_label"`     // label in config, if enabled
 	AvgSpeedMs     int64  `json:"avg_speed_ms"`     // from stats, 0 = no data
+	SpeedPrompt    string `json:"speed_prompt"`     // which prompt was used for the speed
 	ProviderActive bool   `json:"provider_active"`  // provider is configured
 }
 
@@ -91,10 +92,27 @@ func (s *SettingsService) GetModelCatalog() string {
 			statsModels = summary.Models
 		}
 	}
-	speedLookup := make(map[string]int64)
+	type speedInfo struct {
+		ms     int64
+		prompt string
+	}
+	speedLookup := make(map[string]speedInfo)
 	for _, sm := range statsModels {
 		key := sm.Provider + "/" + sm.Model
-		speedLookup[key] = sm.AvgDuration
+		speedLookup[key] = speedInfo{ms: sm.AvgDuration}
+	}
+
+	// Override with latest benchmark results if available (has prompt info).
+	benchMu.Lock()
+	br := benchResult
+	benchMu.Unlock()
+	if br != nil && br.Done {
+		for _, bm := range br.Models {
+			if bm.Status == "success" && bm.DurationMs > 0 {
+				key := bm.Provider + "/" + bm.Model
+				speedLookup[key] = speedInfo{ms: bm.DurationMs, prompt: br.PromptName}
+			}
+		}
 	}
 
 	// Build entries from catalog.
@@ -121,9 +139,10 @@ func (s *SettingsService) GetModelCatalog() string {
 			entry.IsDefault = match.label == cfg.DefaultModel
 		}
 
-		// Speed from stats.
-		if spd, ok := speedLookup[key]; ok {
-			entry.AvgSpeedMs = spd
+		// Speed from stats/benchmark.
+		if si, ok := speedLookup[key]; ok {
+			entry.AvgSpeedMs = si.ms
+			entry.SpeedPrompt = si.prompt
 		}
 
 		// Only show models whose provider is active.
@@ -166,8 +185,9 @@ func (s *SettingsService) GetModelCatalog() string {
 			ConfigLabel:    label,
 			ProviderActive: true,
 		}
-		if spd, ok := speedLookup[key]; ok {
-			entry.AvgSpeedMs = spd
+		if si, ok := speedLookup[key]; ok {
+			entry.AvgSpeedMs = si.ms
+			entry.SpeedPrompt = si.prompt
 		}
 		entries = append(entries, entry)
 	}
