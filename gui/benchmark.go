@@ -55,7 +55,15 @@ func (s *SettingsService) RunBenchmark() string {
 		return "error: benchmark already running"
 	}
 
-	cfg := s.cfgCopy
+	// Reload config from disk to get the current active prompt (may have
+	// changed via tray menu since the settings window opened).
+	// Reload config from disk to get the current active prompt (may have
+	// changed via tray menu since the settings window opened).
+	liveCfg, reloadErr := config.LoadRaw(s.configPath)
+	if reloadErr != nil {
+		liveCfg = s.cfgCopy
+	}
+	cfg := liveCfg
 	if len(cfg.Providers) == 0 {
 		benchMu.Unlock()
 		return "error: no providers configured"
@@ -251,7 +259,14 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 		return "error: benchmark already running"
 	}
 
-	cfg := s.cfgCopy
+	// Reload config from disk to get the current active prompt.
+	// Reload config from disk to get the current active prompt (may have
+	// changed via tray menu since the settings window opened).
+	liveCfg, reloadErr := config.LoadRaw(s.configPath)
+	if reloadErr != nil {
+		liveCfg = s.cfgCopy
+	}
+	cfg := liveCfg
 
 	type modelSpec struct {
 		Provider string `json:"provider"`
