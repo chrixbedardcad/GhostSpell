@@ -73,7 +73,7 @@ func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, ref
 		KeepAlive:    keepAlive,
 	}
 
-	// Auto-create a default model entry if none exists for this provider.
+	// Auto-enable the recommended catalog model if no model exists for this provider.
 	hasModel := false
 	for _, me := range s.cfgCopy.Models {
 		if me.Provider == providerType {
@@ -82,33 +82,53 @@ func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, ref
 		}
 	}
 	if !hasModel {
-		models := KnownModels(providerType)
-		if len(models) > 0 {
-			modelName := models[0].Name
-			for _, m := range models {
-				if m.Tag == "recommended" {
-					modelName = m.Name
-					break
+		// Find recommended model from catalog.
+		var bestModel, bestName string
+		for _, cm := range parseCatalog() {
+			if cm.Provider != providerType {
+				continue
+			}
+			if bestModel == "" {
+				bestModel = cm.Model
+				bestName = cm.Name
+			}
+			for _, tag := range cm.Tags {
+				if tag == "recommended" {
+					bestModel = cm.Model
+					bestName = cm.Name
 				}
 			}
-			labels := map[string]string{
-				"local": "GhostSpell Local", "chatgpt": "ChatGPT", "openai": "OpenAI",
-				"anthropic": "Claude", "gemini": "Gemini", "xai": "Grok",
-				"deepseek": "DeepSeek", "ollama": "Ollama", "lmstudio": "LM Studio",
+		}
+		// Fallback to KnownModels if catalog has nothing for this provider.
+		if bestModel == "" {
+			models := KnownModels(providerType)
+			for _, m := range models {
+				if bestModel == "" {
+					bestModel = m.Name
+					bestName = m.Name
+				}
+				if m.Tag == "recommended" {
+					bestModel = m.Name
+					bestName = m.Name
+				}
 			}
-			label := labels[providerType]
-			if label == "" {
-				label = providerType
-			}
+		}
+		if bestModel != "" {
 			if s.cfgCopy.Models == nil {
 				s.cfgCopy.Models = make(map[string]config.ModelEntry)
 			}
+			label := bestName
+			if label == "" {
+				label = bestModel
+			}
 			s.cfgCopy.Models[label] = config.ModelEntry{
 				Provider: providerType,
-				Model:    modelName,
+				Model:    bestModel,
 			}
-			s.cfgCopy.DefaultModel = label
-			guiLog("[GUI] Auto-created model: label=%s provider=%s model=%s", label, providerType, modelName)
+			if s.cfgCopy.DefaultModel == "" {
+				s.cfgCopy.DefaultModel = label
+			}
+			guiLog("[GUI] Auto-enabled recommended model: label=%s provider=%s model=%s", label, providerType, bestModel)
 		}
 	}
 

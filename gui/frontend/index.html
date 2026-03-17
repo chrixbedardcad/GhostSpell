@@ -720,6 +720,7 @@
         <button class="btn btn-primary" onclick="saveCloudProvider('openai')">Save</button>
       </div>
       <div id="prov-openai-status" class="status"></div>
+      <div id="prov-openai-models"></div>
     </div>
 
     <!-- ======== Cloud Provider Setup (shared: Anthropic, Gemini, xAI, DeepSeek) ======== -->
@@ -741,6 +742,7 @@
         <button class="btn btn-primary" onclick="saveCloudProvider(currentCloudProvider)">Save</button>
       </div>
       <div id="prov-cloud-status" class="status"></div>
+      <div id="prov-cloud-models"></div>
     </div>
 
   </div><!-- /tab-providers -->
@@ -1326,6 +1328,9 @@ function showProviderSetup(type) {
   if (el) { el.style.display = 'block'; el.scrollIntoView({behavior:'smooth'}); }
   // Load current values from config
   loadProviderSetupValues(type);
+  // Show model activation toggles if a models container exists.
+  var modelsContainer = document.getElementById('prov-' + type + '-models');
+  if (modelsContainer) renderProviderModels(type, 'prov-' + type + '-models');
 }
 
 function backToProviders() {
@@ -1391,6 +1396,8 @@ function showCloudSetup(type) {
     document.getElementById('prov-cloud-apikey').value = prov.api_key;
   }
   document.getElementById('provider-setup-cloud').style.display = 'block';
+  // Show available models with activation toggles.
+  renderProviderModels(type, 'prov-cloud-models');
 }
 
 async function saveCloudProvider(type) {
@@ -1882,6 +1889,47 @@ async function saveLMStudioProvider() {
 // ===========================================================================
 // MODELS TAB
 // ===========================================================================
+
+// ---- Provider model activation toggles ----
+async function renderProviderModels(provider, containerId) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var raw = await goCall('getProviderModels', provider);
+  if (!raw) { container.innerHTML = ''; return; }
+  var models;
+  try { models = JSON.parse(raw); } catch(e) { container.innerHTML = ''; return; }
+  if (!models || models.length === 0) { container.innerHTML = '<div style="font-size:0.82em;color:#6c7086;padding:6px 0">No models available in catalog for this provider.</div>'; return; }
+
+  var html = '<div style="margin-top:12px"><div style="font-size:0.85em;font-weight:600;color:#bac2de;margin-bottom:8px">Available Models</div>';
+  for (var i = 0; i < models.length; i++) {
+    var m = models[i];
+    var costDisplay = m.cost_tier === 'free' ? 'FREE' : m.cost_tier.toUpperCase();
+    var costColor = m.cost_tier === 'free' ? '#a6e3a1' : m.cost_tier === '$' ? '#89b4fa' : m.cost_tier === '$$' ? '#f9e2af' : '#f38ba8';
+    var tags = (m.tags || []).filter(function(t) { return t !== 'free' && t !== 'offline'; });
+    var tagHtml = '';
+    tags.forEach(function(t) { if (TAG_BADGES[t]) tagHtml += ' <span class="badge ' + TAG_BADGES[t].cls + '">' + TAG_BADGES[t].label + '</span>'; });
+    if (m.is_default) tagHtml += ' <span style="background:#a6e3a1;color:#1e1e2e;font-size:0.6em;padding:1px 5px;border-radius:3px;font-weight:700">DEFAULT</span>';
+
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #45475a">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:0.85em;color:#cdd6f4;font-weight:500">' + esc(m.name) + tagHtml + '</div>';
+    if (m.description) html += '<div style="font-size:0.72em;color:#6c7086">' + esc(m.description) + '</div>';
+    html += '</div>';
+    if (costDisplay) html += '<span style="font-size:0.68em;font-weight:600;color:' + costColor + ';min-width:35px;text-align:center">' + costDisplay + '</span>';
+    html += '<label class="toggle" style="flex-shrink:0"><input type="checkbox"' + (m.enabled ? ' checked' : '') + (m.is_default ? ' disabled title="Cannot disable the default model"' : '') + ' onchange="toggleProviderModel(\'' + escJS(provider) + '\',\'' + escJS(m.model) + '\',this.checked,\'' + containerId + '\')"><span class="slider"></span></label>';
+    html += '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function toggleProviderModel(provider, model, enabled, containerId) {
+  var result = await goCall('toggleModel', provider, model, enabled);
+  if (result && result.startsWith('error')) {
+    alert(result);
+  }
+  renderProviderModels(provider, containerId);
+}
 
 const PROVIDER_SVGS = {
   gemini:    '<svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px"><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81" fill="url(#gmi_g)"/></svg>',

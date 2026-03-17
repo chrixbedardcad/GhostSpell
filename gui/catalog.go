@@ -225,3 +225,105 @@ func (s *SettingsService) SetDefaultByModel(provider, model string) string {
 	}
 	return "ok"
 }
+
+// ToggleModel enables or disables a model for a provider.
+// When enabled, creates a config.Models entry. When disabled, removes it.
+func (s *SettingsService) ToggleModel(provider, model string, enabled bool) string {
+	guiLog("[GUI] JS called: ToggleModel(%s, %s, %v)", provider, model, enabled)
+
+	if s.cfgCopy.Models == nil {
+		s.cfgCopy.Models = make(map[string]config.ModelEntry)
+	}
+
+	if enabled {
+		// Check if already exists.
+		for _, me := range s.cfgCopy.Models {
+			if me.Provider == provider && me.Model == model {
+				return "ok" // already enabled
+			}
+		}
+		// Create entry. Use catalog name for label.
+		name := model
+		for _, cm := range parseCatalog() {
+			if cm.Provider == provider && cm.Model == model {
+				name = cm.Name
+				break
+			}
+		}
+		label := name
+		for _, exists := s.cfgCopy.Models[label]; exists; _, exists = s.cfgCopy.Models[label] {
+			label = label + " (" + provider + ")"
+		}
+		s.cfgCopy.Models[label] = config.ModelEntry{
+			Provider: provider,
+			Model:    model,
+		}
+		// If no default, set this one.
+		if s.cfgCopy.DefaultModel == "" {
+			s.cfgCopy.DefaultModel = label
+		}
+	} else {
+		// Find and remove.
+		for label, me := range s.cfgCopy.Models {
+			if me.Provider == provider && me.Model == model {
+				// Can't disable the default model.
+				if label == s.cfgCopy.DefaultModel {
+					return "error: cannot disable the default model — pick a different default first"
+				}
+				delete(s.cfgCopy.Models, label)
+				break
+			}
+		}
+	}
+
+	if err := s.validateAndSave(); err != nil {
+		return "error: " + err.Error()
+	}
+	return "ok"
+}
+
+// GetProviderModels returns catalog models for a specific provider with enabled state, as JSON.
+func (s *SettingsService) GetProviderModels(provider string) string {
+	guiLog("[GUI] JS called: GetProviderModels(%s)", provider)
+
+	catalog := parseCatalog()
+	cfg := s.cfgCopy
+
+	type ProviderModelEntry struct {
+		Model       string   `json:"model"`
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		CostTier    string   `json:"cost_tier"`
+		Tags        []string `json:"tags"`
+		Enabled     bool     `json:"enabled"`
+		IsDefault   bool     `json:"is_default"`
+	}
+
+	var entries []ProviderModelEntry
+	for _, cm := range catalog {
+		if cm.Provider != provider {
+			continue
+		}
+		enabled := false
+		isDefault := false
+		for label, me := range cfg.Models {
+			if me.Provider == cm.Provider && me.Model == cm.Model {
+				enabled = true
+				isDefault = label == cfg.DefaultModel
+				break
+			}
+		}
+		entries = append(entries, ProviderModelEntry{
+			Model:       cm.Model,
+			Name:        cm.Name,
+			Description: cm.Description,
+			CostTier:    cm.CostTier,
+			Tags:        cm.Tags,
+			Enabled:     enabled,
+			IsDefault:   isDefault,
+		})
+	}
+
+	data, _ := json.Marshal(entries)
+	return string(data)
+}
