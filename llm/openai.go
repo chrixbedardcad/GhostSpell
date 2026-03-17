@@ -183,6 +183,13 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 	}
 
 	text := apiResp.Choices[0].Message.Content
+
+	// Strip <think>...</think> blocks from local providers (LM Studio, etc.)
+	// that may run thinking models like Gemma, Qwen, DeepSeek.
+	if c.providerName == "lmstudio" {
+		text = stripThinkingTags(text)
+	}
+
 	slog.Debug(c.providerName+": parsed response", "text_len", len(text), "choices", len(apiResp.Choices))
 
 	if strings.TrimSpace(text) == "" {
