@@ -4,6 +4,7 @@ package sound
 
 import (
 	_ "embed"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -14,17 +15,64 @@ var startWAV []byte
 //go:embed working.wav
 var workingWAV []byte
 
+//go:embed working2.wav
+var working2WAV []byte
+
+//go:embed working3.wav
+var working3WAV []byte
+
+//go:embed working4.wav
+var working4WAV []byte
+
+//go:embed working5.wav
+var working5WAV []byte
+
 //go:embed success.wav
 var successWAV []byte
+
+//go:embed success2.wav
+var success2WAV []byte
+
+//go:embed success3.wav
+var success3WAV []byte
+
+//go:embed success4.wav
+var success4WAV []byte
+
+//go:embed success5.wav
+var success5WAV []byte
 
 //go:embed error.wav
 var errorWAV []byte
 
+//go:embed error2.wav
+var error2WAV []byte
+
 //go:embed toggle.wav
 var toggleWAV []byte
 
+//go:embed toggle1.wav
+var toggle1WAV []byte
+
+//go:embed toggle2.wav
+var toggle2WAV []byte
+
+//go:embed toggle3.wav
+var toggle3WAV []byte
+
+//go:embed toggle4.wav
+var toggle4WAV []byte
+
 //go:embed cancel.wav
 var cancelWAV []byte
+
+// pickRandom returns a random element from the list.
+func pickRandom(variants [][]byte) []byte {
+	if len(variants) == 0 {
+		return nil
+	}
+	return variants[rand.Intn(len(variants))]
+}
 
 var (
 	enabled bool
@@ -52,9 +100,9 @@ func play(data []byte) {
 }
 
 func PlayStart()   { play(startWAV) }
-func PlaySuccess() { play(successWAV) }
-func PlayError()   { play(errorWAV) }
-func PlayToggle()  { play(toggleWAV) }
+func PlaySuccess() { play(pickRandom([][]byte{successWAV, success2WAV, success3WAV, success4WAV, success5WAV})) }
+func PlayError()   { play(pickRandom([][]byte{errorWAV, error2WAV})) }
+func PlayToggle()  { play(pickRandom([][]byte{toggleWAV, toggle1WAV, toggle2WAV, toggle3WAV, toggle4WAV})) }
 func PlayCancel()  { play(cancelWAV) }
 func PlayWorking() { play(workingWAV) }
 
@@ -76,9 +124,10 @@ func StartWorkingLoop() {
 	workingStop = stop
 	workingMu.Unlock()
 
+	workingVariants := [][]byte{workingWAV, working2WAV, working3WAV, working4WAV, working5WAV}
 	go func() {
 		for {
-			playWAVLoop(workingWAV) // blocks until sound finishes; trackable for kill
+			playWAVLoop(pickRandom(workingVariants)) // blocks until sound finishes; trackable for kill
 			select {
 			case <-stop:
 				return
