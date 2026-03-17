@@ -20,6 +20,24 @@ int cgPostEventAllowed() {
     return CGPreflightPostEventAccess();
 }
 
+// cgCanCreateKeyEvent tests Accessibility by actually creating a keyboard event
+// and immediately releasing it. This is the strongest validation — it catches
+// stale TCC entries where AXIsProcessTrusted()=true but the binary hash changed
+// after an update, making CGEventCreateKeyboardEvent return NULL.
+int cgCanCreateKeyEvent() {
+    CGEventSourceRef src = CGEventSourceCreate(kCGEventSourceStateCombinedSessionState);
+    if (!src) {
+        src = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
+    }
+    CGEventRef ev = CGEventCreateKeyboardEvent(src, 0, true);
+    if (src) CFRelease(src);
+    if (ev == NULL) {
+        return 0; // Accessibility NOT truly granted
+    }
+    CFRelease(ev);
+    return 1; // Accessibility working
+}
+
 // cgCanCreateEventTap tests Input Monitoring by actually creating a CGEventTap
 // and immediately destroying it. CGPreflightListenEventAccess is unreliable
 // (returns true on macOS 13+ even when permission is NOT granted).
@@ -45,19 +63,27 @@ import (
 	"os/exec"
 )
 
-// checkAccessibility returns true if the process has Accessibility permission.
-// GhostSpell needs two macOS permissions:
-//   - Accessibility — for CGEventPost (keyboard simulation)
-//   - Input Monitoring — for RegisterEventHotKey (global hotkeys)
-// Only Accessibility can be checked programmatically (AXIsProcessTrusted).
-// There is no reliable public API for Input Monitoring.
+// checkAccessibility returns true if the process has working Accessibility permission.
+// Uses a real CGEventCreateKeyboardEvent test — the strongest validation.
+// AXIsProcessTrusted() alone is unreliable after binary updates (returns true
+// even when the TCC entry is stale and events won't actually post).
 func checkAccessibility() bool {
-	return C.axIsTrusted() != 0
+	// Fast check first — if AX isn't trusted at all, no point testing further.
+	if C.axIsTrusted() == 0 {
+		return false
+	}
+	// Strong validation: actually create a keyboard event to verify the
+	// binary hash matches the TCC entry.
+	return C.cgCanCreateKeyEvent() != 0
 }
 
 // checkPostEventAccess returns true if CGEventPost will actually deliver events.
 func checkPostEventAccess() bool {
-	return C.cgPostEventAllowed() != 0
+	if C.cgPostEventAllowed() == 0 {
+		return false
+	}
+	// Double-check with real event creation.
+	return C.cgCanCreateKeyEvent() != 0
 }
 
 // checkInputMonitoring returns true if the process has Input Monitoring
