@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -39,12 +40,14 @@ func newLMStudioFromDef(def config.LLMProviderDef) *OpenAIClient {
 		timeoutMs = 120000
 	}
 
-	// LM Studio auto-selects the loaded model when model is empty.
-	// Config stores "default" as a placeholder (passes validation),
-	// but we send "" so LM Studio uses whatever model is loaded.
+	// LM Studio v0.4.6+ requires a real model name — rejects both "" and
+	// "default". Auto-detect the loaded model from /v1/models endpoint.
 	model := def.Model
-	if model == "default" {
-		model = ""
+	if model == "" || model == "default" {
+		if _, models, err := LMStudioStatus(endpoint); err == nil && len(models) > 0 {
+			model = models[0]
+			slog.Info("[lmstudio] auto-detected model", "model", model)
+		}
 	}
 
 	return &OpenAIClient{
