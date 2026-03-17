@@ -95,8 +95,9 @@ func (s *SettingsService) GetModelCatalog() string {
 		}
 	}
 	type speedInfo struct {
-		ms     int64
-		prompt string
+		ms        int64
+		prompt    string
+		timestamp string
 	}
 	speedLookup := make(map[string]speedInfo)
 	for _, sm := range statsModels {
@@ -112,7 +113,7 @@ func (s *SettingsService) GetModelCatalog() string {
 		for _, bm := range br.Models {
 			if bm.Status == "success" && bm.DurationMs > 0 {
 				key := bm.Provider + "/" + bm.Model
-				speedLookup[key] = speedInfo{ms: bm.DurationMs, prompt: br.PromptName}
+				speedLookup[key] = speedInfo{ms: bm.DurationMs, prompt: br.PromptName, timestamp: br.Timestamp}
 			}
 		}
 	}
@@ -129,8 +130,8 @@ func (s *SettingsService) GetModelCatalog() string {
 			ProviderActive: false,
 		}
 
-		// Check if provider is configured.
-		if _, ok := cfg.Providers[cm.Provider]; ok {
+		// Check if provider is configured and not disabled.
+		if prov, ok := cfg.Providers[cm.Provider]; ok && !prov.Disabled {
 			entry.ProviderActive = true
 		}
 
@@ -145,6 +146,7 @@ func (s *SettingsService) GetModelCatalog() string {
 		if si, ok := speedLookup[key]; ok {
 			entry.AvgSpeedMs = si.ms
 			entry.SpeedPrompt = si.prompt
+			entry.SpeedTimestamp = si.timestamp
 		}
 
 		// Only show models whose provider is active.
@@ -159,8 +161,9 @@ func (s *SettingsService) GetModelCatalog() string {
 		if seen[key] {
 			continue
 		}
-		// Provider must be active.
-		if _, ok := cfg.Providers[me.Provider]; !ok {
+		// Provider must be active and not disabled.
+		prov, ok := cfg.Providers[me.Provider]
+		if !ok || prov.Disabled {
 			continue
 		}
 		// Use model name as display name; fall back to label if model is "default".
@@ -190,6 +193,7 @@ func (s *SettingsService) GetModelCatalog() string {
 		if si, ok := speedLookup[key]; ok {
 			entry.AvgSpeedMs = si.ms
 			entry.SpeedPrompt = si.prompt
+			entry.SpeedTimestamp = si.timestamp
 		}
 		entries = append(entries, entry)
 	}

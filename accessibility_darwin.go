@@ -20,11 +20,22 @@ int cgPostEventAllowed() {
     return CGPreflightPostEventAccess();
 }
 
-// cgListenEventAllowed uses CGPreflightListenEventAccess (macOS 10.15+) to
-// check whether the process has Input Monitoring permission (can listen for
-// global keyboard events via CGEventTap).
-int cgListenEventAllowed() {
-    return CGPreflightListenEventAccess();
+// cgCanCreateEventTap tests Input Monitoring by actually creating a CGEventTap
+// and immediately destroying it. CGPreflightListenEventAccess is unreliable
+// (returns true on macOS 13+ even when permission is NOT granted).
+// Creating a real tap is the ONLY 100% reliable method (#172, v0.23.1).
+int cgCanCreateEventTap() {
+    CFMachPortRef tap = CGEventTapCreate(
+        kCGSessionEventTap,
+        kCGHeadInsertEventTap,
+        kCGEventTapOptionListenOnly,
+        CGEventMaskBit(kCGEventKeyDown),
+        NULL, NULL);
+    if (tap == NULL) {
+        return 0; // Input Monitoring NOT granted
+    }
+    CFRelease(tap);
+    return 1; // Input Monitoring granted
 }
 */
 import "C"
@@ -50,11 +61,10 @@ func checkPostEventAccess() bool {
 }
 
 // checkInputMonitoring returns true if the process has Input Monitoring
-// permission. Uses CGPreflightListenEventAccess (macOS 10.15+).
-// On older macOS versions where Accessibility covers Input Monitoring,
-// this correctly returns true — no separate permission needed.
+// permission. Creates a real CGEventTap to test — the only reliable method.
+// CGPreflightListenEventAccess is unreliable on macOS 13+ (#172).
 func checkInputMonitoring() bool {
-	return C.cgListenEventAllowed() != 0
+	return C.cgCanCreateEventTap() != 0
 }
 
 // openAccessibilitySettings opens the macOS System Settings to the

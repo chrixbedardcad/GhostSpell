@@ -66,6 +66,12 @@ var toggle4WAV []byte
 //go:embed cancel.wav
 var cancelWAV []byte
 
+//go:embed benchmarking.wav
+var benchmarkingWAV []byte
+
+//go:embed benchmarking2.wav
+var benchmarking2WAV []byte
+
 // pickRandom returns a random element from the list.
 func pickRandom(variants [][]byte) []byte {
 	if len(variants) == 0 {
@@ -103,8 +109,9 @@ func PlayStart()   { play(startWAV) }
 func PlaySuccess() { play(pickRandom([][]byte{successWAV, success2WAV, success3WAV, success4WAV, success5WAV})) }
 func PlayError()   { play(pickRandom([][]byte{errorWAV, error2WAV})) }
 func PlayToggle()  { play(pickRandom([][]byte{toggleWAV, toggle1WAV, toggle2WAV, toggle3WAV, toggle4WAV})) }
-func PlayCancel()  { play(cancelWAV) }
-func PlayWorking() { play(workingWAV) }
+func PlayCancel()     { play(cancelWAV) }
+func PlayWorking()    { play(workingWAV) }
+func PlayBenchmark()  { play(pickRandom([][]byte{benchmarkingWAV, benchmarking2WAV})) }
 
 // StartWorkingLoop plays working.wav in a loop until StopWorkingLoop is called.
 func StartWorkingLoop() {

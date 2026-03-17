@@ -664,7 +664,7 @@
         <button class="btn btn-secondary" onclick="refreshOllamaSetup()">Refresh</button>
         <button class="btn btn-secondary" id="prov-ollama-test-btn" onclick="testProviderConnection('ollama')">Test Connection</button>
         <button class="btn btn-primary" onclick="saveOllamaProvider()">Save</button>
-        <button class="btn btn-secondary btn-sm" id="prov-remove-ollama" onclick="removeProvider('ollama')" style="margin-left:auto;font-size:0.72em;color:#6c7086">Remove Provider</button>
+        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-ollama" onchange="toggleProvider('ollama',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-ollama-test-result" class="status"></div>
       <div id="prov-ollama-status" class="status"></div>
@@ -702,7 +702,7 @@
         <button class="btn btn-secondary" onclick="refreshLMStudioSetup()">Refresh</button>
         <button class="btn btn-secondary" id="prov-lmstudio-test-btn" onclick="testProviderConnection('lmstudio')">Test Connection</button>
         <button class="btn btn-primary" onclick="saveLMStudioProvider()">Save</button>
-        <button class="btn btn-secondary btn-sm" id="prov-remove-lmstudio" onclick="removeProvider('lmstudio')" style="margin-left:auto;font-size:0.72em;color:#6c7086">Remove Provider</button>
+        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-lmstudio" onchange="toggleProvider('lmstudio',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-lmstudio-test-result" class="status"></div>
       <div id="prov-lmstudio-status" class="status"></div>
@@ -726,7 +726,7 @@
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="testOpenAIApiKey()">Test Connection</button>
         <button class="btn btn-primary" onclick="saveCloudProvider('openai')">Save</button>
-        <button class="btn btn-secondary btn-sm" id="prov-remove-openai" onclick="removeProvider('openai')" style="margin-left:auto;font-size:0.72em;color:#6c7086">Remove Provider</button>
+        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-openai" onchange="toggleProvider('openai',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-openai-status" class="status"></div>
       <div id="prov-openai-models"></div>
@@ -749,7 +749,7 @@
       <div class="btn-row">
         <button class="btn btn-secondary" id="prov-cloud-test-btn" onclick="testCloudProvider()">Test Connection</button>
         <button class="btn btn-primary" onclick="saveCloudProvider(currentCloudProvider)">Save</button>
-        <button class="btn btn-secondary btn-sm" id="prov-remove-cloud" onclick="removeProvider(currentCloudProvider)" style="margin-left:auto;font-size:0.72em;color:#6c7086">Remove Provider</button>
+        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-cloud" onchange="toggleProvider(currentCloudProvider,this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-cloud-status" class="status"></div>
       <div id="prov-cloud-models"></div>
@@ -1316,16 +1316,26 @@ async function renderProviders() {
   const configuredTypes = new Set(Object.keys(providers));
   types.forEach(function(t) {
     var isConfigured = configuredTypes.has(t);
+    var isDisabled = isConfigured && providers[t] && providers[t].disabled;
     var statusEl = document.getElementById('prov-status-' + t);
     var testBtn = document.getElementById('prov-test-' + t);
     var card = document.getElementById('prov-card-' + t);
     var setupBtn = card ? card.querySelector('.provider-card-actions .btn-primary') : null;
     if (statusEl) {
-      statusEl.textContent = isConfigured ? '\u25CF Configured' : '\u25CB Not configured';
-      statusEl.className = 'provider-status ' + (isConfigured ? 'active' : 'inactive');
+      if (isDisabled) {
+        statusEl.textContent = '\u25CB Disabled';
+        statusEl.className = 'provider-status inactive';
+      } else if (isConfigured) {
+        statusEl.textContent = '\u25CF Configured';
+        statusEl.className = 'provider-status active';
+      } else {
+        statusEl.textContent = '\u25CB Not configured';
+        statusEl.className = 'provider-status inactive';
+      }
     }
     if (testBtn) testBtn.style.display = isConfigured ? '' : 'none';
     if (setupBtn) setupBtn.textContent = isConfigured ? 'Settings' : 'Set up';
+    if (card) card.style.opacity = isDisabled ? '0.5' : '1';
   });
 }
 
@@ -1345,6 +1355,12 @@ function showProviderSetup(type) {
   if (el) { el.style.display = 'block'; el.scrollIntoView({behavior:'smooth'}); }
   // Load current values from config
   loadProviderSetupValues(type);
+  // Set provider enabled toggle state.
+  var provToggle = document.getElementById('prov-toggle-' + type);
+  if (provToggle) {
+    var prov = (configData.providers || {})[type];
+    provToggle.checked = prov ? !prov.disabled : false;
+  }
   // Show model activation toggles if a models container exists.
   var modelsContainer = document.getElementById('prov-' + type + '-models');
   if (modelsContainer) renderProviderModels(type, 'prov-' + type + '-models');
@@ -1413,6 +1429,11 @@ function showCloudSetup(type) {
     document.getElementById('prov-cloud-apikey').value = prov.api_key;
   }
   document.getElementById('provider-setup-cloud').style.display = 'block';
+  // Set provider enabled toggle state.
+  var cloudToggle = document.getElementById('prov-toggle-cloud');
+  if (cloudToggle) {
+    cloudToggle.checked = prov ? !prov.disabled : false;
+  }
   // Show available models with activation toggles.
   renderProviderModels(type, 'prov-cloud-models');
 }
@@ -1432,23 +1453,14 @@ async function saveCloudProvider(type) {
   }
 }
 
-var _removeConfirming = {};
-async function removeProvider(type) {
-  if (!_removeConfirming[type]) {
-    _removeConfirming[type] = true;
-    var btn = document.getElementById('prov-remove-' + type);
-    if (btn) { btn.textContent = 'Confirm Remove?'; btn.style.color = '#f38ba8'; }
-    setTimeout(function() { _removeConfirming[type] = false; if (btn) { btn.textContent = 'Remove Provider'; btn.style.color = ''; } }, 4000);
+async function toggleProvider(type, enabled) {
+  var result = await goCall('toggleProvider', type, enabled);
+  if (result && result.startsWith('error')) {
+    alert(result);
     return;
   }
-  _removeConfirming[type] = false;
-  var result = await goCall('removeProvider', type);
-  if (result && result.startsWith('ok') || result === 'ok') {
-    await reloadConfig();
-    backToProviders();
-  } else {
-    alert(result || 'Failed to remove provider');
-  }
+  await reloadConfig();
+  renderProviders();
 }
 
 async function testProviderConnection(type) {
@@ -2181,6 +2193,7 @@ function renderModelGrid(models) {
       html += '<div style="font-size:0.68em;color:#f38ba8">failed</div>';
     } else if (speedStr) {
       var promptLabel = m.speed_prompt ? ' <span style="font-size:0.85em;color:#6c7086">' + esc(m.speed_prompt) + '</span>' : '';
+      if (m.speed_ts) promptLabel += '<div style="font-size:0.65em;color:#585b70">' + esc(m.speed_ts) + '</div>';
       html += '<div style="font-size:0.78em;font-weight:600;color:' + speedColor + '">' + speedStr + promptLabel + '</div>';
     } else {
       html += '<div style="font-size:0.68em;color:#585b70">no benchmark</div>';

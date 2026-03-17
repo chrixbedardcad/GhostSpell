@@ -239,6 +239,22 @@ func (s *SettingsService) RemoveProvider(providerType string) string {
 	return "ok"
 }
 
+// ToggleProvider enables or disables a provider without removing its credentials.
+func (s *SettingsService) ToggleProvider(providerType string, enabled bool) string {
+	guiLog("[GUI] JS called: ToggleProvider(%s, enabled=%v)", providerType, enabled)
+	prov, ok := s.cfgCopy.Providers[providerType]
+	if !ok {
+		return "error: provider not configured"
+	}
+	prov.Disabled = !enabled
+	s.cfgCopy.Providers[providerType] = prov
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // DeleteModel removes a model entry by label.
 func (s *SettingsService) DeleteModel(label string) string {
 	guiLog("[GUI] JS called: DeleteModel(%s)", label)
