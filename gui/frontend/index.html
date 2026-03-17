@@ -751,52 +751,39 @@
       <h2 style="margin-bottom:0">Models</h2>
       <div style="display:flex;gap:6px">
         <button class="btn btn-secondary btn-sm" onclick="resetModels()">Reset Models</button>
-        <button class="btn btn-primary btn-sm" onclick="showAddModel()">+ Add Model</button>
       </div>
     </div>
     <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
-      &#129504; A <strong style="color:#cdd6f4">model</strong> is the specific AI brain that processes your text. Smaller models are faster, larger models produce better results. Each model belongs to a provider.
+      Click any model to set it as your default. Models are auto-populated from your configured providers.
     </div>
 
-    <div id="model-list"></div>
+    <!-- Filter bar -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <input type="text" id="model-search" placeholder="Search models..." oninput="filterModels()" style="flex:1;min-width:120px;padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:6px;color:#cdd6f4;font-size:0.82em;outline:none">
+      <select id="model-filter-provider" onchange="filterModels()" style="padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:6px;color:#cdd6f4;font-size:0.82em;cursor:pointer">
+        <option value="">All Providers</option>
+      </select>
+      <select id="model-filter-cost" onchange="filterModels()" style="padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:6px;color:#cdd6f4;font-size:0.82em;cursor:pointer">
+        <option value="">All Costs</option>
+        <option value="free">Free</option>
+        <option value="$">$</option>
+        <option value="$$">$$</option>
+        <option value="$$$">$$$</option>
+      </select>
+      <select id="model-filter-sort" onchange="filterModels()" style="padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:6px;color:#cdd6f4;font-size:0.82em;cursor:pointer">
+        <option value="default">Default First</option>
+        <option value="name">Name A-Z</option>
+        <option value="speed">Fastest</option>
+        <option value="cost">Cheapest</option>
+      </select>
+    </div>
+
+    <!-- Tile grid -->
+    <div id="model-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px"></div>
 
     <div id="model-empty" style="display:none">
-      <div class="empty-state">No models configured.<br>
-      <span style="font-size:0.85em;color:#6c7086">Set up a provider first in the <a href="#" onclick="switchTab('providers');return false" style="color:#89b4fa">Providers</a> tab, then add a model here.</span></div>
-    </div>
-
-    <!-- Simplified add/edit form -->
-    <div id="model-form" style="display:none;margin-top:14px;padding:14px;background:#313244;border-radius:8px">
-      <h2 id="model-form-title">Add Model</h2>
-      <input type="hidden" id="model-edit-original" value="">
-
-      <div class="form-group">
-        <label>Provider</label>
-        <select id="model-form-provider" onchange="onModelProviderChange()">
-          <!-- Populated dynamically with only configured providers -->
-        </select>
-      </div>
-
-      <div class="form-group" id="model-form-model-group" style="position:relative">
-        <label>Model</label>
-        <div id="model-form-picker" class="model-picker" onclick="toggleModelFormDD()">
-          <span id="model-form-label">Select a model</span>
-          <span style="color:#6c7086">&#9662;</span>
-        </div>
-        <input type="hidden" id="model-form-model" value="">
-        <div id="model-form-dropdown" class="model-dropdown" style="display:none"></div>
-      </div>
-
-      <div class="form-group">
-        <label>Label</label>
-        <input type="text" id="model-form-name" placeholder="e.g. my-claude">
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="cancelModelForm()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveModelForm()">Save</button>
-      </div>
-      <div class="status" id="model-form-status"></div>
+      <div class="empty-state">No models available.<br>
+      <span style="font-size:0.85em;color:#6c7086">Set up a provider in the <a href="#" onclick="switchTab('providers');return false" style="color:#89b4fa">Providers</a> tab to see available models.</span></div>
     </div>
   </div>
 
@@ -1925,15 +1912,63 @@ function ollamaTagBadge(tag) {
   return ' <span class="badge ' + map[tag] + '">' + labels[tag] + '</span>';
 }
 
+// ---- Models tab (tile catalog) ----
+var _catalogData = [];
+
 async function renderModels() {
   await reloadConfig();
-  var models = configData.models || {};
-  var defaultModel = configData.default_model || '';
-  var container = document.getElementById('model-list');
+  var raw = await goCall('getModelCatalog');
+  _catalogData = [];
+  if (raw) { try { _catalogData = JSON.parse(raw); } catch(e) {} }
+
+  // Populate provider filter from available data.
+  var provFilter = document.getElementById('model-filter-provider');
+  var provs = {};
+  _catalogData.forEach(function(m) { provs[m.provider] = true; });
+  provFilter.innerHTML = '<option value="">All Providers</option>';
+  Object.keys(provs).sort().forEach(function(p) {
+    provFilter.innerHTML += '<option value="' + p + '">' + esc(PROVIDER_NAMES[p] || p) + '</option>';
+  });
+
+  filterModels();
+}
+
+function filterModels() {
+  var search = (document.getElementById('model-search').value || '').toLowerCase();
+  var provFilter = document.getElementById('model-filter-provider').value;
+  var costFilter = document.getElementById('model-filter-cost').value;
+  var sort = document.getElementById('model-filter-sort').value;
+
+  var filtered = _catalogData.filter(function(m) {
+    if (search && !m.name.toLowerCase().includes(search) &&
+        !m.model.toLowerCase().includes(search) &&
+        !(m.description || '').toLowerCase().includes(search)) return false;
+    if (provFilter && m.provider !== provFilter) return false;
+    if (costFilter && m.cost_tier !== costFilter) return false;
+    return true;
+  });
+
+  if (sort === 'name') filtered.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  else if (sort === 'speed') filtered.sort(function(a, b) { return (a.avg_speed_ms || 99999) - (b.avg_speed_ms || 99999); });
+  else if (sort === 'cost') filtered.sort(function(a, b) { return a.cost_per_1k_tokens - b.cost_per_1k_tokens; });
+  else {
+    filtered.sort(function(a, b) {
+      if (a.is_default && !b.is_default) return -1;
+      if (!a.is_default && b.is_default) return 1;
+      if (a.enabled && !b.enabled) return -1;
+      if (!a.enabled && b.enabled) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  renderModelGrid(filtered);
+}
+
+function renderModelGrid(models) {
+  var container = document.getElementById('model-grid');
   var emptyEl = document.getElementById('model-empty');
 
-  var labels = Object.keys(models).sort();
-  if (labels.length === 0) {
+  if (models.length === 0) {
     container.innerHTML = '';
     emptyEl.style.display = '';
     return;
@@ -1941,26 +1976,61 @@ async function renderModels() {
   emptyEl.style.display = 'none';
 
   var html = '';
-  labels.forEach(function(label) {
-    var m = models[label];
-    var isDefault = label === defaultModel;
-    var provName = PROVIDER_NAMES[m.provider] || m.provider;
-    var hasProvider = !!(configData.providers || {})[m.provider];
-    var bigLogo = (PROVIDER_SVGS[m.provider] || '').replace(/width="22"/g, 'width="28"').replace(/height="22"/g, 'height="28"');
-    html += '<div class="provider-entry"' + (!hasProvider ? ' style="opacity:0.6"' : '') + '>';
-    html += '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">';
-    html += '<div style="flex-shrink:0">' + bigLogo + '</div>';
-    html += '<div class="provider-info">';
-    html += '<span class="provider-label">' + esc(label) + (isDefault ? ' <span class="badge badge-rec">DEFAULT</span>' : '') + (!hasProvider ? ' <span style="color:#f38ba8;font-size:0.75em">(provider not configured)</span>' : '') + '</span>';
-    html += '<span class="provider-meta">' + esc(provName) + ' \u00b7 ' + esc(m.model || 'no model') + '</span>';
+  models.forEach(function(m) {
+    var logo = (PROVIDER_SVGS[m.provider] || '').replace(/width="22"/g, 'width="36"').replace(/height="22"/g, 'height="36"');
+    // For local provider, also scale the img tag
+    if (m.provider === 'local') {
+      logo = logo.replace(/width="22"/g, 'width="36"').replace(/height="22"/g, 'height="36"');
+    }
+
+    var borderColor = m.is_default ? '#a6e3a1' : '#45475a';
+    var borderWidth = m.is_default ? '2px' : '1px';
+    var cursor = m.provider_active ? 'pointer' : 'not-allowed';
+    var opacity = m.provider_active ? '1' : '0.45';
+
+    var costDisplay = m.cost_tier === 'free' ? 'FREE' : m.cost_tier.toUpperCase();
+    var costColor = m.cost_tier === 'free' ? '#a6e3a1' : m.cost_tier === '$' ? '#89b4fa' : m.cost_tier === '$$' ? '#f9e2af' : m.cost_tier === '$$$' ? '#f38ba8' : '#6c7086';
+
+    var speedStr = m.avg_speed_ms > 0 ? (m.avg_speed_ms / 1000).toFixed(1) + 's' : '';
+    var speedColor = m.avg_speed_ms > 0 ? (m.avg_speed_ms < 2000 ? '#a6e3a1' : m.avg_speed_ms < 5000 ? '#f9e2af' : '#f38ba8') : '#6c7086';
+
+    var tags = (m.tags || []).filter(function(t) { return t !== 'free' && t !== 'offline'; });
+    var tagHtml = '';
+    tags.forEach(function(t) {
+      if (TAG_BADGES[t]) tagHtml += ' <span class="badge ' + TAG_BADGES[t].cls + '">' + TAG_BADGES[t].label + '</span>';
+    });
+
+    var onclick = m.provider_active ? " onclick=\"setModelDefaultByModel('" + escJS(m.provider) + "','" + escJS(m.model) + "')\"" : '';
+
+    html += '<div style="background:#313244;border:' + borderWidth + ' solid ' + borderColor + ';border-radius:10px;padding:14px;cursor:' + cursor + ';opacity:' + opacity + ';transition:border-color 0.15s;position:relative"' + onclick + ' onmouseenter="this.style.borderColor=\'#89b4fa\'" onmouseleave="this.style.borderColor=\'' + borderColor + '\'">';
+
+    if (m.is_default) html += '<div style="position:absolute;top:8px;right:8px;background:#a6e3a1;color:#1e1e2e;font-size:0.62em;padding:2px 8px;border-radius:4px;font-weight:700">DEFAULT</div>';
+
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+    html += '<div style="flex-shrink:0">' + logo + '</div>';
+    html += '<div>';
+    html += '<div style="font-weight:600;font-size:0.92em;color:#cdd6f4">' + esc(m.name) + tagHtml + '</div>';
+    html += '<div style="font-size:0.75em;color:#6c7086">' + esc(PROVIDER_NAMES[m.provider] || m.provider) + ' &middot; ' + esc(m.model) + '</div>';
+    html += '</div></div>';
+
+    if (m.description) html += '<div style="font-size:0.78em;color:#a6adc8;line-height:1.4;margin-bottom:6px">' + esc(m.description) + '</div>';
+
+    html += '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
+    if (costDisplay) html += '<span style="font-size:0.72em;font-weight:600;color:' + costColor + '">' + costDisplay + '</span>';
+    if (m.cost_per_1k_tokens > 0) html += '<span style="font-size:0.68em;color:#6c7086">$' + m.cost_per_1k_tokens.toFixed(4) + '/1K tok</span>';
+    if (speedStr) html += '<span style="font-size:0.72em;color:' + speedColor + '">' + speedStr + '</span>';
     html += '</div>';
-    html += '<div class="provider-actions">';
-    if (!isDefault) html += '<button class="btn btn-secondary btn-sm" onclick="setModelDefault(\'' + escJS(label) + '\')">Set Default</button>';
-    html += '<button class="btn btn-secondary btn-sm" onclick="editModel(\'' + escJS(label) + '\')">Edit</button>';
-    html += '<button class="btn btn-danger btn-sm" onclick="deleteModel(\'' + escJS(label) + '\')">Delete</button>';
-    html += '</div></div></div>';
+
+    html += '</div>';
   });
   container.innerHTML = html;
+}
+
+async function setModelDefaultByModel(provider, model) {
+  var result = await goCall('setDefaultByModel', provider, model);
+  if (result && !result.startsWith('error')) {
+    renderModels();
+  }
 }
 
 var _resetModelsConfirming = false;
@@ -1978,169 +2048,6 @@ async function resetModels() {
   var result = await goCall('resetModels');
   if (result && result.startsWith('ok')) {
     await renderModels();
-  }
-}
-
-async function setModelDefault(label) {
-  var result = await goCall('setDefault', label);
-  if (result && result.startsWith('ok')) renderModels();
-}
-
-function deleteModel(label) {
-  // Two-click confirm
-  var entries = document.querySelectorAll('.provider-entry');
-  entries.forEach(function(entry) {
-    var labelEl = entry.querySelector('.provider-label');
-    if (labelEl && labelEl.textContent.trim().startsWith(label)) {
-      var btn = entry.querySelector('.btn-danger');
-      if (!btn) return;
-      if (btn.dataset.confirming === 'true') {
-        doDeleteModel(label);
-      } else {
-        btn.dataset.confirming = 'true';
-        btn.textContent = 'Confirm?';
-        setTimeout(function() { if (btn.dataset.confirming === 'true') { btn.dataset.confirming = ''; btn.textContent = 'Delete'; } }, 3000);
-      }
-    }
-  });
-}
-
-async function doDeleteModel(label) {
-  var result = await goCall('deleteProvider', label);
-  if (result && result.startsWith('ok')) renderModels();
-}
-
-let modelFormModelList = [];
-
-function showAddModel() {
-  document.getElementById('model-form').style.display = 'block';
-  document.getElementById('model-form-title').textContent = 'Add Model';
-  document.getElementById('model-edit-original').value = '';
-  document.getElementById('model-form-name').value = '';
-  document.getElementById('model-form-model').value = '';
-  document.getElementById('model-form-label').textContent = 'Select a model';
-  populateModelFormProviders();
-  onModelProviderChange();
-  clearStatus('model-form-status');
-  setTimeout(function() { document.getElementById('model-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
-}
-
-function populateModelFormProviders() {
-  var select = document.getElementById('model-form-provider');
-  select.innerHTML = '';
-  var providers = configData.providers || {};
-  var configuredTypes = Object.keys(providers);
-  if (configuredTypes.length === 0) {
-    var opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = '— No providers configured —';
-    select.appendChild(opt);
-    return;
-  }
-  // Only show CONFIGURED providers.
-  var typeLabels = {local:'GhostSpell Local (Built-in)', chatgpt:'ChatGPT Login', openai:'OpenAI', ollama:'Ollama', lmstudio:'LM Studio', anthropic:'Anthropic', gemini:'Google Gemini', xai:'xAI', deepseek:'DeepSeek'};
-  configuredTypes.forEach(function(t) {
-    var opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = typeLabels[t] || t;
-    select.appendChild(opt);
-  });
-}
-
-async function onModelProviderChange() {
-  var provider = document.getElementById('model-form-provider').value;
-  var isLocal = provider === 'local' || provider === 'ollama' || provider === 'lmstudio';
-  // Load models for provider dropdown
-  await loadModelFormModels(provider);
-  // Always update label to match the provider.
-  var nameEl = document.getElementById('model-form-name');
-  var autoLabels = {anthropic:'claude', openai:'openai', chatgpt:'chatgpt', gemini:'gemini', xai:'grok', deepseek:'deepseek', ollama:'ollama', local:'GhostSpell Local', lmstudio:'lmstudio'};
-  nameEl.value = autoLabels[provider] || provider;
-}
-
-async function loadModelFormModels(provider) {
-  var raw = await goCall('getKnownModels', provider);
-  modelFormModelList = [];
-  if (raw) { try { modelFormModelList = JSON.parse(raw); } catch(e) {} }
-  // Default to recommended
-  var pick = modelFormModelList.length > 0 ? (typeof modelFormModelList[0] === 'string' ? modelFormModelList[0] : modelFormModelList[0].name) : '';
-  for (var i = 0; i < modelFormModelList.length; i++) {
-    var m = modelFormModelList[i];
-    if (typeof m === 'object' && m.tag === 'recommended') { pick = m.name; break; }
-  }
-  document.getElementById('model-form-model').value = pick;
-  document.getElementById('model-form-label').textContent = pick || 'Select a model';
-  renderModelFormDD();
-}
-
-function renderModelFormDD() {
-  var dd = document.getElementById('model-form-dropdown');
-  var selected = document.getElementById('model-form-model').value;
-  var html = '';
-  for (var i = 0; i < modelFormModelList.length; i++) {
-    var m = modelFormModelList[i];
-    var name = typeof m === 'string' ? m : m.name;
-    var tag = (typeof m === 'object' && m.tag && TAG_BADGES[m.tag])
-      ? ' <span class="badge ' + TAG_BADGES[m.tag].cls + '">' + TAG_BADGES[m.tag].label + '</span>' : '';
-    var selCls = name === selected ? ' selected' : '';
-    html += '<div class="model-item' + selCls + '" onmousedown="selectModelFormModel(\'' + escJS(name) + '\')">' + esc(name) + tag + '</div>';
-  }
-  html += '<div class="model-item" onmousedown="customModelFormModel()" style="color:#89b4fa;font-style:italic">(custom model...)</div>';
-  dd.innerHTML = html;
-}
-
-function toggleModelFormDD() {
-  var dd = document.getElementById('model-form-dropdown');
-  if (dd.style.display === 'none') { renderModelFormDD(); dd.style.display = 'block'; }
-  else { dd.style.display = 'none'; }
-}
-
-function selectModelFormModel(name) {
-  document.getElementById('model-form-model').value = name;
-  document.getElementById('model-form-label').textContent = name;
-  document.getElementById('model-form-dropdown').style.display = 'none';
-}
-
-function customModelFormModel() {
-  var custom = prompt('Enter model name:');
-  if (custom && custom.trim()) selectModelFormModel(custom.trim());
-  document.getElementById('model-form-dropdown').style.display = 'none';
-}
-
-function cancelModelForm() { document.getElementById('model-form').style.display = 'none'; }
-
-function editModel(label) {
-  var def = (configData.models || {})[label];
-  if (!def) return;
-  document.getElementById('model-form').style.display = 'block';
-  document.getElementById('model-form-title').textContent = 'Edit Model';
-  document.getElementById('model-edit-original').value = label;
-  populateModelFormProviders();
-  document.getElementById('model-form-provider').value = def.provider;
-  document.getElementById('model-form-name').value = label;
-  onModelProviderChange().then(function() {
-    document.getElementById('model-form-model').value = def.model;
-    document.getElementById('model-form-label').textContent = def.model;
-  });
-  clearStatus('model-form-status');
-  setTimeout(function() { document.getElementById('model-form').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
-}
-
-async function saveModelForm() {
-  var provider = document.getElementById('model-form-provider').value;
-  var model = document.getElementById('model-form-model').value;
-  var label = document.getElementById('model-form-name').value.trim();
-  var original = document.getElementById('model-edit-original').value;
-  if (!provider) { setStatus('model-form-status', 'error', 'Select a provider'); return; }
-  if (!label) { setStatus('model-form-status', 'error', 'Label required'); return; }
-  if (!model) { setStatus('model-form-status', 'error', 'Select a model'); return; }
-  // Models tab saves ONLY the model entry — provider credentials are in Providers tab.
-  var result = await goCall('saveModel', label, provider, model, original);
-  if (result && result.startsWith('ok')) {
-    document.getElementById('model-form').style.display = 'none';
-    renderModels();
-  } else {
-    setStatus('model-form-status', 'error', result || 'Failed');
   }
 }
 
