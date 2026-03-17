@@ -2800,20 +2800,53 @@ async function checkForUpdate() {
   }
 }
 
+var _updatePollTimer = null;
 async function doUpdate() {
   var statusEl = document.getElementById('update-status');
   statusEl.className = 'status info';
   statusEl.innerHTML = '<div style="text-align:center;padding:8px 0">'
-    + '<div style="margin-bottom:8px"><strong>Updating GhostSpell...</strong></div>'
+    + '<div style="margin-bottom:8px"><strong>Downloading update...</strong></div>'
     + '<div style="width:100%;background:#313244;border-radius:6px;height:14px;overflow:hidden">'
-    + '<div style="width:100%;height:100%;background:linear-gradient(90deg,#89b4fa,#a6e3a1);border-radius:6px;animation:pulse 1.5s ease-in-out infinite"></div></div>'
-    + '<div style="font-size:0.78em;color:#6c7086;margin-top:6px">Downloading and installing. The app will restart automatically.</div>'
+    + '<div id="update-progress-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#89b4fa,#a6e3a1);border-radius:6px;transition:width 0.3s"></div></div>'
+    + '<div id="update-phase-text" style="font-size:0.78em;color:#6c7086;margin-top:6px">Starting download...</div>'
     + '</div>';
 
   var result = await goCall('updateNow');
   if (result && result.startsWith('error')) {
     setStatus('update-status', 'error', 'Update failed: ' + result);
+    return;
   }
+
+  // Poll for progress.
+  _updatePollTimer = setInterval(async function() {
+    var raw = await goCall('getUpdateProgress');
+    if (!raw) return;
+    var p;
+    try { p = JSON.parse(raw); } catch(e) { return; }
+    var bar = document.getElementById('update-progress-bar');
+    var text = document.getElementById('update-phase-text');
+    if (!bar || !text) return;
+
+    switch (p.phase) {
+      case 'downloading':
+        bar.style.width = Math.round(p.percent) + '%';
+        text.textContent = 'Downloading... ' + Math.round(p.percent) + '%';
+        break;
+      case 'installing':
+        bar.style.width = '100%';
+        text.textContent = 'Installing new version...';
+        break;
+      case 'restarting':
+        bar.style.width = '100%';
+        text.textContent = 'Restarting GhostSpell...';
+        clearInterval(_updatePollTimer);
+        break;
+      case 'error':
+        clearInterval(_updatePollTimer);
+        setStatus('update-status', 'error', 'Update failed: ' + p.error);
+        break;
+    }
+  }, 500);
 }
 
 // ---- Boot ----

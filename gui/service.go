@@ -240,28 +240,18 @@ func (s *SettingsService) CheckForUpdate() string {
 	return string(data)
 }
 
-// UpdateNow launches the proven platform install script in a detached process
-// and exits the app. The install script handles downloading, killing the old
-// process, installing, and relaunching. This is the battle-tested approach.
+// UpdateNow downloads the new binary in-process, verifies it, swaps the
+// old binary with the new one, and relaunches. No external scripts needed.
+// Progress is reported via GetUpdateProgress() for JS polling.
 func (s *SettingsService) UpdateNow() string {
 	guiLog("[GUI] JS called: UpdateNow")
 
-	const repo = "chrixbedardcad/GhostSpell"
-	var cmd *exec.Cmd
-
-	switch runtime.GOOS {
-	case "windows":
-		script := fmt.Sprintf("irm https://raw.githubusercontent.com/%s/main/scripts/install.ps1 | iex", repo)
-		cmd = exec.Command("powershell", "-NoProfile", "-Command", script)
-	case "darwin", "linux":
-		script := fmt.Sprintf("curl -fsSL https://raw.githubusercontent.com/%s/main/scripts/install.sh | bash", repo)
-		cmd = exec.Command("bash", "-c", script)
-	default:
+	assetName := updateAssetName()
+	if assetName == "" {
 		return "error: unsupported platform"
 	}
 
-	// Safety: save current config and create a backup before updating.
-	// Protects against config loss if the process is killed during update.
+	// Backup config before anything else.
 	if s.cfgCopy != nil && s.configPath != "" {
 		_ = config.WriteDefault(s.configPath, s.cfgCopy)
 		backupPath := s.configPath + ".bak"
@@ -271,25 +261,88 @@ func (s *SettingsService) UpdateNow() string {
 		}
 	}
 
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	cmd.Stdin = nil
-	detachProcess(cmd)
-
-	if err := cmd.Start(); err != nil {
-		guiLog("[GUI] UpdateNow: failed to start installer: %v", err)
-		return fmt.Sprintf("error: %v", err)
-	}
-
-	guiLog("[GUI] UpdateNow: installer launched (PID %d), exiting app...", cmd.Process.Pid)
-
-	// Give the install script a moment to start, then exit.
 	go func() {
-		time.Sleep(2 * time.Second)
-		os.Exit(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		setProgress := func(p UpdateProgress) {
+			s.downloadProgress.Store(&p)
+			if p.Error != "" {
+				guiLog("[GUI] UpdateNow error: %s", p.Error)
+			}
+		}
+
+		// 1. Fetch release info.
+		setProgress(UpdateProgress{Phase: "downloading", Percent: 0})
+		rel, err := fetchReleaseInfo(ctx)
+		if err != nil {
+			setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
+			return
+		}
+
+		// Find the asset for this platform.
+		var assetURL string
+		var assetSize int64
+		for _, a := range rel.Assets {
+			if a.Name == assetName {
+				assetURL = a.BrowserDownloadURL
+				assetSize = a.Size
+				break
+			}
+		}
+		if assetURL == "" {
+			setProgress(UpdateProgress{Phase: "error", Error: fmt.Sprintf("release %s has no asset %s", rel.TagName, assetName)})
+			return
+		}
+
+		// 2. Resolve current binary path.
+		execPath, err := os.Executable()
+		if err != nil {
+			setProgress(UpdateProgress{Phase: "error", Error: fmt.Sprintf("cannot find executable: %v", err)})
+			return
+		}
+		execPath, _ = filepath.EvalSymlinks(execPath)
+		tmpPath := execPath + ".tmp"
+
+		guiLog("[GUI] UpdateNow: downloading %s (%d bytes) to %s", assetName, assetSize, tmpPath)
+
+		// 3. Download to temp file.
+		if err := downloadToFile(ctx, assetURL, tmpPath, assetSize, func(p UpdateProgress) {
+			setProgress(p)
+		}); err != nil {
+			setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
+			return
+		}
+
+		// 4. Swap: current → .bak, new → current.
+		setProgress(UpdateProgress{Phase: "installing", Percent: 100})
+		guiLog("[GUI] UpdateNow: swapping binary %s", execPath)
+		if err := swapBinary(execPath, tmpPath); err != nil {
+			setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
+			return
+		}
+
+		// 5. Relaunch and exit.
+		setProgress(UpdateProgress{Phase: "restarting", Percent: 100})
+		guiLog("[GUI] UpdateNow: update complete, relaunching...")
+		launchAndExit(execPath)
 	}()
 
 	return "ok"
+}
+
+// GetUpdateProgress returns the current update progress as JSON.
+func (s *SettingsService) GetUpdateProgress() string {
+	v := s.downloadProgress.Load()
+	if v == nil {
+		return ""
+	}
+	p, ok := v.(*UpdateProgress)
+	if !ok || p == nil {
+		return ""
+	}
+	data, _ := json.Marshal(p)
+	return string(data)
 }
 
 // --- Debug tools -----------------------------------------------------------

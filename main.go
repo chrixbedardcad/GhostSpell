@@ -154,6 +154,9 @@ func main() {
 	// their settings.
 	migrateConfigFromExeDir(configPath)
 
+	// Clean up .bak files left by a successful self-update.
+	gui.CleanupUpdateBackup()
+
 	// Load configuration (without validation so the wizard can run first).
 	fmt.Printf("App data: %s\n", appDir)
 	cfg, err := config.LoadRaw(configPath)
