@@ -671,6 +671,14 @@
       <h2><svg width="24" height="24" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px"><defs><linearGradient id="lms2" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop stop-color="#8B7BF7"/><stop offset="1" stop-color="#6C5CE7"/></linearGradient></defs><rect width="24" height="24" rx="5" fill="url(#lms2)"/><rect x="4" y="4" width="14" height="2.4" rx="1.2" fill="#fff" opacity=".9"/><rect x="6" y="7.6" width="14" height="2.4" rx="1.2" fill="#fff" opacity=".75"/><rect x="3" y="11.2" width="14" height="2.4" rx="1.2" fill="#fff" opacity=".85"/><rect x="5" y="14.8" width="14" height="2.4" rx="1.2" fill="#fff" opacity=".7"/><rect x="7" y="18.4" width="12" height="2.4" rx="1.2" fill="#fff" opacity=".6"/></svg> LM Studio Setup</h2>
       <p style="font-size:0.82em;color:#a6adc8;margin-bottom:12px">Connect to a local LM Studio server. Uses OpenAI-compatible API. <button class="btn-link" onclick="wails.Browser.OpenURL('https://lmstudio.ai')">Download LM Studio &#8599;</button></p>
 
+      <div style="background:#313244;border-radius:8px;padding:12px;margin-bottom:14px;font-size:0.82em;color:#a6adc8;line-height:1.6">
+        <strong style="color:#cdd6f4">How to start LM Studio's server:</strong><br>
+        1. Open LM Studio and load a model<br>
+        2. Go to the <strong style="color:#cdd6f4">Developer</strong> tab<br>
+        3. Click <strong style="color:#a6e3a1">Start Server</strong> (the server does not start automatically)<br>
+        4. The default endpoint is <code style="background:#1e1e2e;padding:2px 6px;border-radius:4px">http://127.0.0.1:1234/v1</code>
+      </div>
+
       <div class="form-group">
         <label>Server endpoint</label>
         <input type="text" id="prov-lmstudio-endpoint" placeholder="http://127.0.0.1:1234/v1" value="http://127.0.0.1:1234/v1">
