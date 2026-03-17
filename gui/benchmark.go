@@ -40,7 +40,8 @@ var (
 
 const benchmarkTestText = "fix this: helo wrld, i'm typng fast and makng erors evrywhere"
 
-// RunBenchmark starts a background benchmark of all configured models.
+// RunBenchmark starts a background benchmark of all visible catalog models.
+// Tests every model whose provider is configured — not just models in config.
 func (s *SettingsService) RunBenchmark() string {
 	guiLog("[GUI] JS called: RunBenchmark")
 
@@ -51,9 +52,9 @@ func (s *SettingsService) RunBenchmark() string {
 	}
 
 	cfg := s.cfgCopy
-	if len(cfg.Models) == 0 {
+	if len(cfg.Providers) == 0 {
 		benchMu.Unlock()
-		return "error: no models configured"
+		return "error: no providers configured"
 	}
 
 	// Get the active prompt.
@@ -66,13 +67,53 @@ func (s *SettingsService) RunBenchmark() string {
 		promptIcon = cfg.Prompts[cfg.ActivePrompt].Icon
 	}
 
+	// Build model list from catalog + config (all models with active providers).
+	type benchTarget struct {
+		label    string
+		provider string
+		model    string
+	}
+	var targets []benchTarget
+	seen := make(map[string]bool)
+
+	// From catalog: all models whose provider is active.
+	for _, cm := range parseCatalog() {
+		if _, ok := cfg.Providers[cm.Provider]; !ok {
+			continue
+		}
+		key := cm.Provider + "/" + cm.Model
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		targets = append(targets, benchTarget{label: cm.Name, provider: cm.Provider, model: cm.Model})
+	}
+
+	// From config: any custom models not in catalog.
+	for label, me := range cfg.Models {
+		key := me.Provider + "/" + me.Model
+		if seen[key] {
+			continue
+		}
+		if _, ok := cfg.Providers[me.Provider]; !ok {
+			continue
+		}
+		seen[key] = true
+		targets = append(targets, benchTarget{label: label, provider: me.Provider, model: me.Model})
+	}
+
+	if len(targets) == 0 {
+		benchMu.Unlock()
+		return "error: no models to benchmark"
+	}
+
 	// Initialize results.
 	result := &BenchmarkResult{Running: true, PromptName: promptName, PromptIcon: promptIcon}
-	for label, me := range cfg.Models {
+	for _, t := range targets {
 		result.Models = append(result.Models, BenchmarkModelRes{
-			Label:    label,
-			Provider: me.Provider,
-			Model:    me.Model,
+			Label:    t.label,
+			Provider: t.provider,
+			Model:    t.model,
 			Status:   "pending",
 		})
 	}
@@ -86,17 +127,10 @@ func (s *SettingsService) RunBenchmark() string {
 			result.Models[i].Status = "running"
 			benchMu.Unlock()
 
-			label := result.Models[i].Label
-			me, ok := cfg.Models[label]
-			if !ok {
-				benchMu.Lock()
-				result.Models[i].Status = "error"
-				result.Models[i].Error = "model not found"
-				benchMu.Unlock()
-				continue
-			}
+			provider := result.Models[i].Provider
+			model := result.Models[i].Model
 
-			prov, ok := cfg.Providers[me.Provider]
+			prov, ok := cfg.Providers[provider]
 			if !ok {
 				benchMu.Lock()
 				result.Models[i].Status = "error"
@@ -106,23 +140,17 @@ func (s *SettingsService) RunBenchmark() string {
 			}
 
 			def := config.LLMProviderDef{
-				Provider:     me.Provider,
+				Provider:     provider,
 				APIKey:       prov.APIKey,
-				Model:        me.Model,
+				Model:        model,
 				APIEndpoint:  prov.APIEndpoint,
 				RefreshToken: prov.RefreshToken,
 				KeepAlive:    prov.KeepAlive,
 			}
-			// Only set MaxTokens if the model has a custom value. Otherwise
-			// let each provider client use its own default (e.g., OpenAI
-			// defaults to 2048 for reasoning models like gpt-5-mini).
-			if me.MaxTokens > 0 {
-				def.MaxTokens = me.MaxTokens
-			}
 
 			client, err := llm.NewClientFromDef(def)
 			if err != nil {
-				slog.Error("[benchmark] client creation failed", "label", label, "error", err)
+				slog.Error("[benchmark] client creation failed", "provider", provider, "model", model, "error", err)
 				benchMu.Lock()
 				result.Models[i].Status = "error"
 				result.Models[i].Error = err.Error()
@@ -130,9 +158,13 @@ func (s *SettingsService) RunBenchmark() string {
 				continue
 			}
 
+			// Use provider timeout or default 30s.
 			timeout := 30 * time.Second
-			if me.TimeoutMs > 0 {
-				timeout = time.Duration(me.TimeoutMs) * time.Millisecond
+			if prov.TimeoutMs > 0 {
+				timeout = time.Duration(prov.TimeoutMs) * time.Millisecond
+			}
+			if provider == "local" || provider == "ollama" || provider == "lmstudio" {
+				timeout = 120 * time.Second
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -172,7 +204,7 @@ func (s *SettingsService) RunBenchmark() string {
 			if s.RecordStatFn != nil {
 				s.RecordStatFn(
 					promptName, promptIcon,
-					me.Provider, me.Model, label,
+					provider, model, result.Models[i].Label,
 					status, errMsg, output,
 					len(benchmarkTestText), int(elapsed.Milliseconds()),
 				)
