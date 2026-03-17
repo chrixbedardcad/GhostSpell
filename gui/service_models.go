@@ -3,9 +3,13 @@ package gui
 import (
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/chrixbedardcad/GhostSpell/llm"
 )
+
+// downloadActive prevents concurrent model downloads.
+var downloadActive atomic.Bool
 
 // --- Local AI management ---------------------------------------------------
 
@@ -41,6 +45,10 @@ func (s *SettingsService) LocalStatus() string {
 // LocalDownloadModel downloads a local model by name (blocking).
 func (s *SettingsService) LocalDownloadModel(name string) string {
 	guiLog("[GUI] JS called: LocalDownloadModel(%s)", name)
+	if !downloadActive.CompareAndSwap(false, true) {
+		return "error: a download is already in progress"
+	}
+	defer downloadActive.Store(false)
 	s.downloadProgress.Store(&llm.DownloadProgress{})
 	if err := llm.DownloadModel(name, func(p llm.DownloadProgress) {
 		s.downloadProgress.Store(&p)

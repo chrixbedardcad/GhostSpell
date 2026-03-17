@@ -482,10 +482,7 @@ func applyDefaults(cfg *Config) {
 	if cfg.SoundEnabled == nil {
 		cfg.SoundEnabled = boolPtr(true)
 	}
-	// Migrate from "center" to "top-right": the center indicator blocks
-	// clicks on menus/buttons in the target app window on Windows (where
-	// IgnoreMouseEvents=false is required for WebView2).
-	if cfg.IndicatorPosition == "" || cfg.IndicatorPosition == "center" {
+	if cfg.IndicatorPosition == "" {
 		cfg.IndicatorPosition = "top-right"
 	}
 	if cfg.Hotkeys.Action == "" {

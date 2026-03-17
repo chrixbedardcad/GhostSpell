@@ -1307,7 +1307,7 @@ async function renderProviders() {
       statusEl.className = 'provider-status ' + (isConfigured ? 'active' : 'inactive');
     }
     if (testBtn) testBtn.style.display = isConfigured ? '' : 'none';
-    if (setupBtn) setupBtn.textContent = isConfigured ? 'Edit' : 'Set up';
+    if (setupBtn) setupBtn.textContent = isConfigured ? 'Settings' : 'Set up';
   });
 }
 
@@ -2222,7 +2222,7 @@ function buildInlineForm(idx, p) {
       <textarea id="pe-text" rows="4">${esc(p.prompt)}</textarea>
     </div>
     <div class="form-group">
-      <label>LLM Override (optional)</label>
+      <label>Model Override (optional)</label>
       <select id="pe-llm">${llmOpts}</select>
     </div>
     <div class="form-group">
