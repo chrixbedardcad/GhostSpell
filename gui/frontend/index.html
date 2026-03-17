@@ -921,8 +921,19 @@
       </div>
       <div class="form-group" style="margin-top:12px">
         <label for="pref-indicator-pos">Ghost Indicator Position</label>
-        <div class="sublabel" style="margin-bottom:6px">Where the floating ghost appears during processing.</div>
-        <select id="pref-indicator-pos" onchange="onIndicatorPosChange(this.value)" style="padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:4px;color:#cdd6f4;font-size:0.9em;width:180px">
+        <div class="sublabel" style="margin-bottom:6px">This floating pill appears on screen while GhostSpell is processing your text. It shows which prompt is active and a live timer.</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <!-- Indicator preview pill -->
+          <div style="display:flex;align-items:center;gap:6px;background:#1e1e2e;border-radius:20px;padding:6px 14px 6px 6px;box-shadow:0 2px 12px rgba(0,0,0,0.3)">
+            <img src="/ghost-icon.png" width="28" height="28" style="animation:float 2s ease-in-out infinite">
+            <span id="indicator-preview-icon" style="font-size:14px">&#9999;&#65039;</span>
+            <span id="indicator-preview-name" style="font-size:12px;color:rgba(255,255,255,0.85);font-weight:500">Correct</span>
+            <div style="width:1px;height:14px;background:rgba(255,255,255,0.15)"></div>
+            <span style="font-size:12px;color:rgba(255,255,255,0.85);font-variant-numeric:tabular-nums">3s</span>
+            <span id="indicator-preview-model" style="font-size:9px;color:rgba(255,255,255,0.4)">GhostSpell Local</span>
+          </div>
+          <!-- Position selector -->
+          <select id="pref-indicator-pos" onchange="onIndicatorPosChange(this.value)" style="padding:6px 10px;background:#313244;border:1px solid #45475a;border-radius:4px;color:#cdd6f4;font-size:0.9em;width:180px">
           <option value="center">Center</option>
           <option value="top-right">Top Right</option>
           <option value="top-left">Top Left</option>
@@ -930,6 +941,7 @@
           <option value="bottom-left">Bottom Left</option>
           <option value="hidden">Hidden</option>
         </select>
+        </div>
       </div>
     </div>
 
@@ -1338,6 +1350,13 @@ function updateHeaderPrompt() {
   var model = configData.default_model || '';
   el.innerHTML = '<div style="font-size:0.82em;color:#a6adc8">' + (icon ? '<span style="margin-right:3px">' + esc(icon) + '</span>' : '') + '<strong style="color:#cdd6f4">' + esc(name) + '</strong></div>' +
     (model ? '<div style="font-size:0.68em;color:#6c7086">' + esc(model) + '</div>' : '');
+  // Update indicator preview in General tab.
+  var prevIcon = document.getElementById('indicator-preview-icon');
+  var prevName = document.getElementById('indicator-preview-name');
+  var prevModel = document.getElementById('indicator-preview-model');
+  if (prevIcon) prevIcon.textContent = icon || '\u270F\uFE0F';
+  if (prevName) prevName.textContent = name;
+  if (prevModel) prevModel.textContent = model;
 }
 
 // ===========================================================================
