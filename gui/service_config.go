@@ -92,9 +92,9 @@ func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, ref
 				}
 			}
 			labels := map[string]string{
-				"local": "GhostSpell Local", "chatgpt": "chatgpt", "openai": "openai",
-				"anthropic": "claude", "gemini": "gemini", "xai": "grok",
-				"deepseek": "deepseek", "ollama": "ollama", "lmstudio": "lmstudio",
+				"local": "GhostSpell Local", "chatgpt": "ChatGPT", "openai": "OpenAI",
+				"anthropic": "Claude", "gemini": "Gemini", "xai": "Grok",
+				"deepseek": "DeepSeek", "ollama": "Ollama", "lmstudio": "LM Studio",
 			}
 			label := labels[providerType]
 			if label == "" {
@@ -256,14 +256,14 @@ func (s *SettingsService) ResetModels() string {
 		label    string
 	}{
 		{"local", "GhostSpell Local"},
-		{"chatgpt", "chatgpt"},
-		{"openai", "openai"},
-		{"anthropic", "claude"},
-		{"gemini", "gemini"},
-		{"xai", "grok"},
-		{"deepseek", "deepseek"},
-		{"ollama", "ollama"},
-		{"lmstudio", "lmstudio"},
+		{"chatgpt", "ChatGPT"},
+		{"openai", "OpenAI"},
+		{"anthropic", "Claude"},
+		{"gemini", "Gemini"},
+		{"xai", "Grok"},
+		{"deepseek", "DeepSeek"},
+		{"ollama", "Ollama"},
+		{"lmstudio", "LM Studio"},
 	}
 
 	// Clear all existing models.
