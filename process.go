@@ -97,13 +97,22 @@ func processMode(
 	// instead of Notepad/Chrome/etc. The tray animation still provides visual
 	// feedback during capture; the indicator appears once LLM processing starts.
 
-	// Save original clipboard.
-	slog.Debug("Saving clipboard...")
-	if err := cb.Save(); err != nil {
-		slog.Error("Failed to save clipboard", "prompt", promptName, "error", err)
-		return
+	// Save original clipboard (only if PreserveClipboard is enabled).
+	// When disabled, the LLM result stays in the clipboard after paste.
+	preserveClipboard := cfg.PreserveClipboard
+	restoreClipboard := func() {
+		if preserveClipboard {
+			cb.Restore()
+		}
 	}
-	slog.Debug("Clipboard saved")
+	if preserveClipboard {
+		slog.Debug("Saving clipboard...")
+		if err := cb.Save(); err != nil {
+			slog.Error("Failed to save clipboard", "prompt", promptName, "error", err)
+			return
+		}
+		slog.Debug("Clipboard saved")
+	}
 
 	// Capture text — detects existing selection or falls back to select-all.
 	slog.Debug("Capturing text...")
@@ -111,7 +120,7 @@ func processMode(
 	// Bail out immediately if cancelled during capture (second Ctrl+G).
 	if cancelCtx.Err() != nil {
 		slog.Info("Request cancelled during capture", "prompt", promptName)
-		cb.Restore()
+		restoreClipboard()
 		return
 	}
 	if cap.Err != nil {
@@ -121,7 +130,7 @@ func processMode(
 			kb.Paste()
 			time.Sleep(150 * time.Millisecond)
 		}
-		cb.Restore()
+		restoreClipboard()
 		sound.PlayError()
 		return
 	}
@@ -132,7 +141,7 @@ func processMode(
 			kb.Paste()
 			time.Sleep(150 * time.Millisecond)
 		}
-		cb.Restore()
+		restoreClipboard()
 		sound.PlayError()
 		return
 	}
@@ -151,7 +160,7 @@ func processMode(
 		}
 		kb.Paste()
 		time.Sleep(150 * time.Millisecond)
-		cb.Restore()
+		restoreClipboard()
 		sound.PlayError()
 		return
 	}
@@ -248,7 +257,7 @@ func processMode(
 			time.Sleep(50 * time.Millisecond)
 			gui.PopIndicator("\U0001F6D1", "Cancelled")
 			recordStat("cancelled", "", "")
-			cb.Restore()
+			restoreClipboard()
 			return
 		}
 
@@ -269,7 +278,7 @@ func processMode(
 		}
 		kb.Paste()
 		time.Sleep(150 * time.Millisecond)
-		cb.Restore()
+		restoreClipboard()
 		sound.PlayError()
 		return
 	}
@@ -289,7 +298,7 @@ func processMode(
 			kb.Paste()
 			time.Sleep(150 * time.Millisecond)
 		}
-		cb.Restore()
+		restoreClipboard()
 		sound.PlaySuccess()
 		return
 	}
@@ -324,7 +333,7 @@ func processMode(
 	if !written {
 		if err := cb.Write(result); err != nil {
 			slog.Error("Failed to write result to clipboard", "prompt", promptName, "error", err)
-			cb.Restore()
+			restoreClipboard()
 			return
 		}
 		slog.Debug("Result written to clipboard", "prompt", promptName, "result_len", len(result))
@@ -341,7 +350,7 @@ func processMode(
 			}
 			if err := kb.PasteAX(); err != nil {
 				slog.Error("PasteAX failed", "prompt", promptName, "error", err)
-				cb.Restore()
+				restoreClipboard()
 				return
 			}
 		case captureViaScript:
@@ -354,7 +363,7 @@ func processMode(
 			}
 			if err := kb.PasteScript(); err != nil {
 				slog.Error("PasteScript failed", "prompt", promptName, "error", err)
-				cb.Restore()
+				restoreClipboard()
 				return
 			}
 		default:
@@ -362,14 +371,14 @@ func processMode(
 			if !cap.HasAX {
 				if err := kb.SelectAll(); err != nil {
 					slog.Error("SelectAll (paste prep) failed", "prompt", promptName, "error", err)
-					cb.Restore()
+					restoreClipboard()
 					return
 				}
 				time.Sleep(50 * time.Millisecond)
 			}
 			if err := kb.Paste(); err != nil {
 				slog.Error("Paste failed", "prompt", promptName, "error", err)
-				cb.Restore()
+				restoreClipboard()
 				return
 			}
 		}
@@ -378,7 +387,7 @@ func processMode(
 	}
 
 	// Restore original clipboard.
-	cb.Restore()
+	restoreClipboard()
 
 	slog.Info(promptName+" complete", "result", result)
 	fmt.Printf("[%s] Result: %q\n", promptName, result)

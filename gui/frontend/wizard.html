@@ -648,39 +648,6 @@
     </div>
   </div>
 
-  <!-- ============ STEP 2a: OPENAI CONNECTION METHOD CHOICE ============ -->
-  <div class="step-section" id="step-2a">
-    <h2 style="font-size:1.1em;margin-bottom:6px;color:#bac2de">Connect to OpenAI</h2>
-    <div style="font-size:0.82em;color:#6c7086;margin-bottom:14px;line-height:1.5">
-      Choose how to connect your ChatGPT account.
-    </div>
-
-    <div class="card" onclick="selectCloudProvider('openai')">
-      <div class="card-header">
-        <span class="card-icon" style="font-size:1.3em">&#128273;</span>
-        <span class="card-title">API Key</span>
-      </div>
-      <div class="card-desc">
-        Paste your OpenAI API key. Works with any OpenAI plan.
-      </div>
-    </div>
-
-    <div class="card" onclick="startOAuth()">
-      <div class="card-header">
-        <span class="card-icon" style="font-size:1.3em">&#128274;</span>
-        <span class="card-title">OAuth Login</span>
-      </div>
-      <div class="card-desc">
-        Sign in with your ChatGPT account. No API key needed. Uses GPT-5-mini.
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="goToStep(returnTo === 'settings' ? '1.5' : 1)">Back</button>
-      <span></span>
-    </div>
-  </div>
-
   <!-- ============ STEP 2c: CHATGPT OAUTH ============ -->
   <div class="step-section" id="step-2c">
     <h2 style="font-size:1.1em;margin-bottom:14px;color:#bac2de">OAuth Login ChatGPT</h2>
@@ -925,7 +892,6 @@ function renderSteps() {
   else if (currentStep === 'restart') sectionId = 'step-restart';
   else if (currentStep === 1) sectionId = 'step-1';
   else if (currentStep === '1.5') sectionId = 'step-2e';
-  else if (currentStep === 'openai-choice') sectionId = 'step-2a';
   else if (currentStep === 2 && category === 'chatgpt') sectionId = 'step-2c';
   else if (currentStep === 2 && category === 'ollama') sectionId = 'step-2b';
   else if (currentStep === 2 && category === 'local') sectionId = 'step-2d';
@@ -952,7 +918,7 @@ function renderSteps() {
   if (currentStep === 'welcome') curPhase = 'welcome';
   else if (currentStep === 'perm-ax' || currentStep === 'perm-im' || currentStep === 'restart') curPhase = 'perms';
   else if (currentStep === 4) curPhase = 'ready';
-  else curPhase = 'models'; // steps 1, 1.5, openai-choice, 2, 3
+  else curPhase = 'models'; // steps 1, 1.5, 2, 3
 
   const curIdx = phases.indexOf(curPhase);
   const dots = document.getElementById('step-dots');
@@ -977,11 +943,7 @@ function welcomeNext() {
 }
 
 function backFromCloudChoice() {
-  if (returnTo === 'settings') {
-    cancelWizard();
-  } else {
-    goToStep(1);
-  }
+  cancelWizard();
 }
 
 function skipWizard() {
@@ -1078,9 +1040,6 @@ async function doOAuth() {
 }
 
 // ==================== OPENAI CONNECTION METHOD CHOICE ====================
-function showOpenAIChoice() {
-  goToStep('openai-choice');
-}
 
 // ==================== STEP 3: CLOUD PROVIDER (API KEY) ====================
 function selectCloudProvider(provider) {
