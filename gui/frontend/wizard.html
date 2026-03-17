@@ -1879,17 +1879,28 @@ document.addEventListener('DOMContentLoaded', async function() {
   const platform = await goCall('getPlatform');
   if (platform === 'darwin') {
     isMac = true;
-    // If both permissions are already granted (e.g. app restarted after
-    // the user set them in the previous session), skip welcome and
-    // permissions — go directly to model selection (#139).
     const perms = await checkPerms();
     if (perms.accessibility && perms.postEvent) {
+      // Permissions already granted — skip to model selection (#139).
       goToStep(1);
       return;
     }
+    // Permissions missing. Check if this is an existing install (has providers)
+    // vs a fresh first run. For existing installs, skip welcome and go
+    // straight to permission fix — the user just needs to re-grant after update.
+    const cfg = await goCall('getConfig');
+    if (cfg) {
+      try {
+        var c = JSON.parse(cfg);
+        if (c.providers && Object.keys(c.providers).length > 0) {
+          goToStep('perm-ax');
+          return;
+        }
+      } catch(e) {}
+    }
   }
 
-  // Always start at the welcome page
+  // First run — start at welcome page
   goToStep('welcome');
 });
 </script>

@@ -221,23 +221,18 @@ func main() {
 	needsSetup := config.NeedsSetup(cfg)
 
 	// On macOS, check Accessibility and Input Monitoring permissions.
-	// Only force the wizard on true first run (no providers configured).
-	// After updates the TCC cache may return stale "not granted" even though
-	// permissions are actually working — forcing the wizard would create a
-	// restart loop (#193).
+	// These are mandatory — the app cannot function without them.
+	// After updates, macOS invalidates permissions when the binary hash changes.
+	// Always show the wizard when permissions are missing — the wizard polls
+	// for re-grant in real time and skips the restart step if permissions
+	// come back while the wizard is open (#193).
 	if runtime.GOOS == "darwin" {
 		axOK := checkAccessibility()
 		imOK := checkInputMonitoring()
 		if !axOK || !imOK {
-			if needsSetup {
-				// First run — no providers configured, must show wizard for permissions.
-				slog.Info("macOS permissions missing (first run), showing setup wizard", "accessibility", axOK, "inputMonitoring", imOK)
-				fmt.Printf("macOS permissions: accessibility=%v inputMonitoring=%v — opening wizard\n", axOK, imOK)
-			} else {
-				// Existing install — TCC may be stale after update. Log but don't force wizard.
-				slog.Warn("macOS TCC reports permissions missing, but providers are configured — skipping wizard (may be stale after update)", "accessibility", axOK, "inputMonitoring", imOK)
-				fmt.Printf("macOS permissions: accessibility=%v inputMonitoring=%v — skipping wizard (existing install)\n", axOK, imOK)
-			}
+			slog.Info("macOS permissions missing, showing wizard", "accessibility", axOK, "inputMonitoring", imOK)
+			fmt.Printf("macOS permissions: accessibility=%v inputMonitoring=%v — opening wizard\n", axOK, imOK)
+			needsSetup = true
 		}
 	}
 

@@ -541,17 +541,14 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		fmt.Printf("Accessibility: %v | PostEvent: %v\n", axOK, postOK)
 
 		if !axOK || !postOK {
-			fmt.Println("")
 			if axOK && !postOK {
-				fmt.Println("  WARNING: Accessibility is checked but event posting is BLOCKED.")
-				fmt.Println("  Fix: toggle GhostSpell OFF then ON in Accessibility settings.")
+				fmt.Println("\n  WARNING: Accessibility is checked but event posting is BLOCKED.")
+				fmt.Println("  Fix: toggle GhostSpell OFF then ON in Accessibility settings.\n")
 				slog.Warn("Stale TCC: AXIsProcessTrusted=true but CGPreflightPostEventAccess=false")
 			} else {
-				fmt.Println("  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
+				fmt.Println("\n  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
+				fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.\n")
 			}
-			fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.")
-			fmt.Println("  Check permission status in GhostSpell Settings > General.")
-			fmt.Println("")
 		}
 
 		fmt.Println("GhostSpell is ready. Waiting for hotkey input...")
