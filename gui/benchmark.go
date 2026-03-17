@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
@@ -106,6 +107,16 @@ func (s *SettingsService) RunBenchmark() string {
 		benchMu.Unlock()
 		return "error: no models to benchmark"
 	}
+
+	// Sort: cloud providers first (fast, 1-5s), local providers last (slow, 10-60s).
+	sort.SliceStable(targets, func(i, j int) bool {
+		iLocal := targets[i].provider == "local" || targets[i].provider == "ollama" || targets[i].provider == "lmstudio"
+		jLocal := targets[j].provider == "local" || targets[j].provider == "ollama" || targets[j].provider == "lmstudio"
+		if iLocal != jLocal {
+			return !iLocal // cloud first
+		}
+		return targets[i].label < targets[j].label // alphabetical within group
+	})
 
 	// Initialize results.
 	result := &BenchmarkResult{Running: true, PromptName: promptName, PromptIcon: promptIcon}
