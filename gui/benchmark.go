@@ -134,7 +134,7 @@ func (s *SettingsService) RunBenchmark() string {
 	benchResult = result
 	benchMu.Unlock()
 
-	go sound.PlayBenchmark()
+	sound.StartBenchmarkLoop()
 
 	// Run benchmark in background.
 	go func() {
@@ -232,6 +232,7 @@ func (s *SettingsService) RunBenchmark() string {
 		result.Done = true
 		result.Timestamp = time.Now().Format("2006-01-02 15:04")
 		benchMu.Unlock()
+		sound.StopBenchmarkLoop()
 		go sound.PlaySuccess()
 		slog.Info("[benchmark] complete")
 	}()
@@ -290,7 +291,7 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 	benchResult = result
 	benchMu.Unlock()
 
-	go sound.PlayBenchmark()
+	sound.StartBenchmarkLoop()
 
 	go func() {
 		defer func() {
@@ -404,6 +405,7 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 		result.Done = true
 		result.Timestamp = time.Now().Format("2006-01-02 15:04")
 		benchMu.Unlock()
+		sound.StopBenchmarkLoop()
 		go sound.PlaySuccess()
 		slog.Info("[benchmark] filtered complete")
 	}()
@@ -419,6 +421,7 @@ func (s *SettingsService) StopBenchmark() string {
 		benchCancel()
 	}
 	benchMu.Unlock()
+	sound.StopBenchmarkLoop()
 	return "ok"
 }
 

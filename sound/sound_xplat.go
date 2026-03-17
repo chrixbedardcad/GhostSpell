@@ -84,8 +84,10 @@ var (
 	enabled bool
 	mu      sync.Mutex
 
-	workingStop chan struct{}
-	workingMu   sync.Mutex
+	workingStop   chan struct{}
+	workingMu     sync.Mutex
+	benchStop     chan struct{}
+	benchMu       sync.Mutex
 )
 
 // Init enables or disables sound playback.
@@ -155,6 +157,50 @@ func StopWorkingLoop() {
 	workingMu.Unlock()
 	// Kill any lingering playback process — but only if the loop was actually
 	// running, so we don't kill a success/error sound that started after us.
+	if wasRunning {
+		stopPlayback()
+	}
+}
+
+// StartBenchmarkLoop plays benchmarking sounds in a loop until StopBenchmarkLoop is called.
+func StartBenchmarkLoop() {
+	mu.Lock()
+	e := enabled
+	mu.Unlock()
+	if !e {
+		return
+	}
+
+	benchMu.Lock()
+	if benchStop != nil {
+		close(benchStop)
+	}
+	stop := make(chan struct{})
+	benchStop = stop
+	benchMu.Unlock()
+
+	variants := [][]byte{benchmarkingWAV, benchmarking2WAV}
+	go func() {
+		for {
+			playWAVLoop(pickRandom(variants))
+			select {
+			case <-stop:
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}()
+}
+
+// StopBenchmarkLoop stops the looping benchmark sound.
+func StopBenchmarkLoop() {
+	benchMu.Lock()
+	wasRunning := benchStop != nil
+	if wasRunning {
+		close(benchStop)
+		benchStop = nil
+	}
+	benchMu.Unlock()
 	if wasRunning {
 		stopPlayback()
 	}
