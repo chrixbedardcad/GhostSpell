@@ -664,7 +664,7 @@
         <button class="btn btn-secondary" onclick="refreshOllamaSetup()">Refresh</button>
         <button class="btn btn-secondary" id="prov-ollama-test-btn" onclick="testProviderConnection('ollama')">Test Connection</button>
         <button class="btn btn-primary" onclick="saveOllamaProvider()">Save</button>
-        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-ollama" onchange="toggleProvider('ollama',this.checked)"><span class="slider"></span></label>
+        <span style="font-size:0.72em;color:#6c7086;margin-left:auto">Enabled</span><label class="toggle" style="flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-ollama" onchange="toggleProvider('ollama',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-ollama-test-result" class="status"></div>
       <div id="prov-ollama-status" class="status"></div>
@@ -702,7 +702,7 @@
         <button class="btn btn-secondary" onclick="refreshLMStudioSetup()">Refresh</button>
         <button class="btn btn-secondary" id="prov-lmstudio-test-btn" onclick="testProviderConnection('lmstudio')">Test Connection</button>
         <button class="btn btn-primary" onclick="saveLMStudioProvider()">Save</button>
-        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-lmstudio" onchange="toggleProvider('lmstudio',this.checked)"><span class="slider"></span></label>
+        <span style="font-size:0.72em;color:#6c7086;margin-left:auto">Enabled</span><label class="toggle" style="flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-lmstudio" onchange="toggleProvider('lmstudio',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-lmstudio-test-result" class="status"></div>
       <div id="prov-lmstudio-status" class="status"></div>
@@ -726,7 +726,7 @@
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="testOpenAIApiKey()">Test Connection</button>
         <button class="btn btn-primary" onclick="saveCloudProvider('openai')">Save</button>
-        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-openai" onchange="toggleProvider('openai',this.checked)"><span class="slider"></span></label>
+        <span style="font-size:0.72em;color:#6c7086;margin-left:auto">Enabled</span><label class="toggle" style="flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-openai" onchange="toggleProvider('openai',this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-openai-status" class="status"></div>
       <div id="prov-openai-models"></div>
@@ -749,7 +749,7 @@
       <div class="btn-row">
         <button class="btn btn-secondary" id="prov-cloud-test-btn" onclick="testCloudProvider()">Test Connection</button>
         <button class="btn btn-primary" onclick="saveCloudProvider(currentCloudProvider)">Save</button>
-        <label class="toggle" style="margin-left:auto;flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-cloud" onchange="toggleProvider(currentCloudProvider,this.checked)"><span class="slider"></span></label>
+        <span style="font-size:0.72em;color:#6c7086;margin-left:auto">Enabled</span><label class="toggle" style="flex-shrink:0" title="Enable/disable this provider"><input type="checkbox" id="prov-toggle-cloud" onchange="toggleProvider(currentCloudProvider,this.checked)"><span class="slider"></span></label>
       </div>
       <div id="prov-cloud-status" class="status"></div>
       <div id="prov-cloud-models"></div>
@@ -2152,9 +2152,9 @@ function renderModelGrid(models) {
     html += '<div style="background:#313244;border:' + borderWidth + ' solid ' + borderColor + ';border-radius:8px;padding:10px 14px;opacity:' + opacity + ';transition:border-color 0.15s;display:flex;align-items:center;gap:12px" onmouseenter="this.style.borderColor=\'#89b4fa\'" onmouseleave="this.style.borderColor=\'' + borderColor + '\'">';
 
     // Provider + Creator logos (provider serves it → creator made it)
-    var creatorLogo = getCreatorLogo(m.creator || '');
+    var creatorLogo = getCreatorLogo(m.creator || '').replace(/width="22"/g, 'width="28"').replace(/height="22"/g, 'height="28"');
     var logoHtml = '<div style="flex-shrink:0;display:flex;align-items:center;gap:2px">' + logo;
-    if (creatorLogo && (m.creator || '') !== m.provider) logoHtml += '<span style="color:#585b70;font-size:0.6em;margin:0 1px">&rsaquo;</span>' + creatorLogo;
+    if (creatorLogo && (m.creator || '') !== m.provider) logoHtml += '<span style="color:#585b70;font-size:0.7em;margin:0 1px">&rsaquo;</span>' + creatorLogo;
     logoHtml += '</div>';
     html += logoHtml;
 
@@ -2379,8 +2379,13 @@ async function renderPrompts() {
 
 function buildInlineForm(idx, p) {
   const models = configData.models || {};
+  const providers = configData.providers || {};
   let llmOpts = '<option value="">Use default</option>';
   for (const label of Object.keys(models)) {
+    // Only show models whose provider is configured and not disabled.
+    var me = models[label];
+    var prov = providers[me.provider];
+    if (!prov || prov.disabled) continue;
     llmOpts += '<option value="' + esc(label) + '"' + (label === (p.llm || '') ? ' selected' : '') + '>' + esc(label) + '</option>';
   }
   const currentIcon = p.icon || '';
