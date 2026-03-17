@@ -120,15 +120,15 @@ func (s *SettingsService) DismissWhatsNew() string {
 const whatsNewHTML = `
 <h3>What's New in GhostSpell</h3>
 <ul>
-<li><strong>ChatGPT Login is now independent</strong> — fully separate provider from OpenAI API Key. No more conflicts. Both can coexist.</li>
-<li><strong>Ask prompt</strong> — new default prompt for answering questions (❓)</li>
-<li><strong>Cycle prompt pop</strong> — indicator pill briefly shows the new prompt when you cycle with Ctrl+Shift+T</li>
-<li><strong>macOS permissions redesign</strong> — Accessibility and Input Monitoring are now two clear separate steps</li>
-<li><strong>Emoji picker</strong> — full categorized emoji picker for prompt icons</li>
-<li><strong>GhostAI improvements</strong> — thinking models use full context window, better answer extraction</li>
-<li><strong>What's New popup</strong> — this popup! Shows automatically after each update</li>
-<li><strong>Provider logos</strong> — all setup pages and model entries show provider logos</li>
-<li><strong>Clean external links</strong> — standardized pill buttons for all links that open a browser</li>
+<li><strong>Bulletproof self-updater</strong> — downloads in-process with progress bar, no more crashes during updates</li>
+<li><strong>Usage stats &amp; benchmark</strong> — track model performance, run benchmarks, compare response times</li>
+<li><strong>LM Studio support</strong> — auto-detects loaded models, setup guide in settings</li>
+<li><strong>Faster local models</strong> — Qwen3.5 thinking properly disabled, response times cut from minutes to seconds</li>
+<li><strong>Ollama fix</strong> — uses native think:false API for reliable thinking control</li>
+<li><strong>Per-prompt timeout</strong> — set custom timeouts per prompt (e.g. Ask needs more time than Correct)</li>
+<li><strong>Preserve Clipboard</strong> — setting now works: disable to keep LLM result in clipboard after paste</li>
+<li><strong>Provider test status</strong> — cards show green "Connected" or red "Error" after testing</li>
+<li><strong>Indicator position fix</strong> — no longer blocks clicks at screen center on Windows</li>
 </ul>
 `
 
