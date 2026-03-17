@@ -2192,20 +2192,20 @@ function renderModelGrid(models) {
         }
       }
     }
-    html += '<div style="flex-shrink:0;text-align:right;min-width:80px">';
+    html += '<div style="flex-shrink:0;text-align:right;min-width:90px">';
     if (costDisplay) html += '<div style="font-size:0.72em;font-weight:600;color:' + costColor + '">' + costDisplay + '</div>';
     if (liveStatus === 'testing') {
-      html += '<div style="font-size:0.72em;color:#89b4fa;font-weight:600">testing...</div>';
+      html += '<div style="font-size:0.82em;color:#89b4fa;font-weight:600">testing...</div>';
     } else if (liveStatus === 'pending') {
-      html += '<div style="font-size:0.68em;color:#585b70">waiting...</div>';
+      html += '<div style="font-size:0.75em;color:#585b70">waiting...</div>';
     } else if (liveStatus === 'error') {
-      html += '<div style="font-size:0.68em;color:#f38ba8">failed</div>';
+      html += '<div style="font-size:0.75em;color:#f38ba8">failed</div>';
     } else if (speedStr) {
-      var promptLabel = m.speed_prompt ? ' <span style="font-size:0.85em;color:#6c7086">' + esc(m.speed_prompt) + '</span>' : '';
-      if (m.speed_ts) promptLabel += '<div style="font-size:0.65em;color:#585b70">' + esc(m.speed_ts) + '</div>';
-      html += '<div style="font-size:0.78em;font-weight:600;color:' + speedColor + '">' + speedStr + promptLabel + '</div>';
+      html += '<div style="font-size:0.95em;font-weight:700;color:' + speedColor + '">' + speedStr + '</div>';
+      if (m.speed_prompt) html += '<div style="font-size:0.68em;color:#6c7086;margin-top:1px">' + esc(m.speed_prompt) + '</div>';
+      if (m.speed_ts) html += '<div style="font-size:0.62em;color:#585b70">' + esc(m.speed_ts) + '</div>';
     } else {
-      html += '<div style="font-size:0.68em;color:#585b70">no benchmark</div>';
+      html += '<div style="font-size:0.72em;color:#585b70">no benchmark</div>';
     }
     html += '</div>';
 
