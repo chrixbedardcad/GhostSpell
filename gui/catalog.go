@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/llm"
 )
 
 //go:embed models_catalog.json
@@ -283,10 +284,10 @@ func (s *SettingsService) ToggleModel(provider, model string, enabled bool) stri
 }
 
 // GetProviderModels returns catalog models for a specific provider with enabled state, as JSON.
+// For LM Studio and Ollama, dynamically queries the server for loaded models.
 func (s *SettingsService) GetProviderModels(provider string) string {
 	guiLog("[GUI] JS called: GetProviderModels(%s)", provider)
 
-	catalog := parseCatalog()
 	cfg := s.cfgCopy
 
 	type ProviderModelEntry struct {
@@ -300,6 +301,41 @@ func (s *SettingsService) GetProviderModels(provider string) string {
 	}
 
 	var entries []ProviderModelEntry
+
+	// For LM Studio: query server for loaded models.
+	if provider == "lmstudio" {
+		endpoint := ""
+		if prov, ok := cfg.Providers["lmstudio"]; ok {
+			endpoint = prov.APIEndpoint
+		}
+		if _, modelNames, err := llm.LMStudioStatus(endpoint); err == nil {
+			for _, name := range modelNames {
+				enabled := false
+				isDefault := false
+				for label, me := range cfg.Models {
+					if me.Provider == "lmstudio" && me.Model == name {
+						enabled = true
+						isDefault = label == cfg.DefaultModel
+						break
+					}
+				}
+				entries = append(entries, ProviderModelEntry{
+					Model:       name,
+					Name:        name,
+					Description: "Loaded in LM Studio",
+					CostTier:    "free",
+					Tags:        []string{},
+					Enabled:     enabled,
+					IsDefault:   isDefault,
+				})
+			}
+		}
+		data, _ := json.Marshal(entries)
+		return string(data)
+	}
+
+	// For all other providers: use the static catalog.
+	catalog := parseCatalog()
 	for _, cm := range catalog {
 		if cm.Provider != provider {
 			continue
