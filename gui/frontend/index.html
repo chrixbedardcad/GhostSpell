@@ -1148,7 +1148,7 @@
       <div id="update-auto-status" style="margin-bottom:10px"></div>
       <div style="display:flex;gap:8px;justify-content:center">
         <button class="btn btn-primary" onclick="checkForUpdate()" id="update-btn">Check for Updates</button>
-        <button class="btn btn-secondary" onclick="wails.Browser.OpenURL('https://github.com/chrixbedardcad/GhostSpell/releases/latest')">What's New</button>
+        <button class="btn btn-secondary" onclick="showWhatsNew()">What's New</button>
       </div>
       <div class="status" id="update-status"></div>
     </div>
@@ -1231,6 +1231,15 @@ function switchTab(name) {
 }
 
 // ---- Init ----
+async function showWhatsNew() {
+  var ver = await goCall('getVersion');
+  var body = await goCall('getWhatsNewAlways');
+  if (!body) body = '<p style="color:#6c7086">No release notes available for this version.</p>';
+  document.getElementById('whats-new-ver').textContent = 'Version ' + (ver || '');
+  document.getElementById('whats-new-body').innerHTML = body;
+  document.getElementById('whats-new-overlay').style.display = 'flex';
+}
+
 async function dismissWhatsNew() {
   document.getElementById('whats-new-overlay').style.display = 'none';
   await goCall('dismissWhatsNew');
