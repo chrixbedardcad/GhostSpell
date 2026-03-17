@@ -37,6 +37,7 @@ type BenchmarkModelRes struct {
 var (
 	benchMu     sync.Mutex
 	benchResult *BenchmarkResult
+	benchCancel context.CancelFunc
 )
 
 const benchmarkTestText = "fix this: helo wrld, i'm typng fast and makng erors evrywhere"
@@ -278,11 +279,32 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 			Status:   "pending",
 		})
 	}
+	benchCtx, cancelFn := context.WithCancel(context.Background())
+	benchCancel = cancelFn
 	benchResult = result
 	benchMu.Unlock()
 
 	go func() {
+		defer func() {
+			benchMu.Lock()
+			benchCancel = nil
+			benchMu.Unlock()
+		}()
+
 		for i := range result.Models {
+			// Check if cancelled.
+			if benchCtx.Err() != nil {
+				benchMu.Lock()
+				for j := i; j < len(result.Models); j++ {
+					if result.Models[j].Status == "pending" {
+						result.Models[j].Status = "error"
+						result.Models[j].Error = "cancelled"
+					}
+				}
+				benchMu.Unlock()
+				break
+			}
+
 			benchMu.Lock()
 			result.Models[i].Status = "running"
 			benchMu.Unlock()
@@ -326,7 +348,7 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 				timeout = 120 * time.Second
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(benchCtx, timeout)
 			start := time.Now()
 			resp, err := client.Send(ctx, llm.Request{
 				Prompt: promptText,
@@ -376,6 +398,17 @@ func (s *SettingsService) RunBenchmarkFiltered(modelsJSON string) string {
 		slog.Info("[benchmark] filtered complete")
 	}()
 
+	return "ok"
+}
+
+// StopBenchmark cancels a running benchmark.
+func (s *SettingsService) StopBenchmark() string {
+	guiLog("[GUI] JS called: StopBenchmark")
+	benchMu.Lock()
+	if benchCancel != nil {
+		benchCancel()
+	}
+	benchMu.Unlock()
 	return "ok"
 }
 

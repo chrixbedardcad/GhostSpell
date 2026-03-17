@@ -43,6 +43,7 @@ type CatalogEntry struct {
 	ConfigLabel    string `json:"config_label"`     // label in config, if enabled
 	AvgSpeedMs     int64  `json:"avg_speed_ms"`     // from stats, 0 = no data
 	SpeedPrompt    string `json:"speed_prompt"`     // which prompt was used for the speed
+	SpeedTimestamp string `json:"speed_ts"`         // when the benchmark was run
 	ProviderActive bool   `json:"provider_active"`  // provider is configured
 }
 
