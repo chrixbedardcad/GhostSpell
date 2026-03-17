@@ -825,19 +825,27 @@
   <div id="tab-hotkeys" class="tab-panel">
     <div class="section">
       <h2>Hotkeys</h2>
-      <p style="font-size:0.82em;color:#6c7086;margin-bottom:16px">
-        Format: <code style="background:#313244;padding:1px 5px;border-radius:3px;font-size:0.9em;color:#f9e2af">Ctrl+G</code>,
-        <code style="background:#313244;padding:1px 5px;border-radius:3px;font-size:0.9em;color:#f9e2af">Ctrl+Shift+T</code>.
-        Leave blank to disable. Restart required for hotkey changes.
+      <p style="font-size:0.82em;color:#a6adc8;margin-bottom:6px">
+        Global keyboard shortcuts that work in any application.
       </p>
+      <p style="font-size:0.75em;color:#6c7086;margin-bottom:16px">
+        Click the input field, then <strong style="color:#f9e2af">press the key combination</strong> you want to assign. Don't type text &mdash; just press the keys (e.g. hold Ctrl and press G). Press Escape to clear. Restart required after changes.
+      </p>
+
       <div class="hotkey-input">
-        <label>Action</label>
-        <input type="text" id="hk-action" placeholder="Click, then press keys..." readonly>
+        <label>
+          <div style="color:#cdd6f4;font-weight:600">Action</div>
+          <div style="font-size:0.85em;color:#6c7086;font-weight:400">Triggers GhostSpell on selected text</div>
+        </label>
+        <input type="text" id="hk-action" placeholder="Click here, press keys..." readonly>
         <button class="clear-btn" onclick="clearHotkey('action')" title="Clear">&times;</button>
       </div>
       <div class="hotkey-input">
-        <label>Cycle Prompt</label>
-        <input type="text" id="hk-cycle_prompt" placeholder="Click, then press keys..." readonly>
+        <label>
+          <div style="color:#cdd6f4;font-weight:600">Cycle Prompt</div>
+          <div style="font-size:0.85em;color:#6c7086;font-weight:400">Switch to the next prompt mode</div>
+        </label>
+        <input type="text" id="hk-cycle_prompt" placeholder="Click here, press keys..." readonly>
         <button class="clear-btn" onclick="clearHotkey('cycle_prompt')" title="Clear">&times;</button>
       </div>
       <button class="btn btn-primary btn-sm" onclick="saveHotkeys()" style="margin-top:8px">Save Hotkeys</button>
