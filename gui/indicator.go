@@ -12,14 +12,27 @@ import (
 
 var (
 	indicatorWin *application.WebviewWindow
+	indicatorApp *application.App
 	indicatorMu  sync.Mutex
 )
 
-// No off-screen positioning needed — opacity:0 in CSS handles visibility.
-
+// CreateIndicator stores the app reference for lazy window creation.
+// The actual window is NOT created until ShowIndicator is first called.
+// This prevents the AlwaysOnTop + IgnoreMouseEvents=false window from
+// blocking clicks during the wizard, OAuth flows, and first-launch setup.
 func CreateIndicator(app *application.App) {
 	indicatorMu.Lock()
 	defer indicatorMu.Unlock()
+	indicatorApp = app
+	slog.Info("[gui] Indicator lazy-init registered (window created on first use)")
+}
+
+// ensureIndicatorWindow lazily creates the indicator window on first use.
+// Must be called with indicatorMu held.
+func ensureIndicatorWindow() {
+	if indicatorWin != nil || indicatorApp == nil {
+		return
+	}
 
 	bgType := application.BackgroundTypeTransparent
 	ignoreMouse := true
@@ -28,7 +41,7 @@ func CreateIndicator(app *application.App) {
 		ignoreMouse = false
 	}
 
-	indicatorWin = app.Window.NewWithOptions(application.WebviewWindowOptions{
+	indicatorWin = indicatorApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:              "ghostspell-indicator",
 		Title:             "",
 		Width:             1,
@@ -38,7 +51,7 @@ func CreateIndicator(app *application.App) {
 		BackgroundType:    bgType,
 		BackgroundColour:  application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
 		DisableResize:     true,
-		Hidden:            false, // must stay visible for WebView2 to render
+		Hidden:            false,
 		IgnoreMouseEvents: ignoreMouse,
 		URL:               "/indicator.html",
 		Windows: application.WindowsWindow{
@@ -51,9 +64,7 @@ func CreateIndicator(app *application.App) {
 			WindowLevel: application.MacWindowLevelFloating,
 		},
 	})
-	// Window is visible (Hidden:false) but content is invisible (CSS opacity:0).
-	// WebView2 renders the page, ExecJS works, but user sees nothing.
-	slog.Info("[gui] Indicator overlay window created (off-screen)")
+	slog.Info("[gui] Indicator window created (lazy, first use)")
 }
 
 // indicatorPos stores the configured position. Set by the app at startup.
@@ -97,20 +108,19 @@ func getIndicatorPosition() (int, int) {
 }
 
 func ShowIndicator(promptIcon, promptName, modelLabel string) {
+	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon, "model", modelLabel)
+
 	indicatorMu.Lock()
+	pos := indicatorPos
+	if pos == "hidden" {
+		indicatorMu.Unlock()
+		return
+	}
+	// Lazy-create the window on first actual use.
+	ensureIndicatorWindow()
 	win := indicatorWin
 	indicatorMu.Unlock()
 	if win == nil {
-		return
-	}
-
-	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon, "model", modelLabel)
-
-	// Check if indicator is hidden.
-	indicatorMu.Lock()
-	pos := indicatorPos
-	indicatorMu.Unlock()
-	if pos == "hidden" {
 		return
 	}
 

@@ -299,13 +299,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 	}()
 
-	// Floating ghost overlay — shows while processing.
-	// CreateIndicator sets Hidden:true, but explicitly hide again as a safety
-	// measure — on macOS, AlwaysOnTop + Frameless windows have occasionally
-	// appeared visible despite the Hidden flag (#137).
+	// Floating ghost overlay — lazy-initialized on first Ctrl+G press.
+	// The window is NOT created at startup to avoid blocking clicks during
+	// wizard, OAuth, and first-launch setup (AlwaysOnTop + IgnoreMouseEvents
+	// =false on Windows was blocking the entire UI).
 	gui.CreateIndicator(wailsApp)
 	gui.SetIndicatorPosition(cfg.IndicatorPosition)
-	gui.HideIndicator()
 
 	// When debug auto-disables after 30min, log it.
 	if debugState != nil {
