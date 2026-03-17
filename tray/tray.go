@@ -302,29 +302,7 @@ func (ts *trayState) refreshMenu() {
 
 	// Models section.
 	menu.AddSeparator()
-	menu.Add("Models:").SetEnabled(false)
-
-	modelCount := 0
-	if ts.cfg.GetModelLabels != nil {
-		models := ts.cfg.GetModelLabels()
-		modelCount = len(models)
-		if len(models) > 0 {
-			for _, ml := range models {
-				displayName := ml.Label
-				if displayName == "" {
-					displayName = ml.Model
-				}
-				item := menu.AddRadio("  "+displayName, ml.IsDefault)
-				label := ml.Label // capture for closure
-				item.OnClick(func(ctx *application.Context) {
-					if ts.cfg.OnModelSelect != nil {
-						ts.cfg.OnModelSelect(label)
-					}
-					ts.refreshMenu()
-				})
-			}
-		}
-	}
+	// Model list removed — too many models for a menu. Use Settings > Models tab instead.
 
 	// Settings and Exit — together, no separator between them.
 	menu.AddSeparator()
@@ -347,7 +325,6 @@ func (ts *trayState) refreshMenu() {
 	slog.Info("[tray] Menu built and set",
 		"active_prompt", activePrompt,
 		"prompts", len(promptNames),
-		"models", modelCount,
 		"update", updateVer,
 	)
 }

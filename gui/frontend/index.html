@@ -754,7 +754,7 @@
         <button class="btn btn-secondary btn-sm" onclick="resetModels()">Reset Models</button>
       </div>
     </div>
-    <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
+    <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px" id="models-subtitle">
       Click any model to set it as your default. Click <strong style="color:#cdd6f4">Benchmark All</strong> to measure speed.
     </div>
 
@@ -2015,9 +2015,13 @@ function renderModelGrid(models) {
     html += '</div>';
 
     // Cost + speed (right side)
-    html += '<div style="flex-shrink:0;text-align:right;min-width:60px">';
+    html += '<div style="flex-shrink:0;text-align:right;min-width:80px">';
     if (costDisplay) html += '<div style="font-size:0.72em;font-weight:600;color:' + costColor + '">' + costDisplay + '</div>';
-    if (speedStr) html += '<div style="font-size:0.68em;color:' + speedColor + '">' + speedStr + '</div>';
+    if (speedStr) {
+      html += '<div style="font-size:0.78em;font-weight:600;color:' + speedColor + '">' + speedStr + '</div>';
+    } else {
+      html += '<div style="font-size:0.68em;color:#585b70">no benchmark</div>';
+    }
     html += '</div>';
 
     html += '</div>';
@@ -2043,17 +2047,20 @@ async function runModelsBenchmark() {
     alert(result);
     return;
   }
-  // Poll until done.
+  // Poll until done — show prompt name.
   var poll = setInterval(async function() {
     var raw = await goCall('getBenchmarkResult');
     if (!raw || raw === '{}') return;
     var b;
     try { b = JSON.parse(raw); } catch(e) { return; }
+    if (b.prompt_name) {
+      btn.textContent = 'Running (' + (b.prompt_icon || '') + ' ' + b.prompt_name + ')...';
+    }
     if (b.done || !b.running) {
       clearInterval(poll);
       btn.disabled = false;
       btn.textContent = 'Benchmark All';
-      renderModels(); // Refresh to show new speed data.
+      renderModels();
     }
   }, 1000);
 }
