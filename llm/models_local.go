@@ -123,8 +123,8 @@ func AvailableLocalModels() []LocalModel {
 		{
 			Name:     "nemotron-nano-4b",
 			FileName: "NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
-			URL:      "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/main/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
-			Size:     2_640_000_000,
+			URL:      "https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/main/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M.gguf",
+			Size:     2_900_000_000,
 			Desc:     "NVIDIA Nemotron 3 Nano 4B. High efficiency, tool-calling, trained from scratch. Needs 4GB+ RAM.",
 		},
 		// --- Other models ---

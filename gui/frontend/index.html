@@ -2195,11 +2195,13 @@ function renderActiveModelSummary() {
   summaryLogos += '</div>';
   html += summaryLogos;
   html += '<div style="flex:1;min-width:0">';
-  html += '<div style="font-size:0.72em;color:#a6e3a1;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Active Model</div>';
-  html += '<div style="font-size:1em;font-weight:700;color:#cdd6f4">' + esc(active.name) + '</div>';
-  html += '<div style="font-size:0.78em;color:#6c7086;margin-top:2px">' + esc(provName);
-  if (active.model !== active.name) html += ' &mdash; <span style="font-family:monospace;font-size:0.9em">' + esc(active.model) + '</span>';
+  html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+  html += '<span style="font-size:1em;font-weight:700;color:#cdd6f4">' + esc(active.name) + '</span>';
+  html += '<span style="background:#a6e3a1;color:#1e1e2e;font-size:0.6em;padding:1px 6px;border-radius:3px;font-weight:700">ACTIVE</span>';
+  var aTags = (active.tags || []).filter(function(t) { return t !== 'free' && t !== 'offline'; });
+  aTags.forEach(function(t) { if (TAG_BADGES[t]) html += ' <span class="badge ' + TAG_BADGES[t].cls + '">' + TAG_BADGES[t].label + '</span>'; });
   html += '</div>';
+  if (active.description) html += '<div style="font-size:0.74em;color:#6c7086;line-height:1.4;margin-top:2px">' + esc(active.description) + '</div>';
   html += '</div>';
   html += '<div style="flex-shrink:0;text-align:right">';
   var aTier = active.cost_tier || '';

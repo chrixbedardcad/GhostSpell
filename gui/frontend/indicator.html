@@ -246,21 +246,51 @@ if (_urlState === 'idle') {
 }
 
 // --- Click handlers (idle state only) ---
+// First click: expand to show current prompt info (stays for 3s).
+// Second click (while expanded): cycle to next prompt.
+// Double-click: open settings.
 var _clickTimer = null;
+var _expanded = false;
+var _expandTimeout = null;
+
 document.getElementById('pill').addEventListener('click', function(e) {
-  if (_state !== 'idle') return;
+  if (_state !== 'idle' && _state !== 'expanded') return;
   // Distinguish single-click from double-click
   if (_clickTimer) { clearTimeout(_clickTimer); _clickTimer = null; return; }
-  _clickTimer = setTimeout(function() {
+  _clickTimer = setTimeout(async function() {
     _clickTimer = null;
-    // Single click → cycle prompt
-    goCall('cyclePromptFromIndicator');
+    if (_expanded) {
+      // Second click while expanded → cycle prompt
+      await goCall('cyclePromptFromIndicator');
+      _expanded = false;
+    } else {
+      // First click → expand to show prompt info
+      var raw = await goCall('getActivePromptInfo');
+      if (raw) {
+        try {
+          var info = JSON.parse(raw);
+          setState('pop', {icon: info.icon, name: info.name});
+          _state = 'expanded'; // override to track expanded state
+          _expanded = true;
+          goCall('resizeIndicatorForMenu', 260, 52);
+          // Auto-collapse after 3 seconds
+          if (_expandTimeout) clearTimeout(_expandTimeout);
+          _expandTimeout = setTimeout(function() {
+            _expanded = false;
+            setState('idle');
+            goCall('resizeIndicatorForMenu', 48, 48);
+          }, 3000);
+        } catch(e) {}
+      }
+    }
   }, 250);
 });
 
 document.getElementById('pill').addEventListener('dblclick', function(e) {
-  if (_state !== 'idle') return;
+  if (_state !== 'idle' && _state !== 'expanded') return;
   if (_clickTimer) { clearTimeout(_clickTimer); _clickTimer = null; }
+  if (_expandTimeout) { clearTimeout(_expandTimeout); _expandTimeout = null; }
+  _expanded = false;
   // Double-click → open settings
   goCall('openSettingsFromIndicator');
 });
@@ -295,13 +325,20 @@ async function showContextMenu(x, y) {
 
   var menuEl = document.getElementById('ctx-menu');
   menuEl.innerHTML = html;
-  menuEl.style.left = Math.max(0, x) + 'px';
-  menuEl.style.top = Math.max(0, y) + 'px';
+  // Expand window to fit the menu (#214).
+  var menuHeight = (menu.prompts.length * 28) + 80; // items + separators + padding
+  goCall('resizeIndicatorForMenu', 200, menuHeight);
+  menuEl.style.left = '0px';
+  menuEl.style.top = '48px';
   menuEl.className = 'ctx-menu show';
 }
 
 function hideMenu() {
   document.getElementById('ctx-menu').className = 'ctx-menu';
+  // Restore idle size after menu closes.
+  if (_state === 'idle') {
+    goCall('resizeIndicatorForMenu', 48, 48);
+  }
 }
 
 async function selectPrompt(idx) {
