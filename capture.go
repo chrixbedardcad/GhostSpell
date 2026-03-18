@@ -265,36 +265,36 @@ func captureText(
 // Works in editable fields (Notepad, VS Code, browser textareas).
 // Returns empty string if context capture fails or isn't useful.
 func captureFullContextViaClipboard(selectedText string, cb *clipboard.Clipboard, kb keyboard.Simulator) string {
-	slog.Info("captureFullContext: attempting clipboard-based context capture")
+	slog.Debug("captureFullContext: attempting clipboard-based context capture")
 
 	// Clear clipboard before select-all.
 	if err := cb.Clear(); err != nil {
-		slog.Warn("captureFullContext: clear clipboard failed", "error", err)
+		slog.Debug("captureFullContext: clear clipboard failed", "error", err)
 		return ""
 	}
 
 	// Select All + Copy to get the full document.
 	if err := kb.SelectAll(); err != nil {
-		slog.Info("captureFullContext: SelectAll failed — no context available", "error", err)
+		slog.Debug("captureFullContext: SelectAll failed — no context available", "error", err)
 		return ""
 	}
 	time.Sleep(50 * time.Millisecond)
 
 	if err := kb.Copy(); err != nil {
-		slog.Info("captureFullContext: Copy after SelectAll failed", "error", err)
+		slog.Debug("captureFullContext: Copy after SelectAll failed", "error", err)
 		return ""
 	}
 	time.Sleep(100 * time.Millisecond)
 
 	fullText, err := cb.Read()
 	if err != nil || fullText == "" {
-		slog.Info("captureFullContext: clipboard empty after SelectAll+Copy — no context")
+		slog.Debug("captureFullContext: clipboard empty after SelectAll+Copy — no context")
 		return ""
 	}
 
 	// If full text equals the selection, there's no additional context.
 	if fullText == selectedText {
-		slog.Info("captureFullContext: full text equals selection, no extra context")
+		slog.Debug("captureFullContext: full text equals selection, no extra context")
 		// Restore selection text to clipboard for paste-back.
 		cb.Write(selectedText)
 		return ""
