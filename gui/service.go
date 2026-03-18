@@ -123,15 +123,13 @@ func (s *SettingsService) DismissWhatsNew() string {
 
 // whatsNewHTML is the changelog shown after an update. Update this with each release.
 const whatsNewHTML = `
-<h3>What's New in GhostSpell</h3>
 <ul>
-<li><strong>Bulletproof self-updater</strong> — downloads in-process with progress bar, no more crashes during updates</li>
+<li><strong>🔒 macOS permissions preserved</strong> — updates no longer require re-granting Accessibility and Input Monitoring</li>
+<li><strong>Bulletproof self-updater</strong> — downloads signed DMG on macOS, binary swap on Windows/Linux</li>
 <li><strong>Usage stats &amp; benchmark</strong> — track model performance, run benchmarks, compare response times</li>
 <li><strong>LM Studio support</strong> — auto-detects loaded models, setup guide in settings</li>
 <li><strong>Faster local models</strong> — Qwen3.5 thinking properly disabled, response times cut from minutes to seconds</li>
-<li><strong>Ollama fix</strong> — uses native think:false API for reliable thinking control</li>
 <li><strong>Per-prompt timeout</strong> — set custom timeouts per prompt (e.g. Ask needs more time than Correct)</li>
-<li><strong>Preserve Clipboard</strong> — setting now works: disable to keep LLM result in clipboard after paste</li>
 <li><strong>Provider test status</strong> — cards show green "Connected" or red "Error" after testing</li>
 <li><strong>Indicator position fix</strong> — no longer blocks clicks at screen center on Windows</li>
 </ul>
@@ -307,7 +305,14 @@ func (s *SettingsService) UpdateNow() string {
 			return
 		}
 		execPath, _ = filepath.EvalSymlinks(execPath)
-		tmpPath := execPath + ".tmp"
+
+		// Use temp dir for DMGs (large files), binary dir for binary swaps.
+		var tmpPath string
+		if strings.HasSuffix(assetName, ".dmg") {
+			tmpPath = filepath.Join(os.TempDir(), assetName)
+		} else {
+			tmpPath = execPath + ".tmp"
+		}
 
 		guiLog("[GUI] UpdateNow: downloading %s (%d bytes) to %s", assetName, assetSize, tmpPath)
 
@@ -319,12 +324,24 @@ func (s *SettingsService) UpdateNow() string {
 			return
 		}
 
-		// 4. Swap: current → .bak, new → current.
+		// 4. Install the update.
 		setProgress(UpdateProgress{Phase: "installing", Percent: 100})
-		guiLog("[GUI] UpdateNow: swapping binary %s", execPath)
-		if err := swapBinary(execPath, tmpPath); err != nil {
-			setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
-			return
+		if runtime.GOOS == "darwin" && strings.HasSuffix(assetName, ".dmg") {
+			// macOS: install from signed DMG to preserve code signature.
+			// This keeps TCC grants (Accessibility, Input Monitoring) intact (#193).
+			guiLog("[GUI] UpdateNow: installing from DMG %s", tmpPath)
+			if err := installFromDMG(tmpPath, execPath); err != nil {
+				setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
+				return
+			}
+			os.Remove(tmpPath) // Clean up downloaded DMG.
+		} else {
+			// Windows/Linux: swap the binary directly.
+			guiLog("[GUI] UpdateNow: swapping binary %s", execPath)
+			if err := swapBinary(execPath, tmpPath); err != nil {
+				setProgress(UpdateProgress{Phase: "error", Error: err.Error()})
+				return
+			}
 		}
 
 		// 5. Relaunch and exit.

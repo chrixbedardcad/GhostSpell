@@ -34,21 +34,97 @@ type ghReleaseInfo struct {
 }
 
 // updateAssetName returns the expected release asset filename for the
-// current platform.
+// current platform. On macOS, returns the signed DMG so that the code
+// signature is preserved across updates — this prevents macOS TCC from
+// invalidating Accessibility and Input Monitoring permissions (#193).
 func updateAssetName() string {
 	switch runtime.GOOS {
 	case "windows":
 		return "ghostspell-windows-amd64.exe"
 	case "darwin":
 		if runtime.GOARCH == "arm64" {
-			return "ghostspell-darwin-arm64"
+			return "GhostSpell-darwin-arm64.dmg"
 		}
-		return "ghostspell-darwin-amd64"
+		return "GhostSpell-darwin-amd64.dmg"
 	case "linux":
 		return "ghostspell-linux-amd64"
 	default:
 		return ""
 	}
+}
+
+// installFromDMG mounts the downloaded DMG, copies the signed .app bundle
+// to replace the current one, and unmounts. This preserves the code signature
+// so macOS TCC keeps Accessibility and Input Monitoring permissions (#193).
+func installFromDMG(dmgPath, execPath string) error {
+	// Resolve .app bundle path from executable path.
+	// e.g., /Applications/GhostSpell.app/Contents/MacOS/GhostSpell → /Applications/GhostSpell.app
+	idx := strings.Index(execPath, ".app/")
+	if idx == -1 {
+		return fmt.Errorf("not running from a .app bundle: %s", execPath)
+	}
+	appPath := execPath[:idx+4]
+	parentDir := filepath.Dir(appPath)
+
+	// Mount the DMG.
+	mountPoint, err := mountDMG(dmgPath)
+	if err != nil {
+		return err
+	}
+	defer unmountDMG(mountPoint)
+
+	// Locate the signed .app inside the mounted DMG.
+	srcApp := filepath.Join(mountPoint, "GhostSpell.app")
+	if _, err := os.Stat(srcApp); err != nil {
+		return fmt.Errorf("GhostSpell.app not found in DMG: %w", err)
+	}
+
+	// Backup current .app.
+	bakPath := appPath + ".bak"
+	os.RemoveAll(bakPath)
+	if err := os.Rename(appPath, bakPath); err != nil {
+		return fmt.Errorf("failed to backup current .app: %w", err)
+	}
+
+	// Copy new signed .app from DMG.
+	destApp := filepath.Join(parentDir, filepath.Base(appPath))
+	cmd := exec.Command("cp", "-R", srcApp, destApp)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		// Rollback: restore backup.
+		os.Rename(bakPath, appPath)
+		return fmt.Errorf("failed to copy .app from DMG: %v (%s)", err, string(out))
+	}
+
+	// Remove backup.
+	os.RemoveAll(bakPath)
+	return nil
+}
+
+// mountDMG attaches a DMG and returns the mount point path.
+func mountDMG(path string) (string, error) {
+	out, err := exec.Command("hdiutil", "attach", path,
+		"-nobrowse", "-noverify", "-noautoopen").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("hdiutil attach failed: %v (%s)", err, string(out))
+	}
+	// Parse mount point from hdiutil output. The last line with a path
+	// contains tab-separated fields: device, type, mount_point.
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if tabIdx := strings.LastIndex(line, "\t"); tabIdx >= 0 {
+			mp := strings.TrimSpace(line[tabIdx+1:])
+			if strings.HasPrefix(mp, "/") {
+				return mp, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("could not parse mount point from hdiutil output: %s", string(out))
+}
+
+// unmountDMG detaches a mounted DMG volume.
+func unmountDMG(mountPoint string) {
+	exec.Command("hdiutil", "detach", mountPoint, "-quiet").Run()
 }
 
 // fetchReleaseInfo queries the GitHub releases API for the latest release.
@@ -221,9 +297,20 @@ func CleanupUpdateBackup() {
 		return
 	}
 	execPath, _ = filepath.EvalSymlinks(execPath)
+
+	// Clean up binary .bak (Windows/Linux binary swap).
 	bakPath := execPath + ".bak"
 	if _, err := os.Stat(bakPath); err == nil {
 		os.Remove(bakPath)
-		slog.Info("[updater] cleaned up update backup", "path", bakPath)
+		slog.Info("[updater] cleaned up binary backup", "path", bakPath)
+	}
+
+	// Clean up .app.bak directory (macOS DMG update, if interrupted).
+	if idx := strings.Index(execPath, ".app/"); idx != -1 {
+		appBak := execPath[:idx+4] + ".bak"
+		if _, err := os.Stat(appBak); err == nil {
+			os.RemoveAll(appBak)
+			slog.Info("[updater] cleaned up .app backup", "path", appBak)
+		}
 	}
 }
