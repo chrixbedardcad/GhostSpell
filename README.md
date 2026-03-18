@@ -310,6 +310,93 @@ go test -tags webkit2_41 ./...
 | **Linux**: Missing dependencies | `sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 xclip xdotool` |
 | **macOS**: Keyboard simulation fails | Grant Accessibility permission in System Settings > Privacy & Security. |
 
+### Debug Logs
+
+GhostSpell writes logs to `ghostspell.log` in your config directory. To view logs in real time:
+
+**macOS:**
+```bash
+tail -f ~/Library/Application\ Support/GhostSpell/ghostspell.log
+```
+
+**Windows** (PowerShell):
+```powershell
+Get-Content "$env:APPDATA\GhostSpell\ghostspell.log" -Wait
+```
+
+**Linux:**
+```bash
+tail -f ~/.config/GhostSpell/ghostspell.log
+```
+
+Crash logs are written to `ghostspell_crash.log` in the same directory.
+
+You can also enable debug logging from **Settings > Debug** (auto-disables after 30 minutes).
+
+<details>
+<summary>Run from terminal for live output</summary>
+
+For the most detailed output, run GhostSpell directly from a terminal:
+
+**macOS:**
+```bash
+/Applications/GhostSpell.app/Contents/MacOS/GhostSpell
+```
+
+**Windows** (CMD):
+```cmd
+"%LOCALAPPDATA%\GhostSpell\ghostspell.exe"
+```
+
+**Linux:**
+```bash
+ghostspell
+```
+
+</details>
+
+### Reporting a Bug
+
+To file a bug report with logs attached:
+
+**macOS / Linux:**
+```bash
+# Copy the log path for your platform:
+#   macOS:  ~/Library/Application Support/GhostSpell/ghostspell.log
+#   Linux:  ~/.config/GhostSpell/ghostspell.log
+
+gh issue create --repo chrixbedardcad/GhostSpell \
+  --title "Bug: <describe the issue>" \
+  --body "$(cat <<'EOF'
+## Description
+<What happened and what you expected>
+
+## Steps to Reproduce
+1. ...
+
+## Log file attached below
+EOF
+)" \
+  --label bug
+# Then attach the log file as a comment:
+gh issue comment --repo chrixbedardcad/GhostSpell ISSUE_NUMBER \
+  --body "$(cat ~/Library/Application\ Support/GhostSpell/ghostspell.log)"
+```
+
+**Windows** (PowerShell):
+```powershell
+# Create the issue
+gh issue create --repo chrixbedardcad/GhostSpell `
+  --title "Bug: <describe the issue>" `
+  --body "## Description`n<What happened>`n`n## Steps to Reproduce`n1. ...`n`n## Log file attached below" `
+  --label bug
+# Then attach the log file as a comment:
+gh issue comment --repo chrixbedardcad/GhostSpell ISSUE_NUMBER `
+  --body (Get-Content "$env:APPDATA\GhostSpell\ghostspell.log" -Raw)
+```
+
+> **Note:** Replace `ISSUE_NUMBER` with the number returned by `gh issue create`. Requires the [GitHub CLI](https://cli.github.com/).
+
 ---
 
 ## License
