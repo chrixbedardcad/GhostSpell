@@ -75,9 +75,6 @@ var indicatorPos = "top-right"
 // indicatorMode stores the configured mode: "processing" (default), "always", "hidden".
 var indicatorMode = "processing"
 
-// indicatorIdleX/Y stores the saved idle position for always-on mode.
-var indicatorIdleX, indicatorIdleY int
-
 // SetIndicatorPosition sets the configured position for the indicator.
 func SetIndicatorPosition(pos string) {
 	indicatorMu.Lock()
@@ -89,14 +86,6 @@ func SetIndicatorPosition(pos string) {
 func SetIndicatorMode(mode string) {
 	indicatorMu.Lock()
 	indicatorMode = mode
-	indicatorMu.Unlock()
-}
-
-// SetIndicatorIdlePosition sets the saved drag position for idle mode (#211).
-func SetIndicatorIdlePosition(x, y int) {
-	indicatorMu.Lock()
-	indicatorIdleX = x
-	indicatorIdleY = y
 	indicatorMu.Unlock()
 }
 
@@ -188,16 +177,8 @@ func ShowIdle() {
 	win.SetURL("/indicator.html?state=idle")
 	time.Sleep(150 * time.Millisecond)
 
-	// Use saved position if available, otherwise use default indicator position.
-	indicatorMu.Lock()
-	ix, iy := indicatorIdleX, indicatorIdleY
-	indicatorMu.Unlock()
-	if ix > 0 || iy > 0 {
-		win.SetPosition(ix, iy)
-	} else {
-		x, y := getIndicatorPosition()
-		win.SetPosition(x, y)
-	}
+	x, y := getIndicatorPosition()
+	win.SetPosition(x, y)
 }
 
 func ShowIndicator(promptIcon, promptName, modelLabel string) {
@@ -224,18 +205,9 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 	win.SetURL(u)
 	time.Sleep(150 * time.Millisecond) // let page load
 
-	// Move on-screen. In "always" mode, use the idle position so the pill
-	// expands from where the ghost is sitting (#214 item 5).
-	indicatorMu.Lock()
-	mode := indicatorMode
-	ix, iy := indicatorIdleX, indicatorIdleY
-	indicatorMu.Unlock()
-	if mode == "always" && (ix > 0 || iy > 0) {
-		win.SetPosition(ix, iy)
-	} else {
-		x, y := getIndicatorPosition()
-		win.SetPosition(x, y)
-	}
+	// Move on-screen at the configured position.
+	x, y := getIndicatorPosition()
+	win.SetPosition(x, y)
 }
 
 func HideIndicator() {
@@ -255,15 +227,8 @@ func HideIndicator() {
 		win.SetURL("/indicator.html?state=idle")
 		time.Sleep(100 * time.Millisecond)
 		// Restore idle position.
-		indicatorMu.Lock()
-		ix, iy := indicatorIdleX, indicatorIdleY
-		indicatorMu.Unlock()
-		if ix > 0 || iy > 0 {
-			win.SetPosition(ix, iy)
-		} else {
-			x, y := getIndicatorPosition()
-			win.SetPosition(x, y)
-		}
+		x, y := getIndicatorPosition()
+		win.SetPosition(x, y)
 		return
 	}
 

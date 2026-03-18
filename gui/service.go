@@ -622,18 +622,6 @@ func (s *SettingsService) GetActivePromptInfo() string {
 	return string(j)
 }
 
-// SaveIndicatorIdlePosition saves the drag position for the idle indicator.
-func (s *SettingsService) SaveIndicatorIdlePosition(x, y int) string {
-	slog.Debug("[GUI] SaveIndicatorIdlePosition", "x", x, "y", y)
-	SetIndicatorIdlePosition(x, y)
-	if s.cfgCopy != nil {
-		s.cfgCopy.IndicatorIdleX = x
-		s.cfgCopy.IndicatorIdleY = y
-		s.validateAndSave()
-	}
-	return "ok"
-}
-
 // ResizeIndicatorForMenu temporarily resizes the indicator window for the context menu (#214).
 func (s *SettingsService) ResizeIndicatorForMenu(width, height int) string {
 	indicatorMu.Lock()

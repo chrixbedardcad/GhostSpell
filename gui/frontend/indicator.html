@@ -373,27 +373,7 @@ document.getElementById('pill').addEventListener('mouseleave', function() {
   document.getElementById('tooltip').style.display = 'none';
 });
 
-// --- Drag support (idle state) ---
-var _dragging = false, _dragOffsetX = 0, _dragOffsetY = 0;
-document.getElementById('ghost-img').addEventListener('mousedown', function(e) {
-  if (_state !== 'idle') return;
-  _dragging = true;
-  _dragOffsetX = e.screenX - window.screenX;
-  _dragOffsetY = e.screenY - window.screenY;
-  e.preventDefault();
-});
-document.addEventListener('mousemove', function(e) {
-  if (!_dragging) return;
-  var newX = e.screenX - _dragOffsetX;
-  var newY = e.screenY - _dragOffsetY;
-  window.moveTo(newX, newY);
-});
-document.addEventListener('mouseup', function(e) {
-  if (!_dragging) return;
-  _dragging = false;
-  // Save position
-  goCall('saveIndicatorIdlePosition', window.screenX, window.screenY);
-});
+
 </script>
 </body>
 </html>
