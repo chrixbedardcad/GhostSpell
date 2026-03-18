@@ -1306,20 +1306,14 @@ async function init() {
   // Populate General tab values on first load (it's the default active tab).
   renderGeneral();
 
-  // Poll for external config changes (e.g. prompt cycled via tray hotkey).
-  // Lightweight: only refreshes header/preview when active_prompt changes.
-  var _lastActivePrompt = configData ? configData.active_prompt : -1;
-  setInterval(async function() {
+  // Refresh header when window regains focus (e.g. after cycling prompt via tray hotkey).
+  window.addEventListener('focus', async function() {
     var raw = await goCall('getConfig');
     if (!raw) return;
-    var fresh = JSON.parse(raw);
-    if (fresh.active_prompt !== _lastActivePrompt) {
-      _lastActivePrompt = fresh.active_prompt;
-      configData = fresh;
-      updateHeaderPrompt();
-      updateAboutHotkey();
-    }
-  }, 2000);
+    configData = JSON.parse(raw);
+    updateHeaderPrompt();
+    updateAboutHotkey();
+  });
 }
 
 // ---- Helpers ----
