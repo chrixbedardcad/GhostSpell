@@ -238,6 +238,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			}
 			return ""
 		},
+		OnReportBug: func() {
+			settingsSvc.SubmitBugReport("")
+		},
 		OnExit: func() {
 			slog.Info("Exit requested via tray menu")
 			fmt.Println("\nGhostSpell exiting (tray menu).")

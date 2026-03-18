@@ -53,6 +53,9 @@ type Config struct {
 	// OnUpdateClick is called when the "Update available" menu item is clicked.
 	OnUpdateClick func()
 
+	// OnReportBug is called when "Report a Bug..." is clicked in the tray menu.
+	OnReportBug func()
+
 	// GetDefaultModelName returns the display name of the active/default model.
 	GetDefaultModelName func() string
 
@@ -311,6 +314,13 @@ func (ts *trayState) refreshMenu() {
 	}
 
 	menu.AddSeparator()
+	bugItem := menu.Add("Report a Bug...")
+	bugItem.OnClick(func(ctx *application.Context) {
+		if ts.cfg.OnReportBug != nil {
+			ts.cfg.OnReportBug()
+		}
+	})
+
 	settingsItem := menu.Add("Settings")
 	settingsItem.OnClick(func(ctx *application.Context) {
 		if ts.cfg.OnSettings != nil {

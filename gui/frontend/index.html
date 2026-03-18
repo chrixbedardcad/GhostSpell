@@ -1217,6 +1217,16 @@
       <div class="status" id="update-status"></div>
     </div>
 
+    <div class="update-box" style="margin-top:16px">
+      <div style="font-size:0.82em;font-weight:600;color:#cdd6f4;margin-bottom:8px">Report a Bug</div>
+      <div style="font-size:0.72em;color:#6c7086;margin-bottom:8px">Describe the issue below. System info and recent logs will be included automatically.</div>
+      <textarea id="bugreport-desc" placeholder="What happened? What did you expect?" style="width:100%;min-height:70px;background:#1e1e2e;color:#cdd6f4;border:1px solid #45475a;border-radius:6px;padding:8px;font-size:0.82em;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <button class="btn btn-primary" onclick="submitBugReport()" id="bugreport-btn">Report a Bug</button>
+        <span id="bugreport-status" style="font-size:0.75em;color:#6c7086"></span>
+      </div>
+    </div>
+
     <details style="background:#313244;border:1px solid #45475a;border-radius:8px;padding:10px 14px;margin-top:16px;cursor:pointer">
       <summary style="font-size:0.82em;font-weight:600;color:#cdd6f4;list-style:none;display:flex;align-items:center;gap:6px">
         <span id="license-arrow" style="font-size:0.7em;transition:transform 0.2s">&#9654;</span> Open Source Licenses
@@ -1292,6 +1302,31 @@ function switchTab(name) {
   if (name === 'stats') renderStats();
   if (name === 'debug') renderDebug();
   if (name === 'about') autoCheckForUpdate();
+}
+
+// ---- Bug Report ----
+async function submitBugReport() {
+  var btn = document.getElementById('bugreport-btn');
+  var status = document.getElementById('bugreport-status');
+  var desc = document.getElementById('bugreport-desc').value.trim();
+  btn.disabled = true;
+  status.style.color = '#6c7086';
+  status.textContent = 'Collecting diagnostics...';
+  var result = await goCall('submitBugReport', desc);
+  if (result === 'ok') {
+    status.style.color = '#a6e3a1';
+    status.textContent = 'GitHub opened — please review and submit the issue.';
+    document.getElementById('bugreport-desc').value = '';
+    setTimeout(function() { btn.disabled = false; }, 5000);
+  } else if (result && result.startsWith('cooldown:')) {
+    status.style.color = '#fab387';
+    status.textContent = result.replace('cooldown: ', '');
+    btn.disabled = false;
+  } else {
+    status.style.color = '#f38ba8';
+    status.textContent = result || 'Failed to submit report.';
+    btn.disabled = false;
+  }
 }
 
 // ---- Init ----
