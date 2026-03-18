@@ -542,12 +542,16 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 		if !axOK || !postOK {
 			if axOK && !postOK {
-				fmt.Println("\n  WARNING: Accessibility is checked but event posting is BLOCKED.")
-				fmt.Println("  Fix: toggle GhostSpell OFF then ON in Accessibility settings.\n")
+				fmt.Println("")
+				fmt.Println("  WARNING: Accessibility is checked but event posting is BLOCKED.")
+				fmt.Println("  Fix: toggle GhostSpell OFF then ON in Accessibility settings.")
+				fmt.Println("")
 				slog.Warn("Stale TCC: AXIsProcessTrusted=true but CGPreflightPostEventAccess=false")
 			} else {
-				fmt.Println("\n  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
-				fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.\n")
+				fmt.Println("")
+				fmt.Println("  WARNING: macOS permissions missing — hotkeys or keyboard simulation may not work.")
+				fmt.Println("  Grant Accessibility + Input Monitoring in System Settings > Privacy & Security.")
+				fmt.Println("")
 			}
 		}
 
