@@ -362,6 +362,10 @@
   .keycap-combo { display:inline-flex; align-items:center; gap:4px; }
   .keycap-plus { color:#6c7086; font-size:0.8em; margin:0 2px; user-select:none; }
 
+  /* --- Logo sizing (#205) --- */
+  .provider-logo svg, .provider-logo img { width:28px; height:28px; vertical-align:middle; }
+  .creator-logo svg, .creator-logo img { width:20px; height:20px; vertical-align:middle; }
+
   /* --- About --- */
   .about-block { text-align: center; padding: 30px 0; }
   .about-block .logo-big { font-size: 3em; margin-bottom: 8px; }
@@ -1763,25 +1767,27 @@ async function onProvLocalRefresh() {
     var sizeMB = m.size ? Math.round(m.size / 1024 / 1024) : '?';
     var badge = m.tag ? ollamaTagBadge(m.tag) : '';
     var selected = m.name === selectedModel;
-    var statusIcon = m.installed
-      ? '<span style="color:#a6e3a1">&#10003;</span>'
-      : '<span style="color:#585b70">&#9729;</span>';
+    var statusBadge = m.installed
+      ? '<span style="background:#a6e3a1;color:#1e1e2e;font-size:0.6em;padding:1px 6px;border-radius:3px;font-weight:700;margin-left:6px">DOWNLOADED</span>'
+      : '<span style="background:#89b4fa;color:#1e1e2e;font-size:0.6em;padding:1px 6px;border-radius:3px;font-weight:700;margin-left:6px">AVAILABLE</span>';
 
-    html += '<div class="ollama-model-card" style="cursor:pointer;' + (selected ? 'border-color:#89b4fa' : '') + '" onclick="provLocalSelectModel(\'' + escJS(m.name) + '\')">';
+    html += '<div class="ollama-model-card" style="cursor:pointer;' + (selected ? 'border-color:#a6e3a1;background:#1a3a1a' : '') + '" onclick="provLocalSelectModel(\'' + escJS(m.name) + '\')">';
     html += '<div>';
-    html += '<div class="model-name">' + statusIcon + ' ' + esc(m.name) + badge;
-    if (selected) html += ' <span class="badge badge-rec">SELECTED</span>';
+    html += '<div class="model-name">' + esc(m.name) + badge + statusBadge;
+    if (selected) html += ' <span style="background:#a6e3a1;color:#1e1e2e;font-size:0.6em;padding:1px 6px;border-radius:3px;font-weight:700">ACTIVE</span>';
     html += '</div>';
-    html += '<div class="model-meta">' + sizeMB + ' MB';
-    if (m.installed) html += ' &mdash; downloaded';
-    html += '</div>';
+    html += '<div class="model-meta">' + sizeMB + ' MB</div>';
     if (m.desc) html += '<div style="font-size:0.72em;color:#6c7086;margin-top:2px">' + esc(m.desc) + '</div>';
     html += '</div>';
 
-    html += '<div style="display:flex;gap:4px" onclick="event.stopPropagation()">';
+    html += '<div style="display:flex;gap:4px;align-items:center" onclick="event.stopPropagation()">';
     if (m.installed) {
-      html += '<button class="btn btn-secondary btn-sm" onclick="provLocalSelectModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">' + (selected ? '\u2714 Selected' : 'Select') + '</button>';
-      html += '<button class="btn btn-danger btn-sm" onclick="provLocalDeleteModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em" title="Delete model">Remove</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="provLocalDeleteModel(\'' + escJS(m.name) + '\')" style="font-size:0.7em" title="Delete model">Remove</button>';
+      // Per-model enable/disable toggle (#205)
+      var isEnabled = false;
+      var cfgModels = configData.models || {};
+      for (var lbl in cfgModels) { if (cfgModels[lbl].provider === 'local' && cfgModels[lbl].model === m.name) { isEnabled = true; break; } }
+      html += '<label class="toggle" style="flex-shrink:0" title="Enable/disable this model"><input type="checkbox" ' + (isEnabled ? 'checked' : '') + ' onchange="toggleLocalModel(\'' + escJS(m.name) + '\',this.checked)"><span class="slider"></span></label>';
     } else {
       html += '<button class="btn btn-primary btn-sm" onclick="provLocalDownloadModel(\'' + escJS(m.name) + '\')" id="prov-dl-btn-' + esc(m.name) + '" style="font-size:0.75em">Download</button>';
     }
@@ -1796,6 +1802,13 @@ async function onProvLocalRefresh() {
 
   body.innerHTML = html;
   if (!selectedModel && models.length > 0) provLocalSelectModel(models[0].name);
+}
+
+async function toggleLocalModel(model, enabled) {
+  var result = await goCall('toggleModel', 'local', model, enabled);
+  if (result && result.startsWith('error')) { alert(result); }
+  await reloadConfig();
+  onProvLocalRefresh();
 }
 
 async function provLocalSelectModel(name) {

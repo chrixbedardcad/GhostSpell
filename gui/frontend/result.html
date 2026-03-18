@@ -187,8 +187,21 @@ function renderMarkdown(text) {
 /* ---- Raw text kept for clipboard ---- */
 var rawResultText = '';
 
+/* ---- Wait for Wails runtime (module loads async, may not be ready on DOMContentLoaded) ---- */
+async function waitForWails() {
+  for (var i = 0; i < 50; i++) {
+    if (typeof wails !== 'undefined' && wails.Call) return true;
+    await new Promise(function(r) { setTimeout(r, 100); });
+  }
+  return false;
+}
+
 /* ---- Init ---- */
 async function init() {
+  if (!await waitForWails()) {
+    document.getElementById('result-body').innerHTML = '<span class="loading-text">Failed to connect to GhostSpell runtime.</span>';
+    return;
+  }
   var text = await goCall('getResultText');
   var metaRaw = await goCall('getResultMeta');
 
