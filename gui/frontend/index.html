@@ -1157,11 +1157,7 @@
       <div class="app-ver" id="about-version"></div>
       <div class="desc">AI-powered text correction and rewriting.</div>
       <div style="margin-top:14px;display:flex;gap:6px;justify-content:center;align-items:center">
-        <span style="display:inline-flex;align-items:center;gap:4px;background:#313244;border:1px solid #45475a;border-radius:8px;padding:6px 14px;box-shadow:0 2px 4px rgba(0,0,0,0.3)">
-          <kbd style="background:#1e1e2e;border:1px solid #585b70;border-radius:4px;padding:2px 8px;font-size:0.85em;font-weight:700;color:#cdd6f4;font-family:system-ui,sans-serif;box-shadow:0 1px 0 #585b70" id="about-hotkey-mod">Ctrl</kbd>
-          <span style="color:#585b70;font-size:0.7em">+</span>
-          <kbd style="background:#1e1e2e;border:1px solid #585b70;border-radius:4px;padding:2px 8px;font-size:0.85em;font-weight:700;color:#a6e3a1;font-family:system-ui,sans-serif;box-shadow:0 1px 0 #585b70">G</kbd>
-        </span>
+        <span id="about-hotkey-badge" style="display:inline-flex;align-items:center;gap:4px;background:#313244;border:1px solid #45475a;border-radius:8px;padding:6px 14px;box-shadow:0 2px 4px rgba(0,0,0,0.3)"></span>
         <span style="font-size:0.72em;color:#6c7086;max-width:140px;line-height:1.3">Select text and press to activate</span>
       </div>
       <div style="margin-top:12px;display:flex;gap:12px;justify-content:center;align-items:center">
@@ -1289,15 +1285,10 @@ async function init() {
     document.getElementById('whats-new-overlay').style.display = 'flex';
   }
 
-  // Show platform-correct hotkey on About page.
-  if (navigator.platform && navigator.platform.indexOf('Mac') !== -1) {
-    var modEl = document.getElementById('about-hotkey-mod');
-    if (modEl) modEl.textContent = '\u2318';
-  }
-
   const raw = await goCall('getConfig');
   if (raw) configData = JSON.parse(raw);
   updateHeaderPrompt();
+  updateAboutHotkey();
   renderModels();
   initHotkeyCapture();
 
@@ -1344,6 +1335,7 @@ async function reloadConfig() {
   const raw = await goCall('getConfig');
   if (raw) configData = JSON.parse(raw);
   updateHeaderPrompt();
+  updateAboutHotkey();
 }
 
 function updateHeaderPrompt() {
@@ -1365,6 +1357,27 @@ function updateHeaderPrompt() {
   if (prevIcon) prevIcon.textContent = icon || '\u270F\uFE0F';
   if (prevName) prevName.textContent = name;
   if (prevModel) prevModel.textContent = model;
+}
+
+function updateAboutHotkey() {
+  var el = document.getElementById('about-hotkey-badge');
+  if (!el || !configData) return;
+  var hotkey = (configData.hotkeys && configData.hotkeys.action) || 'Ctrl+G';
+  var isMac = navigator.platform && navigator.platform.indexOf('Mac') !== -1;
+  var parts = hotkey.split('+');
+  var kbdStyle = 'background:#1e1e2e;border:1px solid #585b70;border-radius:4px;padding:2px 8px;font-size:0.85em;font-weight:700;font-family:system-ui,sans-serif;box-shadow:0 1px 0 #585b70;';
+  var html = '';
+  for (var i = 0; i < parts.length; i++) {
+    if (i > 0) html += '<span style="color:#585b70;font-size:0.7em">+</span>';
+    var label = parts[i].trim();
+    var color = '#cdd6f4';
+    if (i === parts.length - 1) color = '#a6e3a1'; // last key in green
+    if (isMac && (label === 'Ctrl' || label === 'ctrl')) label = '\u2318';
+    if (isMac && (label === 'Alt' || label === 'alt')) label = '\u2325';
+    if (isMac && (label === 'Shift' || label === 'shift')) label = '\u21E7';
+    html += '<kbd style="' + kbdStyle + 'color:' + color + '">' + esc(label) + '</kbd>';
+  }
+  el.innerHTML = html;
 }
 
 // ===========================================================================
