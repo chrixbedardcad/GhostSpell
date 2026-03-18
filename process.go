@@ -359,6 +359,40 @@ func processMode(
 	}
 
 	// --- Write result back ---
+
+	// Context-aware full-document replacement (#192): when context was captured
+	// via clipboard (Ctrl+A+C), the selection is now "all". Instead of pasting
+	// just the result, compute the full document with the selected portion
+	// replaced and paste the entire thing. Works for Notepad, VS Code, browser
+	// textareas — any editable field where Ctrl+A+V works.
+	if cap.ContextViaClipboard && cap.FullContext != "" {
+		newFull := strings.Replace(cap.FullContext, cap.Text, result, 1)
+		if newFull != cap.FullContext {
+			slog.Info("Context-aware write-back: replacing selection within full document", "prompt", promptName, "full_len", len(newFull))
+			if err := cb.Write(newFull); err != nil {
+				slog.Error("Failed to write full document to clipboard", "prompt", promptName, "error", err)
+				restoreClipboard()
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+			// Re-select all and paste the full document with the fix applied.
+			if err := kb.SelectAll(); err != nil {
+				slog.Error("SelectAll (context write-back) failed", "prompt", promptName, "error", err)
+			}
+			time.Sleep(50 * time.Millisecond)
+			if err := kb.Paste(); err != nil {
+				slog.Error("Paste (context write-back) failed", "prompt", promptName, "error", err)
+				restoreClipboard()
+				return
+			}
+			time.Sleep(150 * time.Millisecond)
+			restoreClipboard()
+			slog.Info(promptName+" complete (context-aware)", "result_len", len(result))
+			return
+		}
+		slog.Debug("Context-aware: Replace() didn't change the document, falling back to normal paste")
+	}
+
 	written := false
 
 	// Strategy 1: AX API write — for apps where we read via AX API (Cocoa apps).

@@ -23,11 +23,12 @@ const (
 // captureResult bundles the return values of captureText into a single struct
 // for readability.
 type captureResult struct {
-	Text        string
-	FullContext string // full document text for context-aware processing (#192)
-	HasAX       bool
-	Method      captureMethod
-	Err         error
+	Text               string
+	FullContext         string // full document text for context-aware processing (#192)
+	ContextViaClipboard bool  // true if FullContext was captured via Ctrl+A+C (selection is now "all")
+	HasAX              bool
+	Method             captureMethod
+	Err                error
 }
 
 // captureText reads text from the focused UI element.
@@ -118,7 +119,10 @@ func captureText(
 
 	if text != "" {
 		slog.Info("Selection detected", "prompt", promptName, "len", len(text))
-		return captureResult{Text: text, HasAX: true, Method: captureViaCGEvent}
+		// Context-aware (#192): try to capture full document for context.
+		// Uses Ctrl+A + Ctrl+C — visible flash but works in any editable field.
+		fullCtx := captureFullContextViaClipboard(text, cb, kb)
+		return captureResult{Text: text, FullContext: fullCtx, ContextViaClipboard: fullCtx != "", HasAX: true, Method: captureViaCGEvent}
 	}
 
 	// --- Strategy 2.5: AX-routed Copy (browsers/sandboxed apps) ---
@@ -134,7 +138,8 @@ func captureText(
 			axText, readErr := cb.Read()
 			if readErr == nil && axText != "" {
 				slog.Info("Selection detected via AX Copy", "prompt", promptName, "len", len(axText))
-				return captureResult{Text: axText, HasAX: true, Method: captureViaAXKeystroke}
+				fullCtx := captureFullContextViaClipboard(axText, cb, kb)
+				return captureResult{Text: axText, FullContext: fullCtx, ContextViaClipboard: fullCtx != "", HasAX: true, Method: captureViaAXKeystroke}
 			}
 			slog.Debug("captureText: AX Copy also empty")
 		} else {
@@ -154,7 +159,8 @@ func captureText(
 			scriptText, readErr := cb.Read()
 			if readErr == nil && scriptText != "" {
 				slog.Info("Selection detected via osascript Copy", "prompt", promptName, "len", len(scriptText))
-				return captureResult{Text: scriptText, HasAX: true, Method: captureViaScript}
+				fullCtx := captureFullContextViaClipboard(scriptText, cb, kb)
+				return captureResult{Text: scriptText, FullContext: fullCtx, ContextViaClipboard: fullCtx != "", HasAX: true, Method: captureViaScript}
 			}
 			slog.Debug("captureText: osascript Copy also empty")
 		} else {
@@ -252,4 +258,52 @@ func captureText(
 	}
 
 	return captureResult{Text: text, Method: captureViaScript}
+}
+
+// captureFullContextViaClipboard attempts to read the full document text
+// using Ctrl+A + Ctrl+C. This provides context for smarter LLM corrections.
+// Works in editable fields (Notepad, VS Code, browser textareas).
+// Returns empty string if context capture fails or isn't useful.
+func captureFullContextViaClipboard(selectedText string, cb *clipboard.Clipboard, kb keyboard.Simulator) string {
+	slog.Debug("captureFullContext: attempting clipboard-based context capture")
+
+	// Clear clipboard before select-all.
+	if err := cb.Clear(); err != nil {
+		slog.Debug("captureFullContext: clear clipboard failed", "error", err)
+		return ""
+	}
+
+	// Select All + Copy to get the full document.
+	if err := kb.SelectAll(); err != nil {
+		slog.Debug("captureFullContext: SelectAll failed", "error", err)
+		return ""
+	}
+	time.Sleep(50 * time.Millisecond)
+
+	if err := kb.Copy(); err != nil {
+		slog.Debug("captureFullContext: Copy failed", "error", err)
+		return ""
+	}
+	time.Sleep(100 * time.Millisecond)
+
+	fullText, err := cb.Read()
+	if err != nil || fullText == "" {
+		slog.Debug("captureFullContext: clipboard empty after SelectAll+Copy")
+		return ""
+	}
+
+	// If full text equals the selection, there's no additional context.
+	if fullText == selectedText {
+		slog.Debug("captureFullContext: full text equals selection, no extra context")
+		// Restore selection text to clipboard for paste-back.
+		cb.Write(selectedText)
+		return ""
+	}
+
+	slog.Info("captureFullContext: got full document via clipboard", "full_len", len(fullText), "selected_len", len(selectedText))
+
+	// Restore selected text to clipboard so paste-back works correctly.
+	cb.Write(selectedText)
+
+	return fullText
 }
