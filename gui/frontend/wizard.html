@@ -1956,8 +1956,8 @@ async function oneclickDownload() {
     document.getElementById('oneclick-progress-text').textContent = 'Download complete!';
 
     // Auto-configure provider + model + save.
-    await goCall('setProvider', 'local', '', '', false);
-    await goCall('addModel', 'GhostSpell Local', 'local', _oneclickModel, 0, 0);
+    await goCall('saveProviderConfig', 'local', '', '', '', true);
+    await goCall('saveModel', 'GhostSpell Local', 'local', _oneclickModel, '');
     await goCall('setDefaultModel', 'GhostSpell Local');
 
     // Go to Ready page after a brief pause.
