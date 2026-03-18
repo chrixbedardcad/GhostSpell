@@ -18,6 +18,7 @@ import (
 
 	"github.com/chrixbedardcad/GhostSpell/config"
 	"github.com/chrixbedardcad/GhostSpell/internal/version"
+	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -538,6 +539,7 @@ func (s *SettingsService) CyclePromptFromIndicator() string {
 	}
 	s.cfgCopy.ActivePrompt = (s.cfgCopy.ActivePrompt + 1) % len(s.cfgCopy.Prompts)
 	p := s.cfgCopy.Prompts[s.cfgCopy.ActivePrompt]
+	go sound.PlayToggle() // click sound feedback (#214)
 	// Show a brief pop with the new prompt name.
 	PopIndicator(p.Icon, p.Name)
 	return "ok"
@@ -597,6 +599,7 @@ func (s *SettingsService) SetActivePromptFromIndicator(idx int) string {
 	}
 	s.cfgCopy.ActivePrompt = idx
 	p := s.cfgCopy.Prompts[idx]
+	go sound.PlayToggle() // click sound feedback (#214)
 	PopIndicator(p.Icon, p.Name)
 	return "ok"
 }
@@ -627,6 +630,17 @@ func (s *SettingsService) SaveIndicatorIdlePosition(x, y int) string {
 		s.cfgCopy.IndicatorIdleX = x
 		s.cfgCopy.IndicatorIdleY = y
 		s.validateAndSave()
+	}
+	return "ok"
+}
+
+// ResizeIndicatorForMenu temporarily resizes the indicator window for the context menu (#214).
+func (s *SettingsService) ResizeIndicatorForMenu(width, height int) string {
+	indicatorMu.Lock()
+	win := indicatorWin
+	indicatorMu.Unlock()
+	if win != nil {
+		win.SetSize(width, height)
 	}
 	return "ok"
 }

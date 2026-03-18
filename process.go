@@ -207,32 +207,49 @@ func processMode(
 
 	// Build text to send — if we have full document context, wrap the selected
 	// text with context so the LLM can make better corrections (#192).
+	// Cap total size to avoid crashes with small local models (#216).
 	textToSend := cap.Text
+	maxInput := cfg.MaxInputChars
+	if maxInput <= 0 {
+		maxInput = 2000 // safe default
+	}
 	if cap.FullContext != "" {
-		// Truncate context to ~2000 chars around the selection to avoid
-		// sending huge documents and burning tokens.
-		ctx2000 := cap.FullContext
-		if len([]rune(ctx2000)) > 2000 {
-			// Find the selection position and extract ~2000 chars around it.
-			pos := strings.Index(ctx2000, cap.Text)
-			if pos < 0 {
-				pos = 0
+		// Context budget: total text must fit within maxInput.
+		// Reserve space for markers (~200 chars) and the selection itself.
+		markerOverhead := 200
+		maxContextChars := maxInput - len([]rune(cap.Text)) - markerOverhead
+		if maxContextChars < 200 {
+			// Not enough room for meaningful context — skip it.
+			slog.Debug("Context-aware: skipping context, not enough budget", "maxInput", maxInput, "selectedLen", len(cap.Text))
+		} else {
+			ctx := cap.FullContext
+			if len([]rune(ctx)) > maxContextChars {
+				// Truncate around the selection position.
+				pos := strings.Index(ctx, cap.Text)
+				if pos < 0 {
+					pos = 0
+				}
+				half := maxContextChars / 2
+				start := pos - half
+				if start < 0 {
+					start = 0
+				}
+				end := start + maxContextChars
+				if end > len(ctx) {
+					end = len(ctx)
+					start = end - maxContextChars
+					if start < 0 {
+						start = 0
+					}
+				}
+				ctx = ctx[start:end]
 			}
-			start := pos - 800
-			if start < 0 {
-				start = 0
-			}
-			end := pos + len(cap.Text) + 800
-			if end > len(ctx2000) {
-				end = len(ctx2000)
-			}
-			ctx2000 = ctx2000[start:end]
+			textToSend = "=== FULL DOCUMENT (for context only — do NOT include this in your response) ===\n" +
+				ctx +
+				"\n\n=== SELECTED TEXT (apply your instructions ONLY to this portion) ===\n" +
+				cap.Text
+			slog.Info("Context-aware mode: sending selected text with document context", "selected_len", len(cap.Text), "context_len", len(ctx), "total_len", len(textToSend))
 		}
-		textToSend = "=== FULL DOCUMENT (for context only — do NOT include this in your response) ===\n" +
-			ctx2000 +
-			"\n\n=== SELECTED TEXT (apply your instructions ONLY to this portion) ===\n" +
-			cap.Text
-		slog.Info("Context-aware mode: sending selected text with document context", "selected_len", len(cap.Text), "context_len", len(ctx2000))
 	}
 
 	// Send to LLM via mode router.

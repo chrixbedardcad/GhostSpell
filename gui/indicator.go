@@ -224,9 +224,18 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 	win.SetURL(u)
 	time.Sleep(150 * time.Millisecond) // let page load
 
-	// Move on-screen.
-	x, y := getIndicatorPosition()
-	win.SetPosition(x, y)
+	// Move on-screen. In "always" mode, use the idle position so the pill
+	// expands from where the ghost is sitting (#214 item 5).
+	indicatorMu.Lock()
+	mode := indicatorMode
+	ix, iy := indicatorIdleX, indicatorIdleY
+	indicatorMu.Unlock()
+	if mode == "always" && (ix > 0 || iy > 0) {
+		win.SetPosition(ix, iy)
+	} else {
+		x, y := getIndicatorPosition()
+		win.SetPosition(x, y)
+	}
 }
 
 func HideIndicator() {
