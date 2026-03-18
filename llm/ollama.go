@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,6 +87,7 @@ type ollamaRequest struct {
 	Model   string         `json:"model"`
 	System  string         `json:"system,omitempty"`
 	Prompt  string         `json:"prompt"`
+	Images  []string       `json:"images,omitempty"` // base64-encoded images for vision models
 	Stream  bool           `json:"stream"`
 	Think   *bool          `json:"think,omitempty"`
 	Options ollamaOptions  `json:"options,omitempty"`
@@ -122,6 +124,16 @@ func (c *OllamaClient) Send(ctx context.Context, req Request) (*Response, error)
 		Options: ollamaOptions{
 			NumPredict: maxTok,
 		},
+	}
+
+	// Add base64 images for vision models.
+	if len(req.Images) > 0 {
+		for _, img := range req.Images {
+			body.Images = append(body.Images, base64.StdEncoding.EncodeToString(img))
+		}
+		if body.Prompt == "" {
+			body.Prompt = req.Prompt
+		}
 	}
 
 	jsonBody, err := json.Marshal(body)

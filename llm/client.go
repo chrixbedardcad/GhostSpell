@@ -12,6 +12,7 @@ import (
 type Request struct {
 	Prompt    string
 	Text      string
+	Images    [][]byte // PNG image data; nil for text-only requests
 	MaxTokens int
 }
 

@@ -18,6 +18,7 @@ type PromptEntry struct {
 	Icon        string `json:"icon,omitempty"`         // emoji icon shown in tray menu (e.g. "✏️")
 	TimeoutMs   int    `json:"timeout_ms,omitempty"`    // per-prompt timeout override (0 = use model default)
 	DisplayMode string `json:"display_mode,omitempty"`  // "replace" (default) or "popup" — how to show the LLM result
+	Vision      bool   `json:"vision,omitempty"`        // capture screenshot instead of text
 }
 
 // LLMProviderDef defines a named LLM provider configuration.
@@ -111,8 +112,10 @@ const (
 	DefaultElaboratePrompt = "Expand the following text by adding relevant detail, context, and completeness while preserving the original meaning and intent. Flesh out terse or incomplete points into well-developed statements. Maintain the same tone and style as the original. Keep the text in its original language — never translate it. Return ONLY the elaborated text with no explanation."
 	DefaultShortenPrompt   = "Condense the following text to be as concise as possible while preserving all essential meaning and key information. Remove redundancy, filler words, and unnecessary qualifiers. Keep the same tone and intent. Keep the text in its original language — never translate it. Return ONLY the shortened text with no explanation."
 	DefaultTranslatePrompt = "Translate the following text to English regardless of its source language. Return ONLY the translated text with no explanation."
-	DefaultAskPrompt       = "Answer this question clearly and concisely. Return the question and then the answer."
-	DefaultDefinePrompt    = "Define the following word or phrase. Provide a clear, concise definition. If applicable, include the part of speech and a brief example of usage. Keep it short and helpful."
+	DefaultAskPrompt              = "Answer this question clearly and concisely. Return the question and then the answer."
+	DefaultDefinePrompt           = "Define the following word or phrase. Provide a clear, concise definition. If applicable, include the part of speech and a brief example of usage. Keep it short and helpful."
+	DefaultDescribeScreenPrompt   = "Describe what you see in this image. Be concise."
+	DefaultScreenshotOCRPrompt    = "Extract all text from this image. Return only the text, preserving formatting."
 )
 
 // DefaultPrompts returns the default prompt list.
@@ -126,6 +129,8 @@ func DefaultPrompts() []PromptEntry {
 		{Name: "Translate", Prompt: DefaultTranslatePrompt, Icon: "\U0001F310"},
 		{Name: "Ask", Prompt: DefaultAskPrompt, Icon: "\u2753"},
 		{Name: "Define", Prompt: DefaultDefinePrompt, Icon: "\U0001F4D6", DisplayMode: "popup"},
+		{Name: "Describe Screenshot", Prompt: DefaultDescribeScreenPrompt, Icon: "\U0001F4F8", Vision: true, DisplayMode: "popup"},
+		{Name: "Screenshot OCR", Prompt: DefaultScreenshotOCRPrompt, Icon: "\U0001F441\uFE0F", Vision: true, DisplayMode: "popup"},
 	}
 }
 
@@ -538,6 +543,36 @@ func applyDefaults(cfg *Config) {
 			Name:        "Define",
 			Prompt:      DefaultDefinePrompt,
 			Icon:        "\U0001F4D6",
+			DisplayMode: "popup",
+		})
+	}
+
+	// Migrate: add vision prompts if missing (added in v0.43.0).
+	hasDescribeScreen := false
+	hasScreenshotOCR := false
+	for _, p := range cfg.Prompts {
+		if p.Name == "Describe Screenshot" {
+			hasDescribeScreen = true
+		}
+		if p.Name == "Screenshot OCR" {
+			hasScreenshotOCR = true
+		}
+	}
+	if !hasDescribeScreen {
+		cfg.Prompts = append(cfg.Prompts, PromptEntry{
+			Name:        "Describe Screenshot",
+			Prompt:      DefaultDescribeScreenPrompt,
+			Icon:        "\U0001F4F8",
+			Vision:      true,
+			DisplayMode: "popup",
+		})
+	}
+	if !hasScreenshotOCR {
+		cfg.Prompts = append(cfg.Prompts, PromptEntry{
+			Name:        "Screenshot OCR",
+			Prompt:      DefaultScreenshotOCRPrompt,
+			Icon:        "\U0001F441\uFE0F",
+			Vision:      true,
 			DisplayMode: "popup",
 		})
 	}

@@ -36,8 +36,14 @@ func NewRouter(cfg *config.Config, client llm.Client) *Router {
 // Process sends text through the LLM using the prompt at the given index.
 // Returns the full LLM response (with Provider/Model metadata) for stats tracking.
 func (r *Router) Process(ctx context.Context, promptIdx int, text string) (*llm.Response, error) {
-	if strings.TrimSpace(text) == "" {
-		return nil, fmt.Errorf("nothing to process: empty text")
+	return r.ProcessWithImages(ctx, promptIdx, text, nil)
+}
+
+// ProcessWithImages sends text and optional images through the LLM.
+// When images is non-nil, the request includes image data for vision models.
+func (r *Router) ProcessWithImages(ctx context.Context, promptIdx int, text string, images [][]byte) (*llm.Response, error) {
+	if strings.TrimSpace(text) == "" && len(images) == 0 {
+		return nil, fmt.Errorf("nothing to process: empty text and no images")
 	}
 
 	if promptIdx < 0 || promptIdx >= len(r.cfg.Prompts) {
@@ -57,11 +63,12 @@ func (r *Router) Process(ctx context.Context, promptIdx int, text string) (*llm.
 	if len(truncatedPrompt) > 80 {
 		truncatedPrompt = truncatedPrompt[:80] + "..."
 	}
-	slog.Debug("processing text", "prompt", entry.Name, "llm", label, "prompt_text", truncatedPrompt, "input_len", len(text))
+	slog.Debug("processing", "prompt", entry.Name, "llm", label, "prompt_text", truncatedPrompt, "input_len", len(text), "images", len(images))
 
 	resp, err := client.Send(ctx, llm.Request{
 		Prompt: prompt,
 		Text:   text,
+		Images: images,
 	})
 	if err != nil {
 		slog.Debug("LLM request failed", "prompt", entry.Name, "llm", label, "input_len", len(text), "error", err)

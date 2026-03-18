@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -77,8 +78,19 @@ type openaiRequest struct {
 }
 
 type openaiMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"` // string for text-only, []openaiContentPart for vision
+}
+
+// openaiContentPart represents a content block in the OpenAI multimodal format.
+type openaiContentPart struct {
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	ImageURL *openaiImageURL `json:"image_url,omitempty"`
+}
+
+type openaiImageURL struct {
+	URL string `json:"url"`
 }
 
 // openaiResponse is the response body from the OpenAI Chat Completions API.
@@ -105,11 +117,35 @@ func (c *OpenAIClient) Send(ctx context.Context, req Request) (*Response, error)
 		maxTokens = c.maxTokens
 	}
 
+	// Build user message content — multimodal array when images present,
+	// plain string otherwise (preserves exact existing behavior for text-only).
+	var userContent interface{}
+	if len(req.Images) > 0 {
+		parts := []openaiContentPart{}
+		// Add text part (the prompt instruction or user text).
+		text := req.Text
+		if text == "" {
+			text = req.Prompt
+		}
+		parts = append(parts, openaiContentPart{Type: "text", Text: text})
+		// Add each image as a base64 data URL.
+		for _, img := range req.Images {
+			b64 := base64.StdEncoding.EncodeToString(img)
+			parts = append(parts, openaiContentPart{
+				Type:     "image_url",
+				ImageURL: &openaiImageURL{URL: "data:image/png;base64," + b64},
+			})
+		}
+		userContent = parts
+	} else {
+		userContent = req.Text
+	}
+
 	body := openaiRequest{
 		Model: c.model,
 		Messages: []openaiMessage{
 			{Role: "system", Content: req.Prompt},
-			{Role: "user", Content: req.Text},
+			{Role: "user", Content: userContent},
 		},
 	}
 	// OpenAI uses max_completion_tokens (required for reasoning models).

@@ -97,6 +97,11 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (resp *Response, 
 			resp = nil
 		}
 	}()
+	// Vision is not supported with local llama.cpp models.
+	if len(req.Images) > 0 {
+		return nil, fmt.Errorf("vision is not supported with Ghost-AI local models — use a cloud provider or Ollama with a vision model")
+	}
+
 	c.mu.Lock()
 
 	// Reload model if it was unloaded by idle timer.

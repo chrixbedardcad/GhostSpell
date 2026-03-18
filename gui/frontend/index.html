@@ -2585,6 +2585,7 @@ async function renderPrompts() {
           ${p.icon ? '<span style="margin-right:4px">' + esc(p.icon) + '</span>' : ''}<span class="name">${esc(p.name)}</span>
           ${p.llm ? '<span class="llm-badge">' + esc(p.llm) + '</span>' : ''}
           ${p.timeout_ms ? '<span class="llm-badge" style="background:#45475a">' + (p.timeout_ms / 1000) + 's</span>' : ''}
+          ${p.vision ? '<span class="llm-badge" style="background:#313244;color:#89b4fa;border:1px solid #89b4fa">Vision</span>' : ''}
           ${p.display_mode === 'popup' ? '<span class="llm-badge" style="background:#313244;color:#a6e3a1;border:1px solid #a6e3a1">Popup</span>' : ''}
         </div>
         <div class="actions">`;
@@ -2654,6 +2655,13 @@ function buildInlineForm(idx, p) {
         <option value="popup"${p.display_mode === 'popup' ? ' selected' : ''}>Show in popup window</option>
       </select>
       <div style="font-size:0.75em;color:#6c7086;margin-top:4px">Popup mode shows the result in a window — ideal for defining, explaining, or translating text in non-editable contexts (browsers, PDFs).</div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pe-vision" ${p.vision ? 'checked' : ''} onchange="onVisionToggle(this.checked)" style="width:auto;margin:0">
+        Vision mode (capture screenshot instead of text)
+      </label>
+      <div style="font-size:0.75em;color:#6c7086;margin-top:4px">When enabled, pressing Ctrl+G captures the active window as a screenshot and sends it to the model. Requires a vision-capable model (GPT-4o, Claude, Gemini, etc.).</div>
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary btn-sm" onclick="cancelInlineEdit()">Cancel</button>
@@ -2736,7 +2744,7 @@ function addPromptInline() {
   // Add a blank prompt, then open it for editing
   const prompts = configData.prompts || [];
   const newIdx = prompts.length;
-  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '', 0, '').then(result => {
+  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '', 0, '', false).then(result => {
     if (result && result.startsWith('ok')) {
       promptEditIdx = newIdx;
       renderPrompts();
@@ -2746,6 +2754,14 @@ function addPromptInline() {
   });
 }
 
+function onVisionToggle(checked) {
+  // When vision is enabled, auto-set display mode to popup (vision always shows popup).
+  if (checked) {
+    var dm = document.getElementById('pe-display-mode');
+    if (dm) dm.value = 'popup';
+  }
+}
+
 async function saveInlinePrompt(idx) {
   const name = document.getElementById('pe-name').value.trim();
   const promptText = document.getElementById('pe-text').value.trim();
@@ -2753,9 +2769,10 @@ async function saveInlinePrompt(idx) {
   const icon = document.getElementById('pe-icon') ? document.getElementById('pe-icon').value : '';
   const timeoutSec = parseInt(document.getElementById('pe-timeout')?.value) || 0;
   const displayMode = document.getElementById('pe-display-mode')?.value || '';
+  const vision = document.getElementById('pe-vision')?.checked || false;
   if (!name) { setStatus('prompt-status', 'error', 'Name is required'); return; }
   if (!promptText) { setStatus('prompt-status', 'error', 'Prompt is required'); return; }
-  const result = await goCall('savePrompt', idx, name, promptText, llm, icon, timeoutSec, displayMode);
+  const result = await goCall('savePrompt', idx, name, promptText, llm, icon, timeoutSec, displayMode, vision);
   if (result && result.startsWith('ok')) {
     promptEditIdx = -1;
     renderPrompts();

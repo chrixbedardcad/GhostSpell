@@ -14,6 +14,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
 	"github.com/chrixbedardcad/GhostSpell/mode"
+	"github.com/chrixbedardcad/GhostSpell/screenshot"
 	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/chrixbedardcad/GhostSpell/stats"
 )
@@ -91,6 +92,13 @@ func processMode(
 	if startAnim != nil {
 		startAnim()
 	}
+
+	// --- Vision path: capture screenshot instead of text ---
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Vision {
+		processVision(promptName, promptIdx, cfg, router, kb, cancelCtx, startAnim, stopAnim)
+		return
+	}
+
 	// NOTE: ShowIndicator() is deferred until AFTER captureText(). On Windows,
 	// the indicator overlay (AlwaysOnTop, IgnoreMouseEvents=false) steals focus
 	// from the target app, causing SendInput(Ctrl+C) to go to the indicator
@@ -496,4 +504,126 @@ func processMode(
 	slog.Info(promptName+" complete", "result_len", len(result))
 	slog.Debug("Result content", "result", result) // #200: user text at Debug only (privacy)
 	fmt.Printf("[%s] Complete (%d chars)\n", promptName, len(result))
+}
+
+// processVision handles the vision prompt path: capture screenshot → send to LLM → show popup.
+// Called from processMode when the active prompt has Vision: true.
+func processVision(
+	promptName string,
+	promptIdx int,
+	cfg *config.Config,
+	router *mode.Router,
+	kb keyboard.Simulator,
+	cancelCtx context.Context,
+	startAnim func(),
+	stopAnim func(),
+) {
+	// Small delay to let the user's window fully come to focus after hotkey press.
+	time.Sleep(100 * time.Millisecond)
+
+	// Capture the active window screenshot.
+	slog.Info("Vision mode: capturing active window screenshot", "prompt", promptName)
+	imgData, err := screenshot.CaptureActiveWindow()
+	if err != nil {
+		slog.Error("Vision: screenshot capture failed", "prompt", promptName, "error", err)
+		sound.StopWorkingLoop()
+		gui.PopIndicator("\U0001F47B\u274C", "Screenshot failed")
+		sound.PlayError()
+		return
+	}
+	slog.Info("Vision: screenshot captured", "prompt", promptName, "size_bytes", len(imgData))
+
+	// Check if cancelled during capture.
+	if cancelCtx.Err() != nil {
+		slog.Info("Vision: cancelled during capture", "prompt", promptName)
+		return
+	}
+
+	// Show indicator with prompt info.
+	promptIcon := ""
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) {
+		promptIcon = cfg.Prompts[promptIdx].Icon
+	}
+	modelLabel := cfg.DefaultModel
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].LLM != "" {
+		modelLabel = cfg.Prompts[promptIdx].LLM
+	}
+	indicatorModel := modelLabel
+	if me, ok := cfg.Models[modelLabel]; ok && me.Model != "" {
+		indicatorModel = me.Model
+	}
+	gui.ShowIndicator(promptIcon, promptName, indicatorModel)
+
+	// Create timeout context.
+	timeout := time.Duration(router.TimeoutForPrompt(promptIdx)) * time.Millisecond
+	ctx, cancel := context.WithTimeout(cancelCtx, timeout)
+	defer cancel()
+
+	// Send screenshot + prompt to LLM.
+	llmStart := time.Now()
+	resp, err := router.ProcessWithImages(ctx, promptIdx, "", [][]byte{imgData})
+	llmElapsed := time.Since(llmStart)
+
+	gui.HideIndicator()
+
+	// Record stats.
+	respProvider, respModel := "", ""
+	if resp != nil {
+		respProvider = resp.Provider
+		respModel = resp.Model
+	}
+	llmLabel := cfg.DefaultModel
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].LLM != "" {
+		llmLabel = cfg.Prompts[promptIdx].LLM
+	}
+	recordVisionStat := func(status, errMsg, output string) {
+		if appStats == nil {
+			return
+		}
+		appStats.Record(stats.Entry{
+			Timestamp:   time.Now(),
+			Prompt:      promptName,
+			PromptIcon:  promptIcon,
+			Provider:    respProvider,
+			Model:       respModel,
+			ModelLabel:  llmLabel,
+			InputChars:  len(imgData),
+			InputWords:  0,
+			OutputChars: len(output),
+			OutputWords: len(strings.Fields(output)),
+			DurationMs:  llmElapsed.Milliseconds(),
+			Status:      status,
+			Error:       errMsg,
+		})
+	}
+
+	if err != nil {
+		slog.Error("Vision: LLM processing failed", "prompt", promptName, "error", err)
+		sound.StopWorkingLoop()
+
+		if ctx.Err() == context.Canceled && !strings.Contains(err.Error(), "deadline exceeded") {
+			gui.PopIndicator("\U0001F6D1", "Cancelled")
+			recordVisionStat("cancelled", "", "")
+			return
+		}
+
+		status := "error"
+		if ctx.Err() == context.DeadlineExceeded || strings.Contains(err.Error(), "deadline exceeded") {
+			status = "timeout"
+		}
+		recordVisionStat(status, err.Error(), "")
+		gui.PopIndicator("\U0001F47B\u274C", "Vision failed")
+		sound.PlayError()
+		return
+	}
+
+	result := resp.Text
+	sound.StopWorkingLoop()
+	sound.PlaySuccess()
+	recordVisionStat("success", "", result)
+
+	// Always show vision results in a popup window.
+	slog.Info("Vision: showing result in popup", "prompt", promptName, "result_len", len(result))
+	gui.ShowResult(result, promptName, promptIcon, modelLabel)
+	fmt.Printf("[%s] Vision complete (%d chars)\n", promptName, len(result))
 }

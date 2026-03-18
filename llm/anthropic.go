@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -66,8 +67,21 @@ type anthropicRequest struct {
 }
 
 type anthropicMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string      `json:"role"`
+	Content interface{} `json:"content"` // string for text-only, []anthropicContentBlock for vision
+}
+
+// anthropicContentBlock represents a content block in the Anthropic multimodal format.
+type anthropicContentBlock struct {
+	Type   string                 `json:"type"`
+	Text   string                 `json:"text,omitempty"`
+	Source *anthropicImageSource  `json:"source,omitempty"`
+}
+
+type anthropicImageSource struct {
+	Type      string `json:"type"`       // "base64"
+	MediaType string `json:"media_type"` // "image/png"
+	Data      string `json:"data"`       // base64-encoded image
 }
 
 // anthropicResponse is the response body from the Anthropic Messages API.
@@ -88,12 +102,39 @@ func (c *AnthropicClient) Send(ctx context.Context, req Request) (*Response, err
 		maxTokens = c.maxTokens
 	}
 
+	// Build user message — multimodal content blocks when images present,
+	// plain string otherwise (preserves exact existing behavior for text-only).
+	var userContent interface{}
+	if len(req.Images) > 0 {
+		blocks := []anthropicContentBlock{}
+		// Add each image as a base64 content block.
+		for _, img := range req.Images {
+			blocks = append(blocks, anthropicContentBlock{
+				Type: "image",
+				Source: &anthropicImageSource{
+					Type:      "base64",
+					MediaType: "image/png",
+					Data:      base64.StdEncoding.EncodeToString(img),
+				},
+			})
+		}
+		// Add text part.
+		text := req.Text
+		if text == "" {
+			text = req.Prompt
+		}
+		blocks = append(blocks, anthropicContentBlock{Type: "text", Text: text})
+		userContent = blocks
+	} else {
+		userContent = req.Text
+	}
+
 	body := anthropicRequest{
 		Model:     c.model,
 		MaxTokens: maxTokens,
 		System:    req.Prompt,
 		Messages: []anthropicMessage{
-			{Role: "user", Content: req.Text},
+			{Role: "user", Content: userContent},
 		},
 	}
 
