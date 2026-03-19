@@ -199,7 +199,7 @@ export function IndicatorWindow() {
           borderRadius: "50%",
           border: "1px solid rgba(69, 71, 90, 0.5)",
           boxSizing: "border-box",
-          cursor: "grab",
+          cursor: "default",
           opacity: 0.5,
           transition: "opacity 200ms",
           position: "relative",
