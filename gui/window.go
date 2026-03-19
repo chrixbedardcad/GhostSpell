@@ -182,7 +182,7 @@ func ShowUpdateWindow(svc *SettingsService, cfg *config.Config, configPath strin
 		Title:  "GhostSpell Update",
 		Width:  400,
 		Height: 420,
-		URL:    "/update.html",
+		URL:    "/dist/react.html?window=update",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:               application.MacBackdropTranslucent,
