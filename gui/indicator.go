@@ -182,6 +182,7 @@ func ShowIdle() {
 	indicatorMu.Lock()
 	mode := indicatorMode
 	if mode != "always" {
+		slog.Debug("[indicator] ShowIdle: skipped (mode is not always)", "mode", mode)
 		indicatorMu.Unlock()
 		return
 	}
@@ -189,14 +190,15 @@ func ShowIdle() {
 	win := indicatorWin
 	indicatorMu.Unlock()
 	if win == nil {
+		slog.Warn("[indicator] ShowIdle: window is nil")
 		return
 	}
 
 	win.SetSize(48, 48)
 	x, y := getIdlePosition()
+	slog.Info("[indicator] ShowIdle", "size", "48x48", "x", x, "y", y)
 	fmt.Printf("[indicator] ShowIdle: size=48x48 pos=%d,%d\n", x, y)
 	win.SetPosition(x, y)
-	fmt.Println("[indicator] Emitting idle event")
 	emitIndicatorEvent(map[string]any{"state": "idle"})
 }
 
@@ -219,6 +221,7 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 
 	win.SetSize(260, 52)
 	x, y := getIndicatorPosition()
+	slog.Info("[indicator] ShowIndicator: positioning", "size", "260x52", "x", x, "y", y, "prompt", promptName, "model", modelLabel)
 	win.SetPosition(x, y)
 	emitIndicatorEvent(map[string]any{
 		"state": "processing", "icon": promptIcon, "name": promptName, "model": modelLabel,
@@ -240,12 +243,14 @@ func HideIndicator() {
 	if mode == "always" {
 		win.SetSize(48, 48)
 		x, y := getIdlePosition()
+		slog.Debug("[indicator] HideIndicator: returning to idle", "x", x, "y", y)
 		win.SetPosition(x, y)
 		emitIndicatorEvent(map[string]any{"state": "idle"})
 		return
 	}
 
 	// Move off-screen. Keep 48x48 so WebView2 stays renderable.
+	slog.Debug("[indicator] HideIndicator: moving off-screen")
 	win.SetPosition(-9999, -9999)
 	win.SetSize(48, 48)
 	emitIndicatorEvent(map[string]any{"state": "hidden"})
@@ -261,10 +266,11 @@ func PopIndicator(promptIcon, promptName string) {
 		return
 	}
 
-	slog.Debug("[indicator] PopIndicator called", "prompt", promptName, "icon", promptIcon)
+	slog.Info("[indicator] PopIndicator called", "prompt", promptName, "icon", promptIcon)
 
 	win.SetSize(260, 52)
 	x, y := getIndicatorPosition()
+	slog.Info("[indicator] PopIndicator: positioning", "size", "260x52", "x", x, "y", y)
 	win.SetPosition(x, y)
 	emitIndicatorEvent(map[string]any{"state": "pop", "icon": promptIcon, "name": promptName})
 
