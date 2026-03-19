@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"log/slog"
 	"runtime"
 	"sync"
@@ -64,13 +65,14 @@ func ensureIndicatorWindow() {
 		},
 	})
 
+	fmt.Println("[indicator] Window created (React hybrid) URL=/dist/react.html?window=indicator")
 	slog.Info("[gui] Indicator window created (React hybrid)", "url", "/dist/react.html?window=indicator")
 
 	// Block until React has time to mount and register event listeners.
-	slog.Info("[gui] Waiting 800ms for React to mount...")
+	fmt.Println("[indicator] Waiting 800ms for React to mount...")
 	time.Sleep(800 * time.Millisecond)
 	indicatorReady = true
-	slog.Info("[gui] Indicator React page assumed ready")
+	fmt.Println("[indicator] React page assumed ready")
 }
 
 // indicatorPos stores the configured position.
@@ -190,10 +192,11 @@ func ShowIdle() {
 		return
 	}
 
-	slog.Debug("[indicator] ShowIdle: displaying idle ghost")
 	win.SetSize(48, 48)
 	x, y := getIdlePosition()
+	fmt.Printf("[indicator] ShowIdle: size=48x48 pos=%d,%d\n", x, y)
 	win.SetPosition(x, y)
+	fmt.Println("[indicator] Emitting idle event")
 	emitIndicatorEvent(map[string]any{"state": "idle"})
 }
 
