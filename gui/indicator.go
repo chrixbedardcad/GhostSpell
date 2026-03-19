@@ -126,7 +126,7 @@ func PreviewIndicatorPosition() {
 	}()
 }
 
-func getIndicatorPosition() (int, int) {
+func getIndicatorPositionForSize(w, h int) (int, int) {
 	app := application.Get()
 	if app == nil {
 		return 100, 100
@@ -136,8 +136,6 @@ func getIndicatorPosition() (int, int) {
 		return 100, 100
 	}
 
-	w := 260
-	h := 52
 	indicatorMu.Lock()
 	pos := indicatorPos
 	indicatorMu.Unlock()
@@ -154,6 +152,14 @@ func getIndicatorPosition() (int, int) {
 	default: // "center"
 		return screen.WorkArea.X + (screen.WorkArea.Width-w)/2, screen.WorkArea.Y + screen.WorkArea.Height/3
 	}
+}
+
+func getIndicatorPosition() (int, int) {
+	return getIndicatorPositionForSize(260, 52)
+}
+
+func getIdlePosition() (int, int) {
+	return getIndicatorPositionForSize(48, 48)
 }
 
 // ShowIdle displays the indicator in idle mode — small ghost circle, semi-transparent.
@@ -177,7 +183,7 @@ func ShowIdle() {
 	win.SetURL("/indicator.html?state=idle")
 	time.Sleep(150 * time.Millisecond)
 
-	x, y := getIndicatorPosition()
+	x, y := getIdlePosition()
 	win.SetPosition(x, y)
 }
 
@@ -227,7 +233,7 @@ func HideIndicator() {
 		win.SetURL("/indicator.html?state=idle")
 		time.Sleep(100 * time.Millisecond)
 		// Restore idle position.
-		x, y := getIndicatorPosition()
+		x, y := getIdlePosition()
 		win.SetPosition(x, y)
 		return
 	}

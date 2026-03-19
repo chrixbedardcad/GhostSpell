@@ -259,9 +259,17 @@ document.getElementById('pill').addEventListener('click', function(e) {
   _clickTimer = setTimeout(async function() {
     _clickTimer = null;
     if (_expanded) {
-      // Second click while expanded → cycle prompt
+      // Already expanded → cycle to next prompt and stay expanded
       await goCall('cyclePromptFromIndicator');
-      _expanded = false;
+      // Refresh the displayed prompt info
+      var raw2 = await goCall('getActivePromptInfo');
+      if (raw2) {
+        try {
+          var info2 = JSON.parse(raw2);
+          setState('pop', {icon: info2.icon, name: info2.name});
+          _state = 'expanded';
+        } catch(e) {}
+      }
     } else {
       // First click → expand to show prompt info
       var raw = await goCall('getActivePromptInfo');
@@ -269,19 +277,19 @@ document.getElementById('pill').addEventListener('click', function(e) {
         try {
           var info = JSON.parse(raw);
           setState('pop', {icon: info.icon, name: info.name});
-          _state = 'expanded'; // override to track expanded state
+          _state = 'expanded';
           _expanded = true;
           goCall('resizeIndicatorForMenu', 260, 52);
-          // Auto-collapse after 3 seconds
-          if (_expandTimeout) clearTimeout(_expandTimeout);
-          _expandTimeout = setTimeout(function() {
-            _expanded = false;
-            setState('idle');
-            goCall('resizeIndicatorForMenu', 48, 48);
-          }, 3000);
         } catch(e) {}
       }
     }
+    // Reset auto-collapse timer on every click
+    if (_expandTimeout) clearTimeout(_expandTimeout);
+    _expandTimeout = setTimeout(function() {
+      _expanded = false;
+      setState('idle');
+      goCall('resizeIndicatorForMenu', 48, 48);
+    }, 3000);
   }, 250);
 });
 
