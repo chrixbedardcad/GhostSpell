@@ -67,7 +67,7 @@ func ShowWizardOnApp(svc *SettingsService, app *application.App, cfg *config.Con
 		Title:  "GhostSpell Setup",
 		Width:  620,
 		Height: 750,
-		URL:    "/wizard.html",
+		URL:    "/dist/react.html?window=wizard",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:               application.MacBackdropTranslucent,
@@ -246,7 +246,7 @@ func showStandaloneWindow(cfg *config.Config, configPath string, onSaved func())
 		Title:  "GhostSpell Setup",
 		Width:  600,
 		Height: 640,
-		URL:    "/wizard.html",
+		URL:    "/dist/react.html?window=wizard",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:               application.MacBackdropTranslucent,
