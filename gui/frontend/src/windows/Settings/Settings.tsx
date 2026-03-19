@@ -5,11 +5,12 @@ import { GeneralTab } from "./GeneralTab";
 import { ModelsTab } from "./ModelsTab";
 import { PromptsTab } from "./PromptsTab";
 import { HotkeysTab } from "./HotkeysTab";
+import { StatsTab } from "./StatsTab";
 import { DebugTab } from "./DebugTab";
 import { HelpTab } from "./HelpTab";
 
 /**
- * Settings window — tabbed interface.
+ * Settings window — 9-tab interface.
  * Zen: clean tab bar, generous content area, no visual noise.
  */
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: "models", label: "Models" },
   { id: "prompts", label: "Prompts" },
   { id: "hotkeys", label: "Hotkeys" },
+  { id: "stats", label: "Stats" },
   { id: "debug", label: "Debug" },
   { id: "help", label: "Help" },
 ] as const;
@@ -33,21 +35,20 @@ export function SettingsWindow() {
       <TitleBar />
 
       {/* Tab bar */}
-      <div className="flex border-b border-surface-0/60 px-6 shrink-0 bg-mantle/50">
+      <div className="flex border-b border-surface-0/60 px-4 shrink-0 bg-mantle/50 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`relative px-4 py-2.5 text-[13px] font-medium transition-colors
+            className={`relative px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap
               ${activeTab === tab.id
                 ? "text-accent-blue"
                 : "text-overlay-0 hover:text-subtext-0"
               }`}
           >
             {tab.label}
-            {/* Active indicator line */}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent-blue rounded-full" />
+              <span className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-accent-blue rounded-full" />
             )}
           </button>
         ))}
@@ -60,10 +61,10 @@ export function SettingsWindow() {
         {activeTab === "models" && <ModelsTab />}
         {activeTab === "prompts" && <PromptsTab />}
         {activeTab === "hotkeys" && <HotkeysTab />}
+        {activeTab === "stats" && <StatsTab />}
         {activeTab === "debug" && <DebugTab />}
         {activeTab === "help" && <HelpTab />}
       </div>
     </div>
   );
 }
-
