@@ -72,8 +72,8 @@ func ensureIndicatorWindow() {
 		},
 	})
 
-	fmt.Println("[indicator] Window created (React hybrid) URL=/dist/react.html?window=indicator")
-	slog.Info("[gui] Indicator window created (React hybrid)", "url", "/dist/react.html?window=indicator")
+	fmt.Println("[indicator] Window created (React hybrid) URL=/indicator-react.html?window=indicator")
+	slog.Info("[gui] Indicator window created (React hybrid)", "url", "/indicator-react.html?window=indicator")
 
 	// Block until React has time to mount and register event listeners.
 	fmt.Println("[indicator] Waiting 800ms for React to mount...")

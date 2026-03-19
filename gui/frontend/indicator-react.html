@@ -9,6 +9,8 @@
 </head>
 <body>
 <div id="root"></div>
+<!-- Wails runtime — must load before React. type=module matches index.html. -->
+<script type="module" src="/wails/runtime.js"></script>
 <script>
 // Dynamically load the Vite-built React bundle.
 // Fetch /dist/react.html to extract the current JS/CSS filenames (they have content hashes).
