@@ -35,6 +35,15 @@ export function IndicatorWindow() {
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
+
+  // Force fully transparent background — critical for Windows WebView2.
+  // The global CSS sets body background to #1e1e2e for settings/wizard,
+  // but the indicator window must be fully transparent.
+  useEffect(() => {
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+    document.getElementById("root")!.style.background = "transparent";
+  }, []);
   const timerRef = useRef<number | null>(null);
   const dragRef = useRef({
     dragging: false,
