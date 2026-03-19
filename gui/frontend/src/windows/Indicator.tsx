@@ -268,8 +268,12 @@ export function IndicatorWindow() {
           </span>
           {state === "processing" && (
             <>
-              <span style={{ width: "1px", height: "12px", background: "#45475a", flexShrink: 0 }} />
-              <span style={{ fontSize: "11px", color: "#6c7086", fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace" }}>
+              <span style={{ width: "1px", height: "16px", background: "#45475a", flexShrink: 0 }} />
+              <span style={{
+                fontSize: "14px", color: "#f9e2af", fontWeight: 600,
+                fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}>
                 {elapsed}s
               </span>
               {model && (
@@ -280,7 +284,10 @@ export function IndicatorWindow() {
             </>
           )}
         </div>
-        <style>{`@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }`}</style>
+        <style>{`
+          @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+          @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        `}</style>
       </div>
     );
   }
