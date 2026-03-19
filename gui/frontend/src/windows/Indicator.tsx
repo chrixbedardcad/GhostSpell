@@ -213,11 +213,11 @@ export function IndicatorWindow() {
   return (
     <div
       style={{
-        /* Use rgba(0,0,0,0.01) instead of transparent so WebView2 treats the
-           entire area as interactive. Fully transparent pixels are click-through
-           in WebView2's hit-testing. 0.01 alpha is invisible to the eye. */
-        background: "rgba(0,0,0,0.01)",
+        /* Solid background on Windows (matches Go-side BackgroundTypeSolid).
+           Transparent backgrounds make WebView2 fully click-through on Windows. */
+        background: "rgb(30, 30, 46)",
         width: "100%", height: "100%", overflow: "hidden",
+        borderRadius: isPill ? "16px" : "50%",
       }}
     >
       {!menuOpen && (

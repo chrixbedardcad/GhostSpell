@@ -280,12 +280,11 @@ func processMode(
 	resp, err := router.Process(ctx, promptIdx, textToSend)
 	llmElapsed := time.Since(llmStart)
 
-	// LLM call complete — hide the overlay and restore focus to the target
-	// window before any keyboard simulation (paste, select-all, etc).
-	// This is defense-in-depth: RestoreForegroundWindow was already called
-	// after ShowIndicator, but the user may have clicked elsewhere during
-	// processing, or the indicator may have recaptured focus.
-	gui.HideIndicator()
+	// LLM call complete — show a brief "done" summary on the indicator so
+	// the user can see which prompt ran, the model used, and how long it took.
+	// Then auto-hide after 2 seconds (#233).
+	doneMsg := fmt.Sprintf("%s  %s  %.1fs", promptName, indicatorModel, llmElapsed.Seconds())
+	gui.PopIndicator(promptIcon, doneMsg)
 	kb.RestoreForegroundWindow()
 
 	// Extract provider/model metadata from response (if available).

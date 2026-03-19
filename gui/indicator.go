@@ -34,9 +34,16 @@ func ensureIndicatorWindow() {
 	}
 
 	bgType := application.BackgroundTypeTransparent
+	// On Windows, transparent/translucent backgrounds make the WebView2 window
+	// fully click-through (DWM composition with WS_EX_NOREDIRECTIONBITMAP).
+	// Use a solid background matching the indicator's dark theme instead.
+	// The window is frameless + rounded via CSS, so the small rectangular
+	// corners are barely visible.
+	bgColour := application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0}
 	ignoreMouse := false // must receive clicks for drag + context menu
 	if runtime.GOOS == "windows" {
-		bgType = application.BackgroundTypeTranslucent
+		bgType = application.BackgroundTypeSolid
+		bgColour = application.RGBA{Red: 30, Green: 30, Blue: 46, Alpha: 255}
 	}
 
 	indicatorWin = indicatorApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -49,7 +56,7 @@ func ensureIndicatorWindow() {
 		Frameless:         true,
 		AlwaysOnTop:       true,
 		BackgroundType:    bgType,
-		BackgroundColour:  application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0},
+		BackgroundColour:  bgColour,
 		DisableResize:     true,
 		Hidden:            false,
 		IgnoreMouseEvents: ignoreMouse,
