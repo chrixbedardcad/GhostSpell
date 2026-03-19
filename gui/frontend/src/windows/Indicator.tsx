@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { goCall, onEvent } from "@/bridge";
 
 /**
- * Ghost Indicator — fixed-size transparent overlay.
+ * Ghost Indicator — React content with dynamic window sizing.
  *
- * Architecture:
- * - 320x400 transparent window, never resizes
- * - Ghost circle at top-left, pill expands right, menu drops down
- * - All state changes via Wails events from Go
- * - Drag to reposition, position saved to config
- * - CSS transitions for smooth state changes
+ * Hybrid approach (#229):
+ * - Go manages window size (48x48 idle, 260x52 pill) and position
+ * - React manages the CONTENT (animations, clicks, menu)
+ * - Page loads ONCE — no more SetURL reloads
+ * - State changes via Wails events from Go
+ * - Window background is transparent — only visible content shows
  */
 
 type IndicatorState = "hidden" | "idle" | "processing" | "pop";
@@ -35,26 +35,17 @@ export function IndicatorWindow() {
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
-
-  // Force fully transparent background — critical for Windows WebView2.
-  // The global CSS sets body background to #1e1e2e for settings/wizard,
-  // but the indicator window must be fully transparent.
-  useEffect(() => {
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
-    document.getElementById("root")!.style.background = "transparent";
-  }, []);
   const timerRef = useRef<number | null>(null);
-  const dragRef = useRef({
-    dragging: false,
-    startX: 0,
-    startY: 0,
-    offsetX: 0,
-    offsetY: 0,
-    moved: false,
-  });
 
-  // Listen for state events from Go
+  // Force transparent background — critical for Windows WebView2.
+  useEffect(() => {
+    document.documentElement.style.cssText = "background:transparent!important;margin:0;padding:0;overflow:hidden";
+    document.body.style.cssText = "background:transparent!important;margin:0;padding:0;overflow:hidden";
+    const root = document.getElementById("root");
+    if (root) root.style.cssText = "background:transparent!important;width:100%;height:100%";
+  }, []);
+
+  // Listen for state events from Go.
   useEffect(() => {
     const unsub = onEvent("indicatorState", (data) => {
       const d = data as StateData;
@@ -64,7 +55,7 @@ export function IndicatorWindow() {
       if (d.model !== undefined) setModel(d.model);
       setMenuOpen(false);
 
-      // Reset timer
+      // Timer for processing state.
       if (timerRef.current) clearInterval(timerRef.current);
       if (d.state === "processing") {
         setElapsed(0);
@@ -74,83 +65,60 @@ export function IndicatorWindow() {
       }
     });
 
-    // Check URL params for initial state (fallback for old Go code)
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("state") === "idle") setState("idle");
-
     return () => { unsub(); if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
   // --- Drag support ---
+  const dragRef = useRef({ active: false, startX: 0, startY: 0, offX: 0, offY: 0, moved: false });
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return; // left click only
+    if (e.button !== 0 || menuOpen) return;
     dragRef.current = {
-      dragging: true,
+      active: true,
       startX: e.screenX,
       startY: e.screenY,
-      offsetX: e.screenX - window.screenX,
-      offsetY: e.screenY - window.screenY,
+      offX: e.screenX - window.screenX,
+      offY: e.screenY - window.screenY,
       moved: false,
     };
-    e.preventDefault();
-  }, []);
+  }, [menuOpen]);
 
   useEffect(() => {
-    function onMouseMove(e: MouseEvent) {
+    const onMove = (e: MouseEvent) => {
       const d = dragRef.current;
-      if (!d.dragging) return;
-      const dx = e.screenX - d.startX;
-      const dy = e.screenY - d.startY;
-      // 5px threshold to distinguish click from drag
-      if (!d.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+      if (!d.active) return;
+      if (!d.moved && Math.abs(e.screenX - d.startX) < 5 && Math.abs(e.screenY - d.startY) < 5) return;
       d.moved = true;
-      window.moveTo(e.screenX - d.offsetX, e.screenY - d.offsetY);
-    }
-
-    function onMouseUp(e: MouseEvent) {
+      window.moveTo(e.screenX - d.offX, e.screenY - d.offY);
+    };
+    const onUp = () => {
       const d = dragRef.current;
-      if (!d.dragging) return;
-      d.dragging = false;
+      if (!d.active) return;
+      d.active = false;
       if (d.moved) {
-        // Save position
         goCall("saveIndicatorPosition", window.screenX, window.screenY);
       }
-    }
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
     };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
   }, []);
 
   // --- Click handlers ---
-  const clickTimerRef = useRef<number | null>(null);
+  const clickTimer = useRef<number | null>(null);
 
-  function onClick(e: React.MouseEvent) {
-    if (dragRef.current.moved) return; // was a drag, not a click
+  function onClick() {
+    if (dragRef.current.moved) return;
     if (state !== "idle" && state !== "pop") return;
-
-    // Debounce for double-click detection
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      return; // double-click handled below
-    }
-
-    clickTimerRef.current = window.setTimeout(async () => {
-      clickTimerRef.current = null;
-      // Single click → cycle prompt
-      await goCall("cyclePromptFromIndicator");
+    if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; return; }
+    clickTimer.current = window.setTimeout(() => {
+      clickTimer.current = null;
+      goCall("cyclePromptFromIndicator");
     }, 250);
   }
 
   function onDoubleClick() {
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-    }
+    if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; }
     goCall("openSettingsFromIndicator");
   }
 
@@ -163,69 +131,89 @@ export function IndicatorWindow() {
         const data = JSON.parse(raw);
         setMenuItems(data.prompts || []);
         setMenuOpen(true);
+        // Resize window to fit menu.
+        const menuH = (data.prompts?.length || 0) * 28 + 60;
+        goCall("resizeIndicatorForMenu", 200, Math.max(menuH, 100));
       } catch { /* ignore */ }
     }
   }
 
-  async function selectPrompt(idx: number) {
+  function closeMenu() {
     setMenuOpen(false);
+    // Restore window size based on current state.
+    if (state === "idle") {
+      goCall("resizeIndicatorForMenu", 48, 48);
+    } else {
+      goCall("resizeIndicatorForMenu", 260, 52);
+    }
+  }
+
+  async function selectPrompt(idx: number) {
+    closeMenu();
     await goCall("setActivePromptFromIndicator", idx);
   }
 
   // --- Render ---
-  const isVisible = state !== "hidden";
   const isPill = state === "processing" || state === "pop";
 
+  if (state === "hidden") {
+    return <div style={{ background: "transparent" }} />;
+  }
+
   return (
-    <div className="w-full h-full relative" style={{ background: "transparent" }}>
-      {/* Ghost indicator */}
-      <div
-        className={`absolute top-1 left-1 transition-all duration-200 ease-out cursor-pointer
-          ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"}
-        `}
-        onMouseDown={onMouseDown}
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-        onContextMenu={onContextMenu}
-      >
-        {/* The pill container — morphs between circle and pill */}
+    <div
+      style={{ background: "transparent", width: "100%", height: "100%", overflow: "hidden" }}
+    >
+      {!menuOpen && (
         <div
-          className={`flex items-center gap-2 transition-all duration-200 ease-out
-            bg-[#1e1e2e]/90 backdrop-blur-sm border border-[#313244]/60
-            ${isPill
-              ? "rounded-2xl px-3 py-1.5 min-w-[200px]"
-              : "rounded-full w-12 h-12 justify-center"
-            }
-            ${state === "idle" ? "opacity-60 hover:opacity-95" : "opacity-100"}
-          `}
-          style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}
+          onMouseDown={onMouseDown}
+          onClick={onClick}
+          onDoubleClick={onDoubleClick}
+          onContextMenu={onContextMenu}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "rgba(30, 30, 46, 0.92)",
+            borderRadius: isPill ? "16px" : "50%",
+            padding: isPill ? "6px 14px 6px 6px" : "4px",
+            cursor: "pointer",
+            width: isPill ? "auto" : "40px",
+            height: isPill ? "auto" : "40px",
+            justifyContent: isPill ? "flex-start" : "center",
+            border: "1px solid rgba(69, 71, 90, 0.5)",
+            transition: "border-radius 200ms ease, padding 200ms ease",
+          }}
         >
           {/* Ghost icon */}
           <img
             src="/ghostspell-ghost.png"
             alt=""
-            className={`shrink-0 transition-all duration-200
-              ${isPill ? "w-7 h-7" : "w-8 h-8"}
-              ${state === "processing" ? "animate-bounce-slow" : ""}
-              ${state === "idle" ? "animate-breathe" : ""}
-            `}
+            style={{
+              width: isPill ? "28px" : "32px",
+              height: isPill ? "28px" : "32px",
+              flexShrink: 0,
+              animation: state === "processing" ? "bounce 1.5s ease-in-out infinite"
+                : state === "idle" ? "breathe 3s ease-in-out infinite"
+                : "none",
+            }}
           />
 
-          {/* Pill content — only visible when expanded */}
+          {/* Pill content */}
           {isPill && (
-            <div className="flex items-center gap-2 overflow-hidden animate-fade-in">
-              {icon && <span className="text-sm shrink-0">{icon}</span>}
-              <span className="text-xs text-[#cdd6f4] font-medium truncate max-w-[120px]">
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", whiteSpace: "nowrap" }}>
+              {icon && <span style={{ fontSize: "14px", flexShrink: 0 }}>{icon}</span>}
+              <span style={{ fontSize: "12px", color: "#cdd6f4", fontWeight: 500, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
                 {name}
               </span>
               {state === "processing" && (
                 <>
-                  <span className="w-px h-3 bg-[#45475a] shrink-0" />
-                  <span className="text-[11px] text-[#6c7086] tabular-nums shrink-0">
+                  <span style={{ width: "1px", height: "12px", background: "#45475a", flexShrink: 0 }} />
+                  <span style={{ fontSize: "11px", color: "#6c7086", fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace" }}>
                     {elapsed}s
                   </span>
                   {model && (
-                    <span className="text-[10px] text-[#585b70] truncate max-w-[80px] shrink-0">
+                    <span style={{ fontSize: "10px", color: "#585b70", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
                       {model}
                     </span>
                   )}
@@ -234,42 +222,60 @@ export function IndicatorWindow() {
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* Context menu */}
       {menuOpen && (
         <div
-          className="absolute top-14 left-1 bg-[#181825]/95 backdrop-blur-md
-                     border border-[#313244]/60 rounded-xl overflow-hidden
-                     animate-fade-in min-w-[180px]"
-          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+          style={{
+            background: "rgba(24, 24, 37, 0.95)",
+            border: "1px solid rgba(69, 71, 90, 0.5)",
+            borderRadius: "12px",
+            overflow: "hidden",
+            minWidth: "180px",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          }}
         >
           {menuItems.map((item, idx) => (
             <button
               key={idx}
               onClick={() => selectPrompt(idx)}
-              className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2
-                transition-colors hover:bg-[#313244]/50
-                ${item.active ? "text-[#89b4fa]" : "text-[#a6adc8]"}
-              `}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "7px 12px",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: item.active ? "#89b4fa" : "#a6adc8",
+                transition: "background 150ms",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
             >
-              <span className="w-5 text-center shrink-0">{item.icon || "📝"}</span>
-              <span className="truncate">{item.name}</span>
-              {item.active && <span className="ml-auto text-[10px] text-[#89b4fa]">●</span>}
+              <span style={{ width: "18px", textAlign: "center", flexShrink: 0 }}>{item.icon || "📝"}</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+              {item.active && <span style={{ marginLeft: "auto", fontSize: "8px", color: "#89b4fa" }}>●</span>}
             </button>
           ))}
-          <div className="h-px bg-[#313244]/50" />
+          <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)" }} />
           <button
-            onClick={() => { setMenuOpen(false); goCall("openSettingsFromIndicator"); }}
-            className="w-full text-left px-3 py-2 text-xs text-[#6c7086] hover:text-[#a6adc8]
-                       hover:bg-[#313244]/50 transition-colors"
+            onClick={() => { closeMenu(); goCall("openSettingsFromIndicator"); }}
+            style={{ width: "100%", textAlign: "left", padding: "7px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", cursor: "pointer", color: "#6c7086", transition: "background 150ms" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             ⚙️ Settings
           </button>
           <button
-            onClick={() => { setMenuOpen(false); goCall("quitFromIndicator"); }}
-            className="w-full text-left px-3 py-2 text-xs text-[#6c7086] hover:text-[#f38ba8]
-                       hover:bg-[#313244]/50 transition-colors"
+            onClick={() => { closeMenu(); goCall("quitFromIndicator"); }}
+            style={{ width: "100%", textAlign: "left", padding: "7px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", cursor: "pointer", color: "#6c7086", transition: "background 150ms" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)"; e.currentTarget.style.color = "#f38ba8"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#6c7086"; }}
           >
             ✕ Quit
           </button>
@@ -278,26 +284,12 @@ export function IndicatorWindow() {
 
       {/* Click-outside to close menu */}
       {menuOpen && (
-        <div className="fixed inset-0 z-[-1]" onClick={() => setMenuOpen(false)} />
+        <div style={{ position: "fixed", inset: 0, zIndex: -1 }} onClick={closeMenu} />
       )}
 
-      {/* Inline styles for animations */}
       <style>{`
-        @keyframes breathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateX(-8px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .animate-breathe { animation: breathe 3s ease-in-out infinite; }
-        .animate-bounce-slow { animation: bounce-slow 1.5s ease-in-out infinite; }
-        .animate-fade-in { animation: fade-in 200ms ease-out; }
+        @keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
       `}</style>
     </div>
   );
