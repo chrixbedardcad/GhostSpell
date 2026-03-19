@@ -264,9 +264,11 @@ func (r *Router) TimeoutForPrompt(promptIdx int) int {
 func (r *Router) llmLabelForPrompt(promptIdx int) string {
 	if promptIdx >= 0 && promptIdx < len(r.cfg.Prompts) {
 		if r.cfg.Prompts[promptIdx].LLM != "" {
+			slog.Debug("llmLabelForPrompt: using per-prompt override", "prompt", r.cfg.Prompts[promptIdx].Name, "llm", r.cfg.Prompts[promptIdx].LLM, "default", r.cfg.DefaultModel)
 			return r.cfg.Prompts[promptIdx].LLM
 		}
 	}
+	slog.Debug("llmLabelForPrompt: using default model", "default", r.cfg.DefaultModel)
 	return r.cfg.DefaultModel
 }
 
