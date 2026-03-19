@@ -1,40 +1,309 @@
 @echo off
-echo === GhostSpell Build ===
+setlocal enabledelayedexpansion
+
+echo ============================================
+echo          GhostSpell Full Build
+echo ============================================
 echo.
 
 cd /d "%~dp0"
 
-echo [1/3] Installing frontend dependencies...
-cd gui\frontend
+set LLAMA_VERSION=b8281
+set BUILD_DIR=%~dp0build
+set LLAMA_SRC=%BUILD_DIR%\llama-src
+set LLAMA_OUT=%BUILD_DIR%\llama
+set GHOSTAI=0
+
+:: ============================================================
+:: Step 0 — Check prerequisites
+:: ============================================================
+echo [0] Checking prerequisites...
+echo.
+
+set MISSING=0
+
+where go >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   ERROR: 'go' not found. Install Go from https://go.dev/dl/
+    set MISSING=1
+) else (
+    echo   go ......... OK
+)
+
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   ERROR: 'node' not found. Install Node.js from https://nodejs.org/
+    set MISSING=1
+) else (
+    echo   node ....... OK
+)
+
+where npm >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   ERROR: 'npm' not found. Install Node.js from https://nodejs.org/
+    set MISSING=1
+) else (
+    echo   npm ........ OK
+)
+
+if %MISSING%==1 (
+    echo.
+    echo   Install the missing tools above and try again.
+    pause
+    exit /b 1
+)
+
+:: Ghost-AI toolchain (optional — build falls back to API-only mode without these)
+set HAS_CMAKE=0
+set HAS_GCC=0
+set HAS_GENERATOR=0
+set GENERATOR_NAME=
+
+where cmake >nul 2>&1
+if !errorlevel!==0 set HAS_CMAKE=1
+
+where gcc >nul 2>&1
+if !errorlevel!==0 set HAS_GCC=1
+
+where ninja >nul 2>&1
+if !errorlevel!==0 (
+    set HAS_GENERATOR=1
+    set GENERATOR_NAME=Ninja
+)
+if !HAS_GENERATOR!==0 (
+    where mingw32-make >nul 2>&1
+    if !errorlevel!==0 (
+        set HAS_GENERATOR=1
+        set GENERATOR_NAME=MinGW Makefiles
+    )
+)
+
+if !HAS_CMAKE!==1 if !HAS_GCC!==1 if !HAS_GENERATOR!==1 (
+    echo   cmake ...... OK
+    echo   gcc ........ OK
+    echo   generator .. OK ^(!GENERATOR_NAME!^)
+    set GHOSTAI=1
+)
+
+if !GHOSTAI!==0 (
+    echo.
+    echo   NOTE: Ghost-AI toolchain not found ^(cmake / gcc / ninja^).
+    echo         Building WITHOUT local AI — you can still use API providers
+    echo         ^(OpenAI, Anthropic, etc.^) via Settings.
+    echo.
+    echo         To enable local AI, install MSYS2 ^(https://www.msys2.org^) then run:
+    echo           pacman -S mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+    echo         and re-run this script from the MSYS2 MinGW64 shell.
+)
+
+echo.
+
+:: ============================================================
+:: Step 1 — Build Ghost-AI static libraries (if toolchain found)
+:: ============================================================
+if !GHOSTAI!==0 goto :skip_ghostai
+
+echo [1] Building Ghost-AI ^(llama.cpp %LLAMA_VERSION%^)...
+echo.
+
+:: --- Download llama.cpp source ---
+set NEED_DOWNLOAD=1
+if exist "%LLAMA_SRC%\.version" (
+    set /p CACHED_VER=<"%LLAMA_SRC%\.version"
+    if "!CACHED_VER!"=="%LLAMA_VERSION%" (
+        echo   Using cached llama.cpp source ^(%LLAMA_VERSION%^)
+        set NEED_DOWNLOAD=0
+    ) else (
+        echo   Version changed ^(!CACHED_VER! -^> %LLAMA_VERSION%^), re-downloading...
+        rmdir /s /q "%LLAMA_SRC%" 2>nul
+    )
+)
+
+if !NEED_DOWNLOAD!==1 (
+    echo   Downloading llama.cpp %LLAMA_VERSION%...
+    if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
+    curl -fsSL "https://github.com/ggml-org/llama.cpp/archive/refs/tags/%LLAMA_VERSION%.tar.gz" -o "%BUILD_DIR%\llama.tar.gz"
+    if !errorlevel! neq 0 (
+        echo   ERROR: Download failed — falling back to API-only build
+        set GHOSTAI=0
+        goto :skip_ghostai
+    )
+    cd /d "%BUILD_DIR%"
+    tar xzf llama.tar.gz
+    if !errorlevel! neq 0 (
+        echo   ERROR: Extract failed — falling back to API-only build
+        cd /d "%~dp0"
+        set GHOSTAI=0
+        goto :skip_ghostai
+    )
+    if exist "llama-src" rmdir /s /q "llama-src"
+    rename "llama.cpp-%LLAMA_VERSION%" llama-src
+    echo %LLAMA_VERSION%> "%LLAMA_SRC%\.version"
+    del llama.tar.gz 2>nul
+    cd /d "%~dp0"
+    echo   Downloaded OK
+)
+
+:: --- Build static libraries with CMake ---
+echo   Compiling static libraries ^(this may take a few minutes^)...
+
+set LLAMA_BUILD=%LLAMA_SRC%\build
+if not exist "%LLAMA_BUILD%" mkdir "%LLAMA_BUILD%"
+
+set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
+
+cd /d "%LLAMA_BUILD%"
+cmake .. -G "!GENERATOR_NAME!" ^
+    -DCMAKE_BUILD_TYPE=Release ^
+    -DCMAKE_C_COMPILER=gcc ^
+    -DCMAKE_CXX_COMPILER=g++ ^
+    -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+    -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+    -DGGML_STATIC=ON ^
+    -DGGML_CUDA=OFF ^
+    -DGGML_VULKAN=OFF ^
+    -DGGML_METAL=OFF ^
+    -DGGML_OPENMP=OFF ^
+    -DLLAMA_BUILD_TESTS=OFF ^
+    -DLLAMA_BUILD_EXAMPLES=OFF ^
+    -DLLAMA_BUILD_SERVER=OFF ^
+    -DBUILD_SHARED_LIBS=OFF ^
+    -DGGML_NATIVE=OFF ^
+    -DGGML_AVX=ON ^
+    -DGGML_AVX2=OFF ^
+    -DGGML_AVX512=OFF ^
+    -DGGML_FMA=OFF ^
+    -DGGML_F16C=OFF
+if !errorlevel! neq 0 (
+    echo   ERROR: CMake configure failed — falling back to API-only build
+    cd /d "%~dp0"
+    set GHOSTAI=0
+    goto :skip_ghostai
+)
+
+set NPROC=%NUMBER_OF_PROCESSORS%
+if "%NPROC%"=="" set NPROC=4
+
+cmake --build . --config Release -j %NPROC%
+if !errorlevel! neq 0 (
+    echo   ERROR: Compile failed — falling back to API-only build
+    cd /d "%~dp0"
+    set GHOSTAI=0
+    goto :skip_ghostai
+)
+cd /d "%~dp0"
+
+:: --- Install headers + libraries ---
+if not exist "%LLAMA_OUT%\include" mkdir "%LLAMA_OUT%\include"
+if not exist "%LLAMA_OUT%\lib" mkdir "%LLAMA_OUT%\lib"
+
+:: Headers
+copy /y "%LLAMA_SRC%\include\llama.h" "%LLAMA_OUT%\include\" >nul 2>&1
+if exist "%LLAMA_SRC%\ggml\include" (
+    copy /y "%LLAMA_SRC%\ggml\include\*.h" "%LLAMA_OUT%\include\" >nul 2>&1
+)
+if exist "%LLAMA_SRC%\include\ggml*.h" (
+    copy /y "%LLAMA_SRC%\include\ggml*.h" "%LLAMA_OUT%\include\" >nul 2>&1
+)
+
+:: Static libraries — collect all .a from build tree
+for /r "%LLAMA_BUILD%" %%f in (*.a) do (
+    copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+)
+
+:: Ensure lib* prefix for MinGW linker
+for %%f in ("%LLAMA_OUT%\lib\*.a") do (
+    set "fname=%%~nxf"
+    if not "!fname:~0,3!"=="lib" (
+        rename "%%f" "lib!fname!"
+    )
+)
+
+:: Verify we got libraries
+set /a LCOUNT=0
+for %%f in ("%LLAMA_OUT%\lib\*.a") do set /a LCOUNT+=1
+if !LCOUNT!==0 (
+    echo   WARNING: No static libraries found — falling back to API-only build
+    set GHOSTAI=0
+) else (
+    echo   Ghost-AI ready: !LCOUNT! libraries installed
+)
+echo.
+
+:skip_ghostai
+
+:: ============================================================
+:: Step 2 — Build frontend
+:: ============================================================
+if !GHOSTAI!==1 (
+    echo [2] Building frontend...
+) else (
+    echo [1] Building frontend...
+)
+echo.
+
+cd /d "%~dp0gui\frontend"
 call npm install
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo ERROR: npm install failed
+    cd /d "%~dp0"
     pause
     exit /b 1
 )
 
 echo.
-echo [2/3] Building frontend...
 call npm run build
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo ERROR: frontend build failed
+    cd /d "%~dp0"
     pause
     exit /b 1
 )
-
-cd ..\..
-
+cd /d "%~dp0"
 echo.
-echo [3/3] Building Go binary...
-go build -tags "production ghostai" -o ghostspell.exe .
-if %errorlevel% neq 0 (
-    echo ERROR: Go build failed
-    pause
-    exit /b 1
+
+:: ============================================================
+:: Step 3 — Build Go binary
+:: ============================================================
+if !GHOSTAI!==1 (
+    echo [3] Building GhostSpell with Ghost-AI ^(local AI enabled^)...
+    set CGO_ENABLED=1
+    set BUILD_TAGS=production ghostai
+) else (
+    echo [2] Building GhostSpell ^(API-only mode^)...
+    set BUILD_TAGS=production
+)
+
+go build -tags "!BUILD_TAGS!" -o ghostspell.exe .
+if !errorlevel! neq 0 (
+    :: If ghostai build failed, try without it
+    if !GHOSTAI!==1 (
+        echo.
+        echo   Ghost-AI link failed — retrying without local AI...
+        set GHOSTAI=0
+        go build -tags "production" -o ghostspell.exe .
+        if !errorlevel! neq 0 (
+            echo ERROR: Go build failed
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo ERROR: Go build failed
+        pause
+        exit /b 1
+    )
 )
 
 echo.
-echo === Build complete: ghostspell.exe ===
+echo ============================================
+if !GHOSTAI!==1 (
+    echo   BUILD COMPLETE: ghostspell.exe
+    echo   Mode: Full ^(local AI + API providers^)
+) else (
+    echo   BUILD COMPLETE: ghostspell.exe
+    echo   Mode: API-only ^(configure a provider in Settings^)
+)
+echo ============================================
 echo.
 echo Starting GhostSpell...
 start "" ghostspell.exe

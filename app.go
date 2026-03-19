@@ -461,8 +461,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			mu.Unlock()
 
 			if localRouter == nil {
-				slog.Warn("Hotkey pressed but no active model — open Settings to configure")
+				slog.Warn("Hotkey pressed but no active model — opening Settings")
 				sound.PlayError()
+				gui.PopIndicator("\u2699\ufe0f", "No model — opening Settings")
+				if gui.OnIndicatorOpenSettings != nil {
+					gui.OnIndicatorOpenSettings()
+				}
 				return
 			}
 
