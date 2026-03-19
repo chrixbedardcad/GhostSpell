@@ -2,6 +2,9 @@ import { useState } from "react";
 import { TitleBar } from "./TitleBar";
 import { AboutTab } from "./AboutTab";
 import { GeneralTab } from "./GeneralTab";
+import { ModelsTab } from "./ModelsTab";
+import { PromptsTab } from "./PromptsTab";
+import { HotkeysTab } from "./HotkeysTab";
 import { DebugTab } from "./DebugTab";
 import { HelpTab } from "./HelpTab";
 
@@ -54,9 +57,9 @@ export function SettingsWindow() {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {activeTab === "about" && <AboutTab />}
         {activeTab === "general" && <GeneralTab />}
-        {activeTab === "models" && <ModelsPlaceholder />}
-        {activeTab === "prompts" && <PromptsPlaceholder />}
-        {activeTab === "hotkeys" && <HotkeysPlaceholder />}
+        {activeTab === "models" && <ModelsTab />}
+        {activeTab === "prompts" && <PromptsTab />}
+        {activeTab === "hotkeys" && <HotkeysTab />}
         {activeTab === "debug" && <DebugTab />}
         {activeTab === "help" && <HelpTab />}
       </div>
@@ -64,25 +67,3 @@ export function SettingsWindow() {
   );
 }
 
-/* Placeholders for complex tabs — will be built next */
-function ModelsPlaceholder() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <p className="text-sm text-overlay-0">Models tab — building...</p>
-    </div>
-  );
-}
-function PromptsPlaceholder() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <p className="text-sm text-overlay-0">Prompts tab — building...</p>
-    </div>
-  );
-}
-function HotkeysPlaceholder() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <p className="text-sm text-overlay-0">Hotkeys tab — building...</p>
-    </div>
-  );
-}
