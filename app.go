@@ -194,7 +194,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					return
 				}
 				mu.Lock()
+				oldDefault := cfg.DefaultModel
 				*cfg = *newCfg
+				slog.Info("Config reloaded", "old_default", oldDefault, "new_default", cfg.DefaultModel, "models_count", len(cfg.Models))
 				if router != nil {
 					router.ResetClients()
 				}
@@ -436,10 +438,13 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			mu.Lock()
 			promptIdx := cfg.ActivePrompt
 			promptName := "Prompt"
+			promptLLM := ""
 			if promptIdx >= 0 && promptIdx < len(cfg.Prompts) {
 				promptName = cfg.Prompts[promptIdx].Name
+				promptLLM = cfg.Prompts[promptIdx].LLM
 			}
 			localRouter := router
+			slog.Info("Hotkey: config snapshot", "default_model", cfg.DefaultModel, "prompt", promptName, "prompt_llm", promptLLM, "prompt_idx", promptIdx)
 			mu.Unlock()
 
 			if localRouter == nil {
