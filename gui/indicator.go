@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	indicatorWin  *application.WebviewWindow
-	indicatorApp  *application.App
-	indicatorMu   sync.Mutex
+	indicatorWin   *application.WebviewWindow
+	indicatorApp   *application.App
+	indicatorMu    sync.Mutex
+	popGeneration  uint64 // incremented on each PopIndicator to cancel stale hide timers
 	indicatorReady bool // true once the React page has loaded
 )
 
@@ -36,16 +37,13 @@ func ensureIndicatorWindow() {
 	}
 
 	bgType := application.BackgroundTypeTransparent
-	// On Windows, transparent/translucent backgrounds make the WebView2 window
-	// fully click-through (DWM composition with WS_EX_NOREDIRECTIONBITMAP).
-	// Use a solid background matching the indicator's dark theme instead.
-	// The window is frameless + rounded via CSS, so the small rectangular
-	// corners are barely visible.
 	bgColour := application.RGBA{Red: 0, Green: 0, Blue: 0, Alpha: 0}
 	ignoreMouse := false // must receive clicks for drag + context menu
 	if runtime.GOOS == "windows" {
-		bgType = application.BackgroundTypeSolid
-		bgColour = application.RGBA{Red: 30, Green: 30, Blue: 46, Alpha: 255}
+		// Translucent uses WS_EX_NOREDIRECTIONBITMAP (DWM composition) which
+		// gives true visual transparency. Clicks work because Wails runtime
+		// is loaded via indicator-react.html and --wails-draggable handles drag.
+		bgType = application.BackgroundTypeTranslucent
 	}
 
 	indicatorWin = indicatorApp.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -297,6 +295,8 @@ func PopIndicator(promptIcon, promptName string) {
 	indicatorMu.Lock()
 	ensureIndicatorWindow()
 	win := indicatorWin
+	popGeneration++ // cancel any previous pop's hide timer
+	gen := popGeneration
 	indicatorMu.Unlock()
 	if win == nil {
 		return
@@ -312,7 +312,13 @@ func PopIndicator(promptIcon, promptName string) {
 
 	go func() {
 		time.Sleep(5 * time.Second)
-		HideIndicator()
+		// Only hide if no newer pop has started since.
+		indicatorMu.Lock()
+		current := popGeneration
+		indicatorMu.Unlock()
+		if current == gen {
+			HideIndicator()
+		}
 	}()
 }
 

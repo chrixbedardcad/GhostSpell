@@ -35,17 +35,17 @@ export function IndicatorWindow() {
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
+  const [menuVersion, setMenuVersion] = useState("");
   const timerRef = useRef<number | null>(null);
   const [eventsReady, setEventsReady] = useState(false);
 
   // Set up backgrounds and fetch initial prompt.
   useEffect(() => {
     console.log("[Indicator] React mounted, wails:", typeof window.wails !== "undefined");
-    const bg = "rgb(30,30,46)";
-    document.documentElement.style.cssText = `background:${bg};margin:0;padding:0;overflow:hidden`;
-    document.body.style.cssText = `background:${bg};margin:0;padding:0;overflow:hidden`;
+    document.documentElement.style.cssText = "background:transparent;margin:0;padding:0;overflow:hidden";
+    document.body.style.cssText = "background:transparent;margin:0;padding:0;overflow:hidden";
     const root = document.getElementById("root");
-    if (root) root.style.cssText = `background:${bg};width:100%;height:100%`;
+    if (root) root.style.cssText = "background:transparent;width:100%;height:100%";
 
     // Fetch current active prompt so idle indicator shows which prompt is selected.
     goCall("getActivePromptInfo").then((raw) => {
@@ -147,9 +147,11 @@ export function IndicatorWindow() {
       try {
         const data = JSON.parse(raw);
         setMenuItems(data.prompts || []);
+        if (data.version) setMenuVersion(data.version);
         setMenuOpen(true);
-        const menuH = (data.prompts?.length || 0) * 28 + 60;
-        goCall("resizeIndicatorForMenu", 200, Math.max(menuH, 100));
+        // Height: version header(24) + prompts(32 each) + divider(1) + settings(32) + quit(32) + padding(16)
+        const menuH = 24 + (data.prompts?.length || 0) * 32 + 1 + 32 + 32 + 16;
+        goCall("resizeIndicatorForMenu", 220, Math.max(menuH, 120));
       } catch (err) { console.error("[Indicator] onContextMenu: parse error", err); }
     }
   }
@@ -264,50 +266,50 @@ export function IndicatorWindow() {
   }
 
   // Context menu state.
+  const mBtn: React.CSSProperties = {
+    width: "100%", textAlign: "left", padding: "8px 12px", fontSize: "12px",
+    display: "flex", alignItems: "center", gap: "8px",
+    background: "none", border: "none", cursor: "pointer",
+    color: "#a6adc8", transition: "background 150ms",
+  };
   return (
     <div style={{
-      background: "rgba(24, 24, 37, 0.95)",
+      background: "rgba(24, 24, 37, 0.98)",
       border: "1px solid rgba(69, 71, 90, 0.5)",
       borderRadius: "12px",
       overflow: "hidden",
-      minWidth: "180px",
+      minWidth: "200px",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     }}>
+      {menuVersion && (
+        <div style={{ padding: "6px 12px 4px", fontSize: "10px", color: "#585b70", letterSpacing: "0.5px" }}>
+          GhostSpell v{menuVersion}
+        </div>
+      )}
       {menuItems.map((item, idx) => (
         <button
           key={idx}
           onClick={() => selectPrompt(idx)}
-          style={{
-            width: "100%", textAlign: "left", padding: "7px 12px", fontSize: "12px",
-            display: "flex", alignItems: "center", gap: "8px",
-            background: "none", border: "none", cursor: "pointer",
-            color: item.active ? "#89b4fa" : "#a6adc8", transition: "background 150ms",
-          }}
+          style={{ ...mBtn, color: item.active ? "#89b4fa" : "#a6adc8" }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
         >
           <span style={{ width: "18px", textAlign: "center", flexShrink: 0 }}>{item.icon || "\ud83d\udcdd"}</span>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-          {item.active && <span style={{ marginLeft: "auto", fontSize: "8px", color: "#89b4fa" }}>\u25cf</span>}
+          {item.active && <span style={{ marginLeft: "auto", fontSize: "8px", color: "#89b4fa" }}>{"\u25cf"}</span>}
         </button>
       ))}
-      <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)" }} />
-      <button
-        onClick={() => { closeMenu(); goCall("openSettingsFromIndicator"); }}
-        style={{ width: "100%", textAlign: "left", padding: "7px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", cursor: "pointer", color: "#6c7086", transition: "background 150ms" }}
+      <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
+      <button onClick={() => { closeMenu(); goCall("openSettingsFromIndicator"); }}
+        style={mBtn}
         onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-      >
-        \u2699\ufe0f Settings
-      </button>
-      <button
-        onClick={() => { closeMenu(); goCall("quitFromIndicator"); }}
-        style={{ width: "100%", textAlign: "left", padding: "7px 12px", fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", cursor: "pointer", color: "#6c7086", transition: "background 150ms" }}
+      >{"\u2699\ufe0f"} Settings</button>
+      <button onClick={() => { closeMenu(); goCall("quitFromIndicator"); }}
+        style={mBtn}
         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)"; e.currentTarget.style.color = "#f38ba8"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#6c7086"; }}
-      >
-        \u2715 Quit
-      </button>
+        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#a6adc8"; }}
+      >{"\u2715"} Quit</button>
       <div style={{ position: "fixed", inset: 0, zIndex: -1 }} onClick={closeMenu} />
     </div>
   );

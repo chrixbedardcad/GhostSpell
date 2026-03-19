@@ -636,8 +636,10 @@ func (s *SettingsService) GetIndicatorMenu() string {
 	}
 	type menuData struct {
 		Prompts []menuPrompt `json:"prompts"`
+		Version string       `json:"version"`
 	}
 	var data menuData
+	data.Version = version.Version
 	cfg := s.indicatorCfg()
 	if cfg != nil {
 		for i, p := range cfg.Prompts {
