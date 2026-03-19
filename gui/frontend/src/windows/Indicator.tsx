@@ -212,7 +212,13 @@ export function IndicatorWindow() {
 
   return (
     <div
-      style={{ background: "transparent", width: "100%", height: "100%", overflow: "hidden" }}
+      style={{
+        /* Use rgba(0,0,0,0.01) instead of transparent so WebView2 treats the
+           entire area as interactive. Fully transparent pixels are click-through
+           in WebView2's hit-testing. 0.01 alpha is invisible to the eye. */
+        background: "rgba(0,0,0,0.01)",
+        width: "100%", height: "100%", overflow: "hidden",
+      }}
     >
       {!menuOpen && (
         <div
