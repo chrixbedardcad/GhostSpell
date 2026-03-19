@@ -64,6 +64,17 @@ func KnownModels(provider string) []ModelInfo {
 			{Name: "deepseek-chat", Tag: "recommended"},
 			{Name: "deepseek-reasoner", Tag: "best"},
 		}
+	case "openrouter":
+		return []ModelInfo{
+			{Name: "google/gemini-2.5-flash", Tag: "recommended", Vision: true},
+			{Name: "anthropic/claude-sonnet-4", Tag: "best", Vision: true},
+			{Name: "openai/gpt-4o-mini", Vision: true},
+			{Name: "meta-llama/llama-3.1-8b-instruct:free", Tag: "cheap"},
+			{Name: "google/gemini-2.5-pro", Vision: true},
+			{Name: "anthropic/claude-haiku-4.5", Vision: true},
+			{Name: "openai/gpt-4o", Vision: true},
+			{Name: "deepseek/deepseek-chat"},
+		}
 	case "local":
 		return []ModelInfo{
 			{Name: "qwen3.5-2b", Tag: "recommended"},

@@ -276,6 +276,58 @@
       "thinking": true
     },
     {
+      "provider": "openrouter",
+      "creator": "google",
+      "model": "google/gemini-2.5-flash",
+      "name": "Gemini 2.5 Flash (via OpenRouter)",
+      "description": "Fast and affordable via OpenRouter. Unified API, single key.",
+      "cost_tier": "$",
+      "cost_per_1k_tokens": 0.00015,
+      "ifeval_score": 83.5,
+      "tags": ["recommended"],
+      "context_window": 1048576,
+      "thinking": true
+    },
+    {
+      "provider": "openrouter",
+      "creator": "anthropic",
+      "model": "anthropic/claude-sonnet-4",
+      "name": "Claude Sonnet 4 (via OpenRouter)",
+      "description": "Anthropic's Sonnet via OpenRouter. One key for all models.",
+      "cost_tier": "$$",
+      "cost_per_1k_tokens": 0.003,
+      "ifeval_score": 88.7,
+      "tags": ["best"],
+      "context_window": 200000,
+      "thinking": false
+    },
+    {
+      "provider": "openrouter",
+      "creator": "openai",
+      "model": "openai/gpt-4o-mini",
+      "name": "GPT-4o Mini (via OpenRouter)",
+      "description": "OpenAI's affordable model via OpenRouter.",
+      "cost_tier": "$",
+      "cost_per_1k_tokens": 0.00015,
+      "ifeval_score": 79.2,
+      "tags": [],
+      "context_window": 128000,
+      "thinking": false
+    },
+    {
+      "provider": "openrouter",
+      "creator": "meta",
+      "model": "meta-llama/llama-3.1-8b-instruct:free",
+      "name": "Llama 3.1 8B Free (via OpenRouter)",
+      "description": "Free tier model on OpenRouter. Great for trying it out.",
+      "cost_tier": "free",
+      "cost_per_1k_tokens": 0,
+      "ifeval_score": 73.0,
+      "tags": ["free", "cheap"],
+      "context_window": 131072,
+      "thinking": false
+    },
+    {
       "provider": "ollama",
       "creator": "alibaba",
       "model": "qwen3.5:2b",

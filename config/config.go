@@ -37,7 +37,7 @@ type LLMProviderDef struct {
 }
 
 // ProviderConfig holds connection credentials for one AI provider.
-// Keys: "anthropic", "openai", "chatgpt", "gemini", "xai", "deepseek", "ollama", "local", "lmstudio"
+// Keys: "anthropic", "openai", "chatgpt", "gemini", "xai", "deepseek", "openrouter", "ollama", "local", "lmstudio"
 type ProviderConfig struct {
 	APIKey       string `json:"api_key,omitempty"`
 	APIEndpoint  string `json:"api_endpoint,omitempty"`
@@ -665,15 +665,16 @@ func applyDefaults(cfg *Config) {
 // Validate checks that the config has all required fields.
 func Validate(cfg *Config) error {
 	validProviders := map[string]bool{
-		"anthropic": true,
-		"openai":    true,
-		"chatgpt":   true,
-		"gemini":    true,
-		"xai":       true,
-		"deepseek":  true,
-		"ollama":    true,
-		"local":     true,
-		"lmstudio":  true,
+		"anthropic":  true,
+		"openai":     true,
+		"chatgpt":    true,
+		"gemini":     true,
+		"xai":        true,
+		"deepseek":   true,
+		"openrouter": true,
+		"ollama":     true,
+		"local":      true,
+		"lmstudio":   true,
 	}
 
 	if len(cfg.Providers) == 0 {
@@ -683,7 +684,7 @@ func Validate(cfg *Config) error {
 	// Validate each provider key.
 	for key := range cfg.Providers {
 		if !validProviders[key] {
-			return fmt.Errorf("providers[%s]: unsupported provider key (valid: anthropic, openai, gemini, xai, deepseek, ollama, local, lmstudio)", key)
+			return fmt.Errorf("providers[%s]: unsupported provider key (valid: anthropic, openai, gemini, xai, deepseek, openrouter, ollama, local, lmstudio)", key)
 		}
 	}
 

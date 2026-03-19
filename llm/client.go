@@ -74,6 +74,8 @@ func NewClientFromDef(def config.LLMProviderDef) (Client, error) {
 		return newXAIFromDef(def), nil
 	case "deepseek":
 		return newDeepSeekFromDef(def), nil
+	case "openrouter":
+		return newOpenRouterFromDef(def), nil
 	case "ollama":
 		return newOllamaFromDef(def), nil
 	case "lmstudio":

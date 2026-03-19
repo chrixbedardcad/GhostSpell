@@ -299,6 +299,7 @@ func (s *SettingsService) ResetModels() string {
 		{"gemini", "Gemini"},
 		{"xai", "Grok"},
 		{"deepseek", "DeepSeek"},
+		{"openrouter", "OpenRouter"},
 		{"ollama", "Ollama"},
 		{"lmstudio", "LM Studio"},
 	}
