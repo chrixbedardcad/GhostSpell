@@ -7,13 +7,9 @@
 </head>
 <body>
   <div id="root"></div>
-  <!-- Wails runtime is injected at serve-time, not build-time -->
-  <script>
-    var s = document.createElement('script');
-    s.type = 'module';
-    s.src = '/wails/runtime.js';
-    document.head.appendChild(s);
-  </script>
+  <!-- Wails runtime must load before React. The /wails/ path is served by
+       Wails at runtime, not available during Vite build. -->
+  <script src="/wails/runtime.js"></script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
