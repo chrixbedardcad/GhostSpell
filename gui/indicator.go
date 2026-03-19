@@ -290,6 +290,39 @@ func HideIndicator() {
 	emitIndicatorEvent(map[string]any{"state": "hidden"})
 }
 
+// PopIndicatorDone shows the completion summary with prompt, model, and elapsed time.
+func PopIndicatorDone(promptIcon, promptName, modelName string, elapsedSec float64) {
+	indicatorMu.Lock()
+	ensureIndicatorWindow()
+	win := indicatorWin
+	popGeneration++
+	gen := popGeneration
+	indicatorMu.Unlock()
+	if win == nil {
+		return
+	}
+
+	slog.Info("[indicator] PopIndicatorDone called", "prompt", promptName, "model", modelName, "elapsed", elapsedSec)
+
+	win.SetSize(300, 52)
+	x, y := getIndicatorPosition()
+	win.SetPosition(x, y)
+	emitIndicatorEvent(map[string]any{
+		"state": "done", "icon": promptIcon, "name": promptName,
+		"model": modelName, "elapsed": elapsedSec,
+	})
+
+	go func() {
+		time.Sleep(8 * time.Second)
+		indicatorMu.Lock()
+		current := popGeneration
+		indicatorMu.Unlock()
+		if current == gen {
+			HideIndicator()
+		}
+	}()
+}
+
 // PopIndicator shows prompt name briefly, then auto-hides.
 func PopIndicator(promptIcon, promptName string) {
 	indicatorMu.Lock()

@@ -12,13 +12,14 @@ import { goCall, onEvent } from "@/bridge";
  * - Drag uses Wails native --wails-draggable CSS property
  */
 
-type IndicatorState = "hidden" | "idle" | "processing" | "pop";
+type IndicatorState = "hidden" | "idle" | "processing" | "pop" | "done";
 
 interface StateData {
   state: IndicatorState;
   icon?: string;
   name?: string;
   model?: string;
+  elapsed?: number;
 }
 
 interface MenuPrompt {
@@ -33,6 +34,7 @@ export function IndicatorWindow() {
   const [name, setName] = useState("");
   const [model, setModel] = useState("");
   const [elapsed, setElapsed] = useState(0);
+  const [doneElapsed, setDoneElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
   const [menuVersion, setMenuVersion] = useState("");
@@ -85,6 +87,10 @@ export function IndicatorWindow() {
           timerRef.current = window.setInterval(() => {
             setElapsed((prev) => prev + 1);
           }, 1000);
+        }
+        // Capture final elapsed for done state.
+        if (d.state === "done" && d.elapsed !== undefined) {
+          setDoneElapsed(d.elapsed);
         }
       });
     }
@@ -179,7 +185,7 @@ export function IndicatorWindow() {
   }
 
   // --- Render ---
-  const isPill = state === "processing" || state === "pop";
+  const isPill = state === "processing" || state === "pop" || state === "done";
 
   if (state === "hidden") {
     return <div style={{ background: "rgb(30,30,46)" }} />;
@@ -257,31 +263,45 @@ export function IndicatorWindow() {
             pointerEvents: "none",
           }}
         />
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", whiteSpace: "nowrap" }}>
-          {icon && <span style={{ fontSize: "14px", flexShrink: 0 }}>{icon}</span>}
-          <span style={{
-            fontSize: "12px", color: "#cdd6f4", fontWeight: 500,
-            maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis",
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          }}>
-            {name}
-          </span>
-          {state === "processing" && (
-            <>
-              <span style={{ width: "1px", height: "16px", background: "#45475a", flexShrink: 0 }} />
-              <span style={{
-                fontSize: "14px", color: "#f9e2af", fontWeight: 600,
-                fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace",
-                animation: "pulse 1.5s ease-in-out infinite",
-              }}>
-                {elapsed}s
-              </span>
-              {model && (
-                <span style={{ fontSize: "10px", color: "#585b70", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0 }}>
-                  {model}
+        <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", whiteSpace: "nowrap", gap: "1px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {icon && <span style={{ fontSize: "14px", flexShrink: 0 }}>{icon}</span>}
+            <span style={{
+              fontSize: "12px", color: "#cdd6f4", fontWeight: 500,
+              maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            }}>
+              {name}
+            </span>
+            {state === "processing" && (
+              <>
+                <span style={{ width: "1px", height: "16px", background: "#45475a", flexShrink: 0 }} />
+                <span style={{
+                  fontSize: "14px", color: "#f9e2af", fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                }}>
+                  {elapsed}s
                 </span>
-              )}
-            </>
+              </>
+            )}
+            {state === "done" && (
+              <>
+                <span style={{ width: "1px", height: "16px", background: "#45475a", flexShrink: 0 }} />
+                <span style={{
+                  fontSize: "14px", color: "#a6e3a1", fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums", flexShrink: 0, fontFamily: "monospace",
+                }}>
+                  {doneElapsed.toFixed(1)}s
+                </span>
+              </>
+            )}
+          </div>
+          {(state === "processing" || state === "done") && model && (
+            <span style={{ fontSize: "9px", color: "#585b70", paddingLeft: icon ? "22px" : "0",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+              {model}
+            </span>
           )}
         </div>
         <style>{`
