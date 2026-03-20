@@ -20,6 +20,8 @@ interface StateData {
   name?: string;
   model?: string;
   elapsed?: number;
+  voice?: boolean;
+  vision?: boolean;
 }
 
 interface MenuPrompt {
@@ -99,10 +101,9 @@ export function IndicatorWindow() {
         if (d.state === "done" && d.elapsed !== undefined) {
           setDoneElapsed(d.elapsed);
         }
-        // Re-fetch prompt info on idle to update voice/vision badges.
-        if (d.state === "idle") {
-          fetchPromptInfo();
-        }
+        // Voice/vision flags come with every event from Go.
+        if (d.voice !== undefined) setIsVoice(d.voice);
+        if (d.vision !== undefined) setIsVision(d.vision);
       });
     }
 

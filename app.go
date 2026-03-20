@@ -501,11 +501,15 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				// Show a brief pop of the indicator pill with prompt + model.
 				mu.Lock()
 				icon := ""
+				voice, vision := false, false
 				if idx >= 0 && idx < len(cfg.Prompts) {
 					icon = cfg.Prompts[idx].Icon
+					voice = cfg.Prompts[idx].Voice
+					vision = cfg.Prompts[idx].Vision
 				}
 				defaultModel := cfg.DefaultModel
 				mu.Unlock()
+				gui.SetCurrentPromptFlags(voice, vision)
 				gui.PopIndicatorWithModel(icon, name, defaultModel)
 			}); err != nil {
 				slog.Warn("Cycle-prompt hotkey registration failed (non-fatal, may be taken by another app)", "key", cfg.Hotkeys.CyclePrompt, "error", err)

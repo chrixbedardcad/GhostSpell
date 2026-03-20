@@ -583,6 +583,7 @@ func (s *SettingsService) ShowCurrentPrompt() string {
 	}
 	p := cfg.Prompts[idx]
 	go sound.PlayClick()
+	SetCurrentPromptFlags(p.Voice, p.Vision)
 	PopIndicatorWithModel(p.Icon, p.Name, cfg.DefaultModel)
 	return "ok"
 }
@@ -599,6 +600,7 @@ func (s *SettingsService) CyclePromptFromIndicator() string {
 	p := cfg.Prompts[cfg.ActivePrompt]
 	slog.Info("[GUI] CyclePromptFromIndicator: cycled", "index", cfg.ActivePrompt, "name", p.Name)
 	go sound.PlayClick()
+	SetCurrentPromptFlags(p.Voice, p.Vision)
 	PopIndicatorWithModel(p.Icon, p.Name, cfg.DefaultModel)
 	// Sync tray menu + settings UI.
 	if s.RefreshTrayMenuFn != nil {
@@ -679,6 +681,7 @@ func (s *SettingsService) SetActivePromptFromIndicator(idx int) string {
 	p := cfg.Prompts[idx]
 	slog.Info("[GUI] SetActivePromptFromIndicator: set", "index", idx, "name", p.Name)
 	go sound.PlayClick()
+	SetCurrentPromptFlags(p.Voice, p.Vision)
 	PopIndicator(p.Icon, p.Name)
 	// Sync tray menu + settings UI.
 	if s.RefreshTrayMenuFn != nil {
@@ -733,6 +736,15 @@ func (s *SettingsService) GetActivePromptInfo() string {
 // Emits the current state so React syncs up with Go (fixes event race condition).
 func (s *SettingsService) IndicatorReady() string {
 	slog.Info("[GUI] IndicatorReady: React confirmed Wails runtime available")
+	// Set voice/vision flags for the active prompt so the first event has them.
+	cfg := s.indicatorCfg()
+	if cfg != nil && len(cfg.Prompts) > 0 {
+		idx := cfg.ActivePrompt
+		if idx >= 0 && idx < len(cfg.Prompts) {
+			p := cfg.Prompts[idx]
+			SetCurrentPromptFlags(p.Voice, p.Vision)
+		}
+	}
 	indicatorMu.Lock()
 	mode := indicatorMode
 	indicatorMu.Unlock()

@@ -114,6 +114,20 @@ func SetIndicatorConfigSaver(cfg *config.Config, configPath string) {
 	}
 }
 
+// currentPromptVoice/Vision track the active prompt's mode flags.
+// Updated by SetCurrentPromptFlags() when the prompt changes.
+// Injected into every indicator event by emitIndicatorEvent().
+var currentPromptVoice bool
+var currentPromptVision bool
+
+// SetCurrentPromptFlags updates the voice/vision flags for the active prompt.
+func SetCurrentPromptFlags(voice, vision bool) {
+	indicatorMu.Lock()
+	currentPromptVoice = voice
+	currentPromptVision = vision
+	indicatorMu.Unlock()
+}
+
 // indicatorModeSaver persists indicator mode to config file.
 var indicatorModeSaver func(mode string)
 
@@ -154,6 +168,11 @@ func SetIndicatorSavedPosition(x, y int) {
 
 // emitIndicatorEvent sends a state update to the React indicator.
 func emitIndicatorEvent(data map[string]any) {
+	// Inject current prompt flags into every event so React always has them.
+	indicatorMu.Lock()
+	data["voice"] = currentPromptVoice
+	data["vision"] = currentPromptVision
+	indicatorMu.Unlock()
 	app := application.Get()
 	if app != nil {
 		app.Event.Emit("indicatorState", data)
