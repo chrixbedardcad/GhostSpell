@@ -119,6 +119,10 @@ if !GHOSTAI!==0 (
 
 echo.
 
+:: CPU count for parallel builds
+set NPROC=%NUMBER_OF_PROCESSORS%
+if "%NPROC%"=="" set NPROC=4
+
 :: ============================================================
 :: Step 1 — Build Ghost-AI static libraries (if toolchain found)
 :: ============================================================
@@ -214,9 +218,6 @@ if !errorlevel! neq 0 (
     goto :skip_ghostai
 )
 
-set NPROC=%NUMBER_OF_PROCESSORS%
-if "%NPROC%"=="" set NPROC=4
-
 cmake --build . --config Release -j %NPROC%
 if !errorlevel! neq 0 (
     echo   ERROR: Compile failed — falling back to API-only build
@@ -277,15 +278,17 @@ set WHISPER_VERSION=v1.7.5
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
-:: Skip if libraries AND headers already built
+:: Skip if libraries AND headers already built (need 4+ libs, 5+ headers)
 set /a WLIBS=0
+set /a WHEADERS=0
 if exist "%WHISPER_OUT%\lib" (
     for %%f in ("%WHISPER_OUT%\lib\*.a") do set /a WLIBS+=1
 )
-set WHEADERS_OK=0
-if exist "%WHISPER_OUT%\include\whisper.h" if exist "%WHISPER_OUT%\include\ggml.h" set WHEADERS_OK=1
-if !WLIBS! geq 2 if !WHEADERS_OK!==1 (
-    echo [1.5] Ghost Voice libraries already built ^(!WLIBS! libs^) — skipping.
+if exist "%WHISPER_OUT%\include" (
+    for %%f in ("%WHISPER_OUT%\include\*.h") do set /a WHEADERS+=1
+)
+if !WLIBS! geq 4 if !WHEADERS! geq 5 (
+    echo [1.5] Ghost Voice already built ^(!WLIBS! libs, !WHEADERS! headers^) — skipping.
     echo     To rebuild: delete the build\whisper folder and re-run.
     echo.
     goto :skip_ghostvoice
@@ -372,8 +375,10 @@ if !errorlevel! neq 0 (
 cd /d "%~dp0"
 
 :: --- Install headers + libraries (same pattern as Ghost-AI) ---
-if not exist "%WHISPER_OUT%\include" mkdir "%WHISPER_OUT%\include"
-if not exist "%WHISPER_OUT%\lib" mkdir "%WHISPER_OUT%\lib"
+:: Wipe output dir to prevent stale headers/libs from previous failed builds
+if exist "%WHISPER_OUT%" rmdir /s /q "%WHISPER_OUT%"
+mkdir "%WHISPER_OUT%\include"
+mkdir "%WHISPER_OUT%\lib"
 
 :: Headers — copy all .h from whisper's include dirs
 echo   Collecting headers...
@@ -458,24 +463,29 @@ set CGO_ENABLED=1
 
 go build -tags "!BUILD_TAGS!" -o ghostspell.exe .
 if !errorlevel! neq 0 (
-    :: If build failed, retry without ghostai but keep ghostvoice if available
+    :: Retry 1: drop ghostai, keep ghostvoice
     if !GHOSTAI!==1 (
         echo.
-        echo   Ghost-AI link failed — retrying without local AI...
+        echo   Build failed — retrying without Ghost-AI...
         set GHOSTAI=0
         set RETRY_TAGS=production
         if !GHOSTVOICE!==1 set RETRY_TAGS=!RETRY_TAGS! ghostvoice
         go build -tags "!RETRY_TAGS!" -o ghostspell.exe .
-        if !errorlevel! neq 0 (
-            echo ERROR: Go build failed
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo ERROR: Go build failed
-        pause
-        exit /b 1
     )
+)
+if !errorlevel! neq 0 (
+    :: Retry 2: drop ghostvoice too
+    if !GHOSTVOICE!==1 (
+        echo.
+        echo   Build failed — retrying without Ghost Voice...
+        set GHOSTVOICE=0
+        go build -tags "production" -o ghostspell.exe .
+    )
+)
+if !errorlevel! neq 0 (
+    echo ERROR: Go build failed
+    pause
+    exit /b 1
 )
 
 echo.
