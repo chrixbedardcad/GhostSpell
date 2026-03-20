@@ -67,7 +67,7 @@ func processVoice(
 
 	slog.Info("[voice] Recording started", "prompt", promptName)
 	fmt.Printf("[%s] Voice recording started...\n", promptName)
-	sound.PlayStart()
+	sound.PlayMicStart()
 
 	// Show recording indicator.
 	gui.ShowIndicator("🎙️", "Recording...", "")
@@ -99,7 +99,7 @@ func processVoice(
 	}
 
 	slog.Info("[voice] Recording complete", "duration", duration, "wav_size", len(wavData))
-	sound.PlayToggle() // "stop" sound
+	sound.PlayMicStop()
 
 	// Transcribe.
 	gui.ShowIndicator("🎙️", "Transcribing...", "")

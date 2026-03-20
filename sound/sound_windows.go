@@ -143,8 +143,10 @@ func PlayStart()   { play(startWAV) }
 func PlaySuccess() { play(pickRandom([][]byte{successWAV, success2WAV, success3WAV, success4WAV, success5WAV})) }
 func PlayError()   { play(pickRandom([][]byte{errorWAV, error2WAV})) }
 func PlayToggle()  { play(pickRandom([][]byte{toggleWAV, toggle1WAV, toggle2WAV, toggle3WAV, toggle4WAV})) }
-func PlayClick()   { play(pickRandom([][]byte{click1WAV, click2WAV, click3WAV, click4WAV, click5WAV})) }
-func PlayCancel()     { play(cancelWAV) }
+func PlayClick()    { play(pickRandom([][]byte{click1WAV, click2WAV, click3WAV, click4WAV, click5WAV})) }
+func PlayMicStart() { play(startWAV) }
+func PlayMicStop()  { play(toggleWAV) }
+func PlayCancel()   { play(cancelWAV) }
 func PlayWorking()    { play(workingWAV) }
 func PlayBenchmark()  { play(pickRandom([][]byte{benchmarkingWAV, benchmarking2WAV})) }
 

@@ -1078,6 +1078,17 @@
     </div>
 
     <div class="section">
+      <h2>Test Microphone</h2>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <button class="btn btn-primary btn-sm" id="mic-test-btn" onclick="toggleMicTest()" style="min-width:100px">🎙️ Test Mic</button>
+        <div style="flex:1;background:#313244;border-radius:4px;height:16px;overflow:hidden;position:relative">
+          <div id="mic-level-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#a6e3a1,#89b4fa);border-radius:4px;transition:width 50ms"></div>
+        </div>
+        <span id="mic-test-status" style="font-size:0.72em;color:#6c7086;min-width:60px">Ready</span>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>Settings</h2>
       <div class="form-group">
         <label>Language</label>
@@ -3076,6 +3087,65 @@ async function voiceDeleteModel(name) {
 
 async function onVoiceLanguageChange(lang) {
   await goCall('setVoiceLanguage', lang);
+}
+
+// --- Microphone test ---
+var _micTestStream = null;
+var _micTestCtx = null;
+var _micTestAnim = null;
+
+async function toggleMicTest() {
+  var btn = document.getElementById('mic-test-btn');
+  var bar = document.getElementById('mic-level-bar');
+  var status = document.getElementById('mic-test-status');
+
+  if (_micTestStream) {
+    // Stop test.
+    _micTestStream.getTracks().forEach(function(t) { t.stop(); });
+    _micTestStream = null;
+    if (_micTestCtx) { _micTestCtx.close(); _micTestCtx = null; }
+    if (_micTestAnim) { cancelAnimationFrame(_micTestAnim); _micTestAnim = null; }
+    bar.style.width = '0%';
+    btn.textContent = '🎙️ Test Mic';
+    btn.style.background = '';
+    status.textContent = 'Stopped';
+    status.style.color = '#6c7086';
+    return;
+  }
+
+  // Start test.
+  try {
+    _micTestStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    status.textContent = 'No mic access';
+    status.style.color = '#f38ba8';
+    return;
+  }
+
+  btn.textContent = '⏹ Stop';
+  btn.style.background = '#f38ba8';
+  status.textContent = 'Listening...';
+  status.style.color = '#a6e3a1';
+
+  _micTestCtx = new AudioContext();
+  var source = _micTestCtx.createMediaStreamSource(_micTestStream);
+  var analyser = _micTestCtx.createAnalyser();
+  analyser.fftSize = 256;
+  source.connect(analyser);
+
+  var data = new Uint8Array(analyser.frequencyBinCount);
+  function updateLevel() {
+    if (!_micTestStream) return;
+    analyser.getByteFrequencyData(data);
+    var sum = 0;
+    for (var i = 0; i < data.length; i++) sum += data[i];
+    var avg = sum / data.length;
+    var pct = Math.min(100, Math.round(avg / 128 * 100));
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 60 ? 'linear-gradient(90deg,#a6e3a1,#f9e2af,#f38ba8)' : 'linear-gradient(90deg,#a6e3a1,#89b4fa)';
+    _micTestAnim = requestAnimationFrame(updateLevel);
+  }
+  updateLevel();
 }
 
 async function renderDebug() {
