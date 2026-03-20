@@ -54,6 +54,10 @@ func processVoice(
 	fmt.Printf("[%s] Voice recording started...\n", promptName)
 	sound.PlayMicStart()
 
+	// Save the foreground window before showing any indicator.
+	// On Windows, the indicator steals focus — without this, paste goes to the wrong app.
+	kb.SaveForegroundWindow()
+
 	// Show recording indicator with recording flag for red dot + voice pulse.
 	gui.ShowRecordingIndicator()
 
@@ -165,6 +169,7 @@ func processVoice(
 	if voiceMode == "dictation" {
 		// Direct paste — no LLM processing.
 		slog.Info("[voice] Dictation mode — pasting transcript directly")
+		kb.RestoreForegroundWindow() // ensure paste goes to target app, not indicator
 		if err := cb.Write(transcript); err != nil {
 			slog.Error("[voice] Clipboard write failed", "error", err)
 			gui.HideIndicator()
@@ -181,7 +186,14 @@ func processVoice(
 	}
 
 	// Skill mode — process transcript with active prompt.
-	// Distinct sound to indicate transition from transcription to LLM processing.
+	if router == nil {
+		slog.Error("[voice] No LLM router available — cannot process voice skill")
+		gui.HideIndicator()
+		gui.PopIndicator("🎙️❌", "No model configured")
+		sound.PlayError()
+		return
+	}
+
 	sound.PlayToggle()
 	sound.StartWorkingLoop()
 
@@ -234,6 +246,9 @@ func processVoice(
 		sound.PlayError()
 		return
 	}
+
+	// Restore focus to target app before pasting.
+	kb.RestoreForegroundWindow()
 
 	// Check display mode.
 	displayMode := ""
