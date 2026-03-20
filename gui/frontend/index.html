@@ -448,7 +448,7 @@
   <button onclick="switchTab('general')">General</button>
   <button onclick="switchTab('providers')">Providers</button>
   <button onclick="switchTab('models')">Models</button>
-  <button onclick="switchTab('prompts')">Prompts</button>
+  <button onclick="switchTab('prompts')">Skills</button>
   <button onclick="switchTab('hotkeys')">Hotkeys</button>
   <button onclick="switchTab('voice')">Voice</button>
   <button onclick="switchTab('stats')">Stats</button>
@@ -827,14 +827,14 @@
   <!-- ============ PROMPTS TAB ============ -->
   <div id="tab-prompts" class="tab-panel">
     <div class="toolbar">
-      <h2 style="margin-bottom:0">Prompts</h2>
+      <h2 style="margin-bottom:0">Skills</h2>
       <div style="display:flex;gap:6px">
         <button class="btn btn-secondary btn-sm" onclick="resetPrompts()">Reset Defaults</button>
         <button class="btn btn-primary btn-sm" onclick="addPromptInline()">+ Add</button>
       </div>
     </div>
     <div style="font-size:0.82em;color:#a6adc8;line-height:1.5;margin-bottom:10px">
-      &#128172; A <strong style="color:#cdd6f4">prompt</strong> is the instruction that tells the AI what to do with your text &mdash; correct it, polish it, translate it, or anything you define. Cycle through prompts with your hotkey.
+      &#128172; A <strong style="color:#cdd6f4">skill</strong> is the instruction that tells the AI what to do with your text &mdash; correct it, polish it, translate it, or anything you define. Cycle through skills with your hotkey.
     </div>
     <div id="prompt-list" class="prompt-scroll"></div>
     <div class="status" id="prompt-status"></div>
@@ -1354,7 +1354,7 @@ async function goCall(fn, ...args) {
 }
 
 // ---- Tabs ----
-var TAB_NAMES = {about:'About', general:'General', providers:'Providers', models:'Models', prompts:'Prompts', hotkeys:'Hotkeys', stats:'Stats', debug:'Debug', help:'Help'};
+var TAB_NAMES = {about:'About', general:'General', providers:'Providers', models:'Models', prompts:'Skills', hotkeys:'Hotkeys', stats:'Stats', debug:'Debug', help:'Help'};
 function switchTab(name) {
   document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -2709,15 +2709,19 @@ async function renderPrompts() {
   prompts.forEach((p, i) => {
     const isEditing = (i === promptEditIdx);
     const preview = p.prompt.length > 80 ? p.prompt.slice(0, 80) + '...' : p.prompt;
-    html += `<div class="template-card${isEditing ? ' editing' : ''}" draggable="${!isEditing}" data-idx="${i}"
+    const disabledStyle = p.disabled ? 'opacity:0.5;' : '';
+    html += `<div class="template-card${isEditing ? ' editing' : ''}" draggable="${!isEditing}" data-idx="${i}" style="${disabledStyle}"
          ondragstart="promptDragStart(event, ${i})" ondragover="promptDragOver(event)" ondrop="promptDrop(event, ${i})">
       <div class="top-row">
         <div>
           ${p.icon ? '<span style="margin-right:4px">' + esc(p.icon) + '</span>' : ''}<span class="name">${esc(p.name)}</span>
+          ${p.disabled ? '<span class="llm-badge" style="background:#313244;color:#6c7086;border:1px solid #6c7086">DISABLED</span>' : ''}
           ${p.llm ? '<span class="llm-badge">' + esc(p.llm) + '</span>' : ''}
           ${p.timeout_ms ? '<span class="llm-badge" style="background:#45475a">' + (p.timeout_ms / 1000) + 's</span>' : ''}
           ${p.vision ? '<span class="llm-badge" style="background:#313244;color:#89b4fa;border:1px solid #89b4fa">Vision</span>' : ''}
+          ${p.voice ? '<span class="llm-badge" style="background:#313244;color:#fab387;border:1px solid #fab387">' + (p.voice_mode === 'dictation' ? 'Dictation' : 'Voice') + '</span>' : ''}
           ${p.display_mode === 'popup' ? '<span class="llm-badge" style="background:#313244;color:#a6e3a1;border:1px solid #a6e3a1">Popup</span>' : ''}
+          ${p.display_mode === 'append' ? '<span class="llm-badge" style="background:#313244;color:#f9e2af;border:1px solid #f9e2af">Append</span>' : ''}
         </div>
         <div class="actions">`;
     if (isEditing) {
@@ -2759,6 +2763,13 @@ function buildInlineForm(idx, p) {
   iconPicker += '<div id="pe-emoji-picker" style="display:none;margin-top:8px;background:#1e1e2e;border:1px solid #45475a;border-radius:8px;padding:8px;max-height:220px;overflow-y:auto"></div>';
   return `<div class="inline-edit">
     <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pe-enabled" ${!p.disabled ? 'checked' : ''} style="width:auto;margin:0">
+        Enabled
+      </label>
+      <div style="font-size:0.75em;color:#6c7086;margin-top:4px">Disabled skills are hidden from the tray menu and skipped when cycling.</div>
+    </div>
+    <div class="form-group">
       <label>Name</label>
       <input type="text" id="pe-name" value="${esc(p.name)}">
     </div>
@@ -2782,17 +2793,21 @@ function buildInlineForm(idx, p) {
     <div class="form-group">
       <label>Result Display</label>
       <select id="pe-display-mode">
-        <option value=""${!p.display_mode || p.display_mode === 'replace' ? ' selected' : ''}>Replace text (paste back)</option>
+        <option value=""${!p.display_mode || p.display_mode === 'replace' ? ' selected' : ''}>Replace text</option>
+        <option value="append"${p.display_mode === 'append' ? ' selected' : ''}>Append after text</option>
         <option value="popup"${p.display_mode === 'popup' ? ' selected' : ''}>Show in popup window</option>
       </select>
-      <div style="font-size:0.75em;color:#6c7086;margin-top:4px">Popup mode shows the result in a window — ideal for defining, explaining, or translating text in non-editable contexts (browsers, PDFs).</div>
+      <div style="font-size:0.75em;color:#6c7086;margin-top:4px"><strong>Replace</strong> replaces the selected text. <strong>Append</strong> pastes the result after the selection. <strong>Popup</strong> shows a window — ideal for non-editable contexts.</div>
     </div>
     <div class="form-group">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="pe-vision" ${p.vision ? 'checked' : ''} onchange="onVisionToggle(this.checked)" style="width:auto;margin:0">
-        Vision mode (capture screenshot instead of text)
-      </label>
-      <div style="font-size:0.75em;color:#6c7086;margin-top:4px">When enabled, pressing Ctrl+G captures the active window as a screenshot and sends it to the model. Requires a vision-capable model (GPT-4o, Claude, Gemini, etc.).</div>
+      <label>Input Mode</label>
+      <select id="pe-input-mode" onchange="onInputModeChange(this.value)">
+        <option value="text"${!p.voice && !p.vision ? ' selected' : ''}>Text (select &amp; process)</option>
+        <option value="voice-skill"${p.voice && p.voice_mode !== 'dictation' ? ' selected' : ''}>Voice (record &amp; process)</option>
+        <option value="voice-dictation"${p.voice && p.voice_mode === 'dictation' ? ' selected' : ''}>Voice (dictation — paste directly)</option>
+        <option value="screenshot"${p.vision ? ' selected' : ''}>Screenshot (capture &amp; process)</option>
+      </select>
+      <div style="font-size:0.75em;color:#6c7086;margin-top:4px"><strong>Text</strong> captures selected text. <strong>Voice</strong> records from mic. <strong>Screenshot</strong> captures the active window (requires vision model).</div>
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary btn-sm" onclick="cancelInlineEdit()">Cancel</button>
@@ -2875,7 +2890,7 @@ function addPromptInline() {
   // Add a blank prompt, then open it for editing
   const prompts = configData.prompts || [];
   const newIdx = prompts.length;
-  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '', 0, '', false).then(result => {
+  goCall('savePrompt', -1, 'New Prompt', 'Enter your instructions here...', '', '', 0, '', false, false, '', false).then(result => {
     if (result && result.startsWith('ok')) {
       promptEditIdx = newIdx;
       renderPrompts();
@@ -2885,9 +2900,9 @@ function addPromptInline() {
   });
 }
 
-function onVisionToggle(checked) {
-  // When vision is enabled, auto-set display mode to popup (vision always shows popup).
-  if (checked) {
+function onInputModeChange(value) {
+  // When screenshot is selected, auto-set display mode to popup (vision always shows popup).
+  if (value === 'screenshot') {
     var dm = document.getElementById('pe-display-mode');
     if (dm) dm.value = 'popup';
   }
@@ -2900,10 +2915,14 @@ async function saveInlinePrompt(idx) {
   const icon = document.getElementById('pe-icon') ? document.getElementById('pe-icon').value : '';
   const timeoutSec = parseInt(document.getElementById('pe-timeout')?.value) || 0;
   const displayMode = document.getElementById('pe-display-mode')?.value || '';
-  const vision = document.getElementById('pe-vision')?.checked || false;
+  const inputMode = document.getElementById('pe-input-mode')?.value || 'text';
+  const vision = inputMode === 'screenshot';
+  const voice = inputMode === 'voice-skill' || inputMode === 'voice-dictation';
+  const voiceMode = inputMode === 'voice-dictation' ? 'dictation' : inputMode === 'voice-skill' ? 'skill' : '';
+  const disabled = !(document.getElementById('pe-enabled')?.checked ?? true);
   if (!name) { setStatus('prompt-status', 'error', 'Name is required'); return; }
   if (!promptText) { setStatus('prompt-status', 'error', 'Prompt is required'); return; }
-  const result = await goCall('savePrompt', idx, name, promptText, llm, icon, timeoutSec, displayMode, vision);
+  const result = await goCall('savePrompt', idx, name, promptText, llm, icon, timeoutSec, displayMode, vision, voice, voiceMode, disabled);
   if (result && result.startsWith('ok')) {
     promptEditIdx = -1;
     renderPrompts();
