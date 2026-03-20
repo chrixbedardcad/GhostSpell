@@ -183,6 +183,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	// Cleared when the user fixes the model via settings.
 	var initErr error = initError
 
+	// onSettingsSaved is the single callback for ALL settings saves — tray menu,
+	// auto-open for What's New, indicator double-click. Reloads the full live
+	// config so all changes (default model, prompts, voice, etc.) take effect.
+	// Declared here and referenced below after refreshTrayMenu/refreshHotkeys are set.
+	var onSettingsSaved func()
+
 	trayCfg := tray.Config{
 		IconPNG:         assets.TrayIcon64,
 		TemplateIconPNG: assets.TrayIconMacOS,
@@ -199,43 +205,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			slog.Debug("OnPromptSelect callback exiting", "index", idx)
 		},
 		OnSettings: func() {
-			gui.ShowSettings(settingsSvc, cfg, configPath, func() {
-				// Reload config from disk after settings save.
-				newCfg, err := config.LoadRaw(configPath)
-				if err != nil {
-					slog.Error("Failed to reload config after settings save", "error", err)
-					return
-				}
-				mu.Lock()
-				oldDefault := cfg.DefaultModel
-				*cfg = *newCfg
-				slog.Info("Config reloaded", "old_default", oldDefault, "new_default", cfg.DefaultModel, "models_count", len(cfg.Models))
-				if router != nil {
-					router.ResetClients()
-				}
-				// If we had an init error and the user fixed the config, try to init the router.
-				if router == nil && initErr != nil && cfg.DefaultModel != "" {
-					client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
-					if clientErr == nil {
-						router = mode.NewRouter(cfg, client)
-						initErr = nil
-						slog.Info("Model error resolved after settings save")
-					}
-				}
-				mu.Unlock()
-				sound.SetEnabled(*cfg.SoundEnabled)
-				gui.SetIndicatorPosition(cfg.IndicatorPosition)
-				gui.SetIndicatorMode(cfg.IndicatorMode)
-				// Show or hide idle indicator based on mode change (#211).
-				if cfg.IndicatorMode == "always" {
-					go gui.ShowIdle()
-				} else {
-					go gui.HideIndicator()
-				}
-				slog.Info("Live config reloaded after settings save")
-				refreshTrayMenu()
-				refreshHotkeys()
-			})
+			gui.ShowSettings(settingsSvc, cfg, configPath, onSettingsSaved)
 		},
 		OnModelSelect: func(label string) {
 			mu.Lock()
@@ -351,6 +321,42 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		slog.Info("STT engine reloaded after voice model change", "model", cfg.Voice.Model)
 	}
 
+	// Initialize the shared onSettingsSaved callback now that all dependencies are ready.
+	onSettingsSaved = func() {
+		newCfg, err := config.LoadRaw(configPath)
+		if err != nil {
+			slog.Error("Failed to reload config after settings save", "error", err)
+			return
+		}
+		mu.Lock()
+		oldDefault := cfg.DefaultModel
+		*cfg = *newCfg
+		slog.Info("Config reloaded", "old_default", oldDefault, "new_default", cfg.DefaultModel, "models_count", len(cfg.Models))
+		if router != nil {
+			router.ResetClients()
+		}
+		if router == nil && initErr != nil && cfg.DefaultModel != "" {
+			client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
+			if clientErr == nil {
+				router = mode.NewRouter(cfg, client)
+				initErr = nil
+				slog.Info("Model error resolved after settings save")
+			}
+		}
+		mu.Unlock()
+		sound.SetEnabled(*cfg.SoundEnabled)
+		gui.SetIndicatorPosition(cfg.IndicatorPosition)
+		gui.SetIndicatorMode(cfg.IndicatorMode)
+		if cfg.IndicatorMode == "always" {
+			go gui.ShowIdle()
+		} else {
+			go gui.HideIndicator()
+		}
+		slog.Info("Live config reloaded after settings save")
+		refreshTrayMenu()
+		refreshHotkeys()
+	}
+
 	// Background update checker — checks after 60s, then every 24h.
 	go func() {
 		time.Sleep(60 * time.Second)
@@ -380,13 +386,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		mu.Lock()
 		c := cfg
 		mu.Unlock()
-		gui.ShowSettings(settingsSvc, c, configPath, func() {
-			mu.Lock()
-			if router != nil {
-				router.ResetClients()
-			}
-			mu.Unlock()
-		})
+		gui.ShowSettings(settingsSvc, c, configPath, onSettingsSaved)
 	}
 
 	// When debug auto-disables after 30min, log it.
@@ -666,13 +666,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			slog.Info("Version changed, auto-opening Settings for What's New", "last", cfg.LastSeenVersion, "current", version.Version)
 			go func() {
 				time.Sleep(1500 * time.Millisecond)
-				gui.ShowSettings(settingsSvc, cfg, configPath, func() {
-					mu.Lock()
-					if router != nil {
-						router.ResetClients()
-					}
-					mu.Unlock()
-				})
+				gui.ShowSettings(settingsSvc, cfg, configPath, onSettingsSaved)
 			}()
 		}
 
