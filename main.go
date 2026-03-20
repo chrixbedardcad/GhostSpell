@@ -124,6 +124,7 @@ func recoverPanic(configDir string) {
 }
 
 func main() {
+	setAppID() // Windows: set AppUserModelID for taskbar pinning + notification area
 	fmt.Printf("GhostSpell v%s - AI-powered multilingual auto-correction\n", Version)
 	fmt.Println("====================================================")
 
