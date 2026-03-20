@@ -201,14 +201,14 @@ export function IndicatorWindow() {
     await goCall("setIndicatorModeFromIndicator", mode);
   }
 
-  // --- Badge style for mic/camera on idle circle ---
-  const badgeStyle = (position: "bottom-right" | "bottom-left"): React.CSSProperties => ({
+  // --- Badge positions for idle circle overlay icons ---
+  const badgeBase: React.CSSProperties = {
     position: "absolute",
-    ...(position === "bottom-right" ? { bottom: "3px", right: "2px" } : { bottom: "3px", left: "2px" }),
-    fontSize: "10px",
+    fontSize: "11px",
     lineHeight: 1,
     pointerEvents: "none",
-  });
+    filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))",
+  };
 
   // --- Render ---
   const isPill = state === "processing" || state === "pop" || state === "done";
@@ -250,14 +250,14 @@ export function IndicatorWindow() {
             pointerEvents: "none",
           }}
         />
+        {/* Top-right: active skill icon */}
         {icon && (
-          <span style={{
-            position: "absolute", top: "2px", left: "2px",
-            fontSize: "12px", lineHeight: 1, pointerEvents: "none",
-          }}>{icon}</span>
+          <span style={{ ...badgeBase, top: "1px", right: "1px" }}>{icon}</span>
         )}
-        {isVoice && <span style={badgeStyle("bottom-right")}>{"\uD83C\uDF99\uFE0F"}</span>}
-        {isVision && <span style={badgeStyle("bottom-left")}>{"\uD83D\uDCF7"}</span>}
+        {/* Top-left: camera (vision skill) */}
+        {isVision && <span style={{ ...badgeBase, top: "1px", left: "1px" }}>{"\uD83D\uDCF7"}</span>}
+        {/* Bottom-center: mic (voice skill) */}
+        {isVoice && <span style={{ ...badgeBase, bottom: "1px", left: "50%", transform: "translateX(-50%)" }}>{"\uD83C\uDF99\uFE0F"}</span>}
         <style>{`@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
       </div>
     );
