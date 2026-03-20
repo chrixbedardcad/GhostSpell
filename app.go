@@ -274,23 +274,16 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			defer mu.Unlock()
 			return cfg.ActivePrompt
 		},
-		GetPromptNames: func() []string {
+		GetEnabledPrompts: func() []tray.PromptItem {
 			mu.Lock()
 			defer mu.Unlock()
-			names := make([]string, len(cfg.Prompts))
+			var items []tray.PromptItem
 			for i, p := range cfg.Prompts {
-				names[i] = p.Name
+				if !p.Disabled {
+					items = append(items, tray.PromptItem{Name: p.Name, Icon: p.Icon, Index: i})
+				}
 			}
-			return names
-		},
-		GetPromptIcons: func() []string {
-			mu.Lock()
-			defer mu.Unlock()
-			icons := make([]string, len(cfg.Prompts))
-			for i, p := range cfg.Prompts {
-				icons[i] = p.Icon
-			}
-			return icons
+			return items
 		},
 		GetDefaultModelName: func() string {
 			mu.Lock()

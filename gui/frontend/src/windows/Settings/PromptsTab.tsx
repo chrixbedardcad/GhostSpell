@@ -12,6 +12,7 @@ interface Prompt {
   vision: boolean;
   voice: boolean;
   voice_mode: string;
+  disabled: boolean;
 }
 
 /**
@@ -42,7 +43,7 @@ export function PromptsTab() {
 
   async function savePrompt(idx: number, p: Prompt) {
     const timeoutSec = Math.round((p.timeout_ms || 30000) / 1000);
-    await goCall("savePrompt", idx, p.name, p.prompt, p.llm, p.icon, timeoutSec, p.display_mode, p.vision, p.voice, p.voice_mode || "");
+    await goCall("savePrompt", idx, p.name, p.prompt, p.llm, p.icon, timeoutSec, p.display_mode, p.vision, p.voice, p.voice_mode || "", p.disabled);
     setStatus("Saved");
     setTimeout(() => setStatus(""), 2000);
     loadPrompts();
@@ -68,7 +69,7 @@ export function PromptsTab() {
 
       {/* Prompt list */}
       {prompts.map((p, idx) => (
-        <div key={idx} className="bg-surface-0/30 border border-surface-0/50 rounded-xl overflow-hidden">
+        <div key={idx} className={`bg-surface-0/30 border border-surface-0/50 rounded-xl overflow-hidden ${p.disabled ? "opacity-50" : ""}`}>
           {/* Header row — always visible */}
           <button
             onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
@@ -78,11 +79,15 @@ export function PromptsTab() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-text">{p.name}</span>
-                {idx === activeIdx && <Badge variant="active" />}
+                {idx === activeIdx && !p.disabled && <Badge variant="active" />}
+                {p.disabled && <Badge variant="disabled" />}
                 {p.vision && <Badge variant="vision" />}
                 {p.voice && <Badge variant="voice" />}
                 {p.display_mode === "popup" && (
                   <span className="text-[10px] text-overlay-0 bg-surface-0 px-1.5 py-0.5 rounded">popup</span>
+                )}
+                {p.display_mode === "append" && (
+                  <span className="text-[10px] text-overlay-0 bg-surface-0 px-1.5 py-0.5 rounded">append</span>
                 )}
               </div>
               {p.llm && (
@@ -123,8 +128,19 @@ export function PromptsTab() {
       {/* Add prompt */}
       <button
         onClick={async () => {
-          await goCall("addPrompt");
-          loadPrompts();
+          const newPrompt: Prompt = {
+            name: "New Prompt",
+            prompt: "Enter your prompt instructions...",
+            icon: "📝",
+            llm: "",
+            timeout_ms: 30000,
+            display_mode: "",
+            vision: false,
+            voice: false,
+            voice_mode: "",
+            disabled: false,
+          };
+          await savePrompt(-1, newPrompt);
           setExpandedIdx(prompts.length);
         }}
         className="w-full py-3 rounded-xl border border-dashed border-surface-1 text-sm text-overlay-0
@@ -155,8 +171,19 @@ function PromptEditor({
 
   return (
     <div className="px-4 pb-4 space-y-3 border-t border-surface-0/30">
+      {/* Enable/Disable toggle */}
+      <div className="flex items-center justify-between pt-3">
+        <label className="text-xs text-overlay-0">Enabled</label>
+        <button
+          onClick={() => update({ disabled: !p.disabled })}
+          className={`relative w-9 h-5 rounded-full transition-colors ${p.disabled ? "bg-surface-1" : "bg-accent-green/60"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${p.disabled ? "" : "translate-x-4"}`} />
+        </button>
+      </div>
+
       {/* Name + Icon */}
-      <div className="flex gap-3 pt-3">
+      <div className="flex gap-3">
         <input
           value={p.icon}
           onChange={(e) => update({ icon: e.target.value })}
@@ -201,17 +228,18 @@ function PromptEditor({
           </select>
         </div>
 
-        {/* Display mode */}
+        {/* Output mode */}
         <div className="flex items-center gap-2">
           <label className="text-xs text-overlay-0">Output</label>
           <select
             value={p.display_mode || "replace"}
-            onChange={(e) => update({ display_mode: e.target.value })}
+            onChange={(e) => update({ display_mode: e.target.value === "replace" ? "" : e.target.value })}
             className="bg-crust border border-surface-0 rounded-lg px-2 py-1 text-xs text-subtext-0
                        focus:outline-none"
           >
-            <option value="">Replace text</option>
-            <option value="popup">Popup window</option>
+            <option value="replace">Replace</option>
+            <option value="append">Append</option>
+            <option value="popup">Popup</option>
           </select>
         </div>
 

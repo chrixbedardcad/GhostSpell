@@ -21,6 +21,25 @@ type PromptEntry struct {
 	Vision      bool   `json:"vision,omitempty"`        // capture screenshot instead of text
 	Voice       bool   `json:"voice,omitempty"`         // record microphone instead of capture text
 	VoiceMode   string `json:"voice_mode,omitempty"`    // "skill" (default) or "dictation"
+	Disabled    bool   `json:"disabled,omitempty"`      // hidden from tray/cycling when true
+}
+
+// NextEnabledPrompt returns the index of the next enabled prompt after `from`,
+// wrapping around. Returns (index, true) if found, or (from, false) if all
+// prompts are disabled. Used by router cycling, indicator cycling, and the
+// processMode disabled-prompt guard.
+func NextEnabledPrompt(prompts []PromptEntry, from int) (int, bool) {
+	n := len(prompts)
+	if n == 0 {
+		return 0, false
+	}
+	for i := 0; i < n; i++ {
+		next := (from + 1 + i) % n
+		if !prompts[next].Disabled {
+			return next, true
+		}
+	}
+	return from, false
 }
 
 // LLMProviderDef defines a named LLM provider configuration.

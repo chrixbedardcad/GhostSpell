@@ -219,13 +219,17 @@ func (r *Router) llmLabelForPrompt(promptIdx int) string {
 	return r.cfg.DefaultModel
 }
 
-// CyclePrompt cycles to the next prompt, returning the new index and name.
+// CyclePrompt cycles to the next enabled prompt, returning the new index and name.
+// Disabled prompts are skipped. If all prompts are disabled, stays on the current one.
 func (r *Router) CyclePrompt() (int, string) {
 	if len(r.cfg.Prompts) == 0 {
 		return 0, ""
 	}
 	r.mu.Lock()
-	r.cfg.ActivePrompt = (r.cfg.ActivePrompt + 1) % len(r.cfg.Prompts)
+	next, found := config.NextEnabledPrompt(r.cfg.Prompts, r.cfg.ActivePrompt)
+	if found {
+		r.cfg.ActivePrompt = next
+	}
 	idx := r.cfg.ActivePrompt
 	r.mu.Unlock()
 	return idx, r.cfg.Prompts[idx].Name

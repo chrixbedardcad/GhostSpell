@@ -617,13 +617,13 @@ func (s *SettingsService) SetRefreshToken(providerType, token string) string {
 // --- Prompt management -----------------------------------------------------
 
 // SavePrompt updates an existing prompt at the given index, or appends if index == -1.
-func (s *SettingsService) SavePrompt(index int, name, prompt, llmLabel, icon string, timeoutSec int, displayMode string, vision bool, voice bool, voiceMode string) string {
-	guiLog("[GUI] JS called: SavePrompt(idx=%d, name=%s, icon=%s, timeout=%ds, mode=%s, vision=%v, voice=%v, voiceMode=%s)", index, name, icon, timeoutSec, displayMode, vision, voice, voiceMode)
+func (s *SettingsService) SavePrompt(index int, name, prompt, llmLabel, icon string, timeoutSec int, displayMode string, vision bool, voice bool, voiceMode string, disabled bool) string {
+	guiLog("[GUI] JS called: SavePrompt(idx=%d, name=%s, icon=%s, timeout=%ds, mode=%s, vision=%v, voice=%v, voiceMode=%s, disabled=%v)", index, name, icon, timeoutSec, displayMode, vision, voice, voiceMode, disabled)
 	if name == "" || prompt == "" {
 		return "error: name and prompt are required"
 	}
 	timeoutMs := timeoutSec * 1000
-	entry := config.PromptEntry{Name: name, Prompt: prompt, LLM: llmLabel, Icon: icon, TimeoutMs: timeoutMs, DisplayMode: displayMode, Vision: vision, Voice: voice, VoiceMode: voiceMode}
+	entry := config.PromptEntry{Name: name, Prompt: prompt, LLM: llmLabel, Icon: icon, TimeoutMs: timeoutMs, DisplayMode: displayMode, Vision: vision, Voice: voice, VoiceMode: voiceMode, Disabled: disabled}
 	if index < 0 || index >= len(s.cfgCopy.Prompts) {
 		s.cfgCopy.Prompts = append(s.cfgCopy.Prompts, entry)
 	} else {

@@ -11,6 +11,13 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
+// PromptItem describes an enabled prompt for the tray menu.
+type PromptItem struct {
+	Name  string // display name
+	Icon  string // emoji icon
+	Index int    // real index into config.Prompts (for OnPromptSelect)
+}
+
 // ModelLabel describes a configured provider for the tray Models menu section.
 type ModelLabel struct {
 	Label     string // e.g. "claude"
@@ -45,10 +52,9 @@ type Config struct {
 	IsProcessing func() bool
 
 	// State readers — called to build the menu.
-	GetActivePrompt func() int
-	GetPromptNames  func() []string
-	GetPromptIcons  func() []string // emoji icons per prompt (same order as names)
-	GetModelLabels  func() []ModelLabel
+	GetActivePrompt  func() int
+	GetEnabledPrompts func() []PromptItem // only enabled prompts, with real config indices
+	GetModelLabels   func() []ModelLabel
 
 	// OnUpdateClick is called when the "Update available" menu item is clicked.
 	OnUpdateClick func()
@@ -282,32 +288,27 @@ func (ts *trayState) refreshMenu() {
 
 	menu.AddSeparator()
 
-	// Prompt selection (radio group).
+	// Prompt selection (radio group) — only enabled prompts.
 	activePrompt := 0
 	if ts.cfg.GetActivePrompt != nil {
 		activePrompt = ts.cfg.GetActivePrompt()
 	}
 
-	var promptNames []string
-	if ts.cfg.GetPromptNames != nil {
-		promptNames = ts.cfg.GetPromptNames()
+	var prompts []PromptItem
+	if ts.cfg.GetEnabledPrompts != nil {
+		prompts = ts.cfg.GetEnabledPrompts()
 	}
 
-	var promptIcons []string
-	if ts.cfg.GetPromptIcons != nil {
-		promptIcons = ts.cfg.GetPromptIcons()
-	}
-
-	for i, name := range promptNames {
-		displayName := name
-		if i < len(promptIcons) && promptIcons[i] != "" {
-			displayName = promptIcons[i] + " " + name
+	for _, pi := range prompts {
+		displayName := pi.Name
+		if pi.Icon != "" {
+			displayName = pi.Icon + " " + pi.Name
 		}
-		item := menu.AddRadio(displayName, i == activePrompt)
-		idx := i // capture for closure
+		item := menu.AddRadio(displayName, pi.Index == activePrompt)
+		capturedIdx := pi.Index // capture for closure
 		item.OnClick(func(ctx *application.Context) {
 			if ts.cfg.OnPromptSelect != nil {
-				ts.cfg.OnPromptSelect(idx)
+				ts.cfg.OnPromptSelect(capturedIdx)
 			}
 			ts.refreshMenu()
 		})
@@ -339,7 +340,7 @@ func (ts *trayState) refreshMenu() {
 
 	slog.Info("[tray] Menu built and set",
 		"active_prompt", activePrompt,
-		"prompts", len(promptNames),
+		"prompts", len(prompts),
 		"update", updateVer,
 	)
 }

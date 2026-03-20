@@ -28,6 +28,7 @@ interface MenuPrompt {
   name: string;
   icon: string;
   active: boolean;
+  index: number;
 }
 
 export function IndicatorWindow() {
@@ -373,7 +374,7 @@ export function IndicatorWindow() {
       {menuItems.map((item, idx) => (
         <button
           key={idx}
-          onClick={() => selectPrompt(idx)}
+          onClick={() => selectPrompt(item.index ?? idx)}
           style={{ ...mBtn, color: item.active ? "#89b4fa" : "#a6adc8" }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "none")}

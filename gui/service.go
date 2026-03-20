@@ -588,7 +588,8 @@ func (s *SettingsService) ShowCurrentPrompt() string {
 	return "ok"
 }
 
-// CyclePromptFromIndicator cycles to the next prompt (called from indicator click).
+// CyclePromptFromIndicator cycles to the next enabled prompt (called from indicator click).
+// Disabled prompts are skipped.
 func (s *SettingsService) CyclePromptFromIndicator() string {
 	slog.Info("[GUI] CyclePromptFromIndicator called")
 	cfg := s.indicatorCfg()
@@ -596,9 +597,14 @@ func (s *SettingsService) CyclePromptFromIndicator() string {
 		slog.Warn("[GUI] CyclePromptFromIndicator: no config or prompts available")
 		return "error: no prompts"
 	}
-	cfg.ActivePrompt = (cfg.ActivePrompt + 1) % len(cfg.Prompts)
-	p := cfg.Prompts[cfg.ActivePrompt]
-	slog.Info("[GUI] CyclePromptFromIndicator: cycled", "index", cfg.ActivePrompt, "name", p.Name)
+	next, found := config.NextEnabledPrompt(cfg.Prompts, cfg.ActivePrompt)
+	if !found {
+		slog.Warn("[GUI] CyclePromptFromIndicator: all prompts disabled")
+		return "error: all prompts disabled"
+	}
+	cfg.ActivePrompt = next
+	p := cfg.Prompts[next]
+	slog.Info("[GUI] CyclePromptFromIndicator: cycled", "index", next, "name", p.Name)
 	go sound.PlayClick()
 	SetCurrentPromptFlags(p.Voice, p.Vision)
 	PopIndicatorWithModel(p.Icon, p.Name, cfg.DefaultModel)
@@ -633,12 +639,14 @@ func (s *SettingsService) QuitFromIndicator() string {
 }
 
 // GetIndicatorMenu returns the context menu data for the indicator as JSON.
+// Disabled prompts are excluded from the menu.
 func (s *SettingsService) GetIndicatorMenu() string {
 	slog.Info("[GUI] GetIndicatorMenu called")
 	type menuPrompt struct {
 		Name   string `json:"name"`
 		Icon   string `json:"icon"`
 		Active bool   `json:"active"`
+		Index  int    `json:"index"` // real index into cfg.Prompts
 	}
 	type menuData struct {
 		Prompts       []menuPrompt `json:"prompts"`
@@ -654,10 +662,14 @@ func (s *SettingsService) GetIndicatorMenu() string {
 	cfg := s.indicatorCfg()
 	if cfg != nil {
 		for i, p := range cfg.Prompts {
+			if p.Disabled {
+				continue
+			}
 			data.Prompts = append(data.Prompts, menuPrompt{
 				Name:   p.Name,
 				Icon:   p.Icon,
 				Active: i == cfg.ActivePrompt,
+				Index:  i,
 			})
 		}
 		data.ActiveModel = cfg.DefaultModel

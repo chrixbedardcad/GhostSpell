@@ -111,6 +111,21 @@ func processMode(
 	}()
 	slog.Info(promptName + " triggered")
 
+	// If active prompt is disabled, auto-cycle to the next enabled prompt.
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Disabled {
+		next, found := config.NextEnabledPrompt(cfg.Prompts, promptIdx)
+		if !found {
+			slog.Warn("All prompts disabled — nothing to process")
+			sound.PlayError()
+			gui.PopIndicator("\U0001F6AB", "All prompts disabled")
+			return
+		}
+		promptIdx = next
+		promptName = cfg.Prompts[next].Name
+		router.SetPrompt(next)
+		slog.Info("Auto-cycled to next enabled prompt", "prompt", promptName, "index", promptIdx)
+	}
+
 	// --- Voice path: record microphone instead of capture text (#236) ---
 	// Check BEFORE starting the working loop — voice needs silence, not background sounds.
 	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Voice {
@@ -426,6 +441,29 @@ func processMode(
 		time.Sleep(50 * time.Millisecond)
 		gui.ShowResult(result, promptName, promptIcon, modelLabel)
 		restoreClipboard()
+		return
+	}
+
+	// --- Append mode: paste result AFTER the selected text ---
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].DisplayMode == "append" {
+		slog.Info("DisplayMode=append — appending result after selected text", "prompt", promptName)
+		kb.PressRight() // deselect and move cursor to end of selection
+		time.Sleep(50 * time.Millisecond)
+		if err := cb.Write(result); err != nil {
+			slog.Error("Failed to write result to clipboard for append", "prompt", promptName, "error", err)
+			restoreClipboard()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+		if err := kb.Paste(); err != nil {
+			slog.Error("Paste (append) failed", "prompt", promptName, "error", err)
+			restoreClipboard()
+			return
+		}
+		time.Sleep(150 * time.Millisecond)
+		restoreClipboard()
+		slog.Info(promptName+" complete (append)", "result_len", len(result))
+		fmt.Printf("[%s] Complete — appended %d chars\n", promptName, len(result))
 		return
 	}
 

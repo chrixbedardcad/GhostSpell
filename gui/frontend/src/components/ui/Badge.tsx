@@ -15,6 +15,7 @@ const VARIANTS = {
   vision: "bg-accent-sky/20 text-accent-sky",
   voice: "bg-accent-peach/20 text-accent-peach",
   active: "bg-accent-green/20 text-accent-green",
+  disabled: "bg-surface-1 text-overlay-0",
   downloaded: "bg-accent-green/20 text-accent-green",
   available: "bg-accent-blue/20 text-accent-blue",
   default: "bg-surface-1 text-subtext-0",
@@ -32,6 +33,7 @@ const LABELS: Record<string, string> = {
   vision: "👁 VISION",
   voice: "🎙 VOICE",
   active: "ACTIVE",
+  disabled: "DISABLED",
   downloaded: "DOWNLOADED",
   available: "AVAILABLE",
 };

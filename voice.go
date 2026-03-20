@@ -206,6 +206,22 @@ func processVoice(
 		return
 	}
 
+	if displayMode == "append" {
+		// Append: paste result at cursor (no selection to deselect in voice mode).
+		if err := cb.Write(result); err != nil {
+			slog.Error("[voice] Clipboard write failed (append)", "error", err)
+			sound.PlayError()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+		kb.Paste()
+		time.Sleep(150 * time.Millisecond)
+		sound.PlaySuccess()
+		slog.Info("[voice] Append complete", "prompt", promptName, "result_len", len(result))
+		fmt.Printf("[%s] Voice append complete (%d chars)\n", promptName, len(result))
+		return
+	}
+
 	// Default: paste result.
 	if err := cb.Write(result); err != nil {
 		slog.Error("[voice] Clipboard write failed", "error", err)
