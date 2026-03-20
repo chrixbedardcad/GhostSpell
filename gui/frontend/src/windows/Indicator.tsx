@@ -274,11 +274,17 @@ export function IndicatorWindow() {
               try {
                 const d = JSON.parse(raw);
                 setHoverInfo({ llm: d.activeModel || "", voice: d.voiceModel || "" });
+                // Resize window to show tooltip below the circle.
+                goCall("resizeIndicatorForMenu", 180, 80);
               } catch { /* ignore */ }
             }
           });
         }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; setHovered(false); }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "0.5";
+          setHovered(false);
+          goCall("resizeIndicatorForMenu", 48, 48);
+        }}
       >
         <img
           src="/ghostspell-ghost.png"
