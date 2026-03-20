@@ -24,13 +24,6 @@ interface StateData {
   vision?: boolean;
 }
 
-interface MenuPrompt {
-  name: string;
-  icon: string;
-  active: boolean;
-  index: number;
-}
-
 export function IndicatorWindow() {
   const [state, setState] = useState<IndicatorState>("idle");
   const [icon, setIcon] = useState("");
@@ -39,7 +32,6 @@ export function IndicatorWindow() {
   const [elapsed, setElapsed] = useState(0);
   const [doneElapsed, setDoneElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
   const [menuVersion, setMenuVersion] = useState("");
   const [menuModel, setMenuModel] = useState("");
   const [menuMode, setMenuMode] = useState("processing");
@@ -133,6 +125,17 @@ export function IndicatorWindow() {
     };
   }, []);
 
+  // Close menu when window loses focus (user clicked elsewhere on screen).
+  useEffect(() => {
+    function onBlur() {
+      if (menuOpen) {
+        closeMenu();
+      }
+    }
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [menuOpen]);
+
   // --- Click handler ---
   // idle: single click = show prompt info, double click = open settings
   // pop/pill: single click = cycle to next prompt, double click = open settings
@@ -172,13 +175,12 @@ export function IndicatorWindow() {
     if (raw) {
       try {
         const data = JSON.parse(raw);
-        setMenuItems(data.prompts || []);
         if (data.version) setMenuVersion(data.version);
         if (data.activeModel) setMenuModel(data.activeModel);
         if (data.indicatorMode) setMenuMode(data.indicatorMode);
         setMenuOpen(true);
-        // Height: version(26) + prompts(34 each) + divider(5) + "Display" label(22) + 3 modes(28 each) + divider(5) + settings(34) + quit(34) + padding(20)
-        const menuH = 26 + (data.prompts?.length || 0) * 34 + 5 + 22 + 3 * 28 + 5 + 34 + 34 + 20;
+        // Height: version(26) + "Display" label(22) + 3 modes(28 each) + divider(5) + settings(34) + quit(34) + padding(20)
+        const menuH = 26 + 22 + 3 * 28 + 5 + 34 + 34 + 20;
         goCall("resizeIndicatorForMenu", 220, menuH);
       } catch (err) { console.error("[Indicator] onContextMenu: parse error", err); }
     }
@@ -191,11 +193,6 @@ export function IndicatorWindow() {
     } else {
       goCall("resizeIndicatorForMenu", 260, 52);
     }
-  }
-
-  async function selectPrompt(idx: number) {
-    closeMenu();
-    await goCall("setActivePromptFromIndicator", idx);
   }
 
   async function setDisplayMode(mode: string) {
@@ -371,20 +368,6 @@ export function IndicatorWindow() {
           {menuModel && <span style={{ color: "#6c7086" }}>{menuModel}</span>}
         </div>
       )}
-      {menuItems.map((item, idx) => (
-        <button
-          key={idx}
-          onClick={() => selectPrompt(item.index ?? idx)}
-          style={{ ...mBtn, color: item.active ? "#89b4fa" : "#a6adc8" }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-        >
-          <span style={{ width: "18px", textAlign: "center", flexShrink: 0 }}>{item.icon || "\ud83d\udcdd"}</span>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
-          {item.active && <span style={{ marginLeft: "auto", fontSize: "8px", color: "#89b4fa" }}>{"\u25cf"}</span>}
-        </button>
-      ))}
-      <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
       {/* Display mode section */}
       <div style={{ padding: "4px 12px 2px", fontSize: "10px", color: "#585b70", letterSpacing: "0.5px" }}>
         Display
@@ -414,7 +397,6 @@ export function IndicatorWindow() {
         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)"; e.currentTarget.style.color = "#f38ba8"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#a6adc8"; }}
       >{"\u2715"} Quit</button>
-      <div style={{ position: "fixed", inset: 0, zIndex: -1 }} onClick={closeMenu} />
     </div>
   );
 }
