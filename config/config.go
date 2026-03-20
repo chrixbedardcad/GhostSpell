@@ -535,7 +535,7 @@ func applyDefaults(cfg *Config) {
 	if cfg.SoundEnabled == nil {
 		cfg.SoundEnabled = boolPtr(true)
 	}
-	if cfg.IndicatorPosition == "" {
+	if cfg.IndicatorPosition == "" || cfg.IndicatorPosition == "center" {
 		cfg.IndicatorPosition = "top-right"
 	}
 	if cfg.Hotkeys.Action == "" {
