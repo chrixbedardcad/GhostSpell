@@ -491,6 +491,15 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				promptLLM = cfg.Prompts[promptIdx].LLM
 			}
 			localRouter := router
+			// Try to recover the router if nil.
+			if localRouter == nil && cfg.DefaultModel != "" {
+				client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
+				if clientErr == nil {
+					router = mode.NewRouter(cfg, client)
+					localRouter = router
+					slog.Info("Router recovered on hotkey press", "model", cfg.DefaultModel)
+				}
+			}
 			slog.Info("Hotkey: config snapshot", "default_model", cfg.DefaultModel, "prompt", promptName, "prompt_llm", promptLLM, "prompt_idx", promptIdx)
 			mu.Unlock()
 
@@ -517,6 +526,15 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			if err := mgr.Register("cycle_prompt", cfg.Hotkeys.CyclePrompt, func() {
 				mu.Lock()
 				localRouter := router
+				// Try to recover the router if nil (e.g., OAuth token refreshed since startup).
+				if localRouter == nil && cfg.DefaultModel != "" {
+					client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
+					if clientErr == nil {
+						router = mode.NewRouter(cfg, client)
+						localRouter = router
+						slog.Info("Router recovered on cycle prompt", "model", cfg.DefaultModel)
+					}
+				}
 				mu.Unlock()
 				if localRouter == nil {
 					slog.Warn("Cycle prompt: no active model")
