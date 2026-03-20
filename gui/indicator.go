@@ -207,12 +207,16 @@ func getIndicatorPositionForSize(w, h int) (int, int) {
 		return screen.WorkArea.X + 20, screen.WorkArea.Y + 20
 	case "top-right":
 		return screen.WorkArea.X + screen.WorkArea.Width - w - 20, screen.WorkArea.Y + 20
+	case "center-top":
+		return screen.WorkArea.X + (screen.WorkArea.Width-w)/2, screen.WorkArea.Y + 20
 	case "bottom-left":
 		return screen.WorkArea.X + 20, screen.WorkArea.Y + screen.WorkArea.Height - h - 20
 	case "bottom-right":
 		return screen.WorkArea.X + screen.WorkArea.Width - w - 20, screen.WorkArea.Y + screen.WorkArea.Height - h - 20
-	default: // "center"
+	case "center":
 		return screen.WorkArea.X + (screen.WorkArea.Width-w)/2, screen.WorkArea.Y + screen.WorkArea.Height/3
+	default: // fallback to top-right
+		return screen.WorkArea.X + screen.WorkArea.Width - w - 20, screen.WorkArea.Y + 20
 	}
 }
 

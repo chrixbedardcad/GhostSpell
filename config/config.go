@@ -117,7 +117,7 @@ type Config struct {
 	MaxInputChars     int    `json:"max_input_chars"`
 	PreserveClipboard bool   `json:"preserve_clipboard"`
 	SoundEnabled      *bool  `json:"sound_enabled"`
-	IndicatorPosition string `json:"indicator_position,omitempty"` // center, top-right, top-left, bottom-right, bottom-left, hidden
+	IndicatorPosition string `json:"indicator_position,omitempty"` // top-right, top-left, center-top, bottom-right, bottom-left, center
 	IndicatorMode     string `json:"indicator_mode,omitempty"`     // "processing" (default), "always", "hidden" (#211)
 	IndicatorX        int    `json:"indicator_x,omitempty"`        // saved drag position X
 	IndicatorY        int    `json:"indicator_y,omitempty"`        // saved drag position Y
