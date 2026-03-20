@@ -266,6 +266,126 @@ echo.
 :skip_ghostai
 
 :: ============================================================
+:: Step 1.5 — Build Ghost Voice (whisper.cpp) if toolchain found
+:: ============================================================
+set GHOSTVOICE=0
+if !HAS_CMAKE!==1 if !HAS_GCC!==1 if !HAS_GENERATOR!==1 set GHOSTVOICE=1
+
+if !GHOSTVOICE!==0 goto :skip_ghostvoice
+
+set WHISPER_VERSION=v1.7.5
+set WHISPER_SRC=%BUILD_DIR%\whisper-src
+set WHISPER_OUT=%BUILD_DIR%\whisper
+
+set /a WLIBS=0
+if exist "!WHISPER_OUT!\lib" (
+    for %%f in ("!WHISPER_OUT!\lib\*.a") do set /a WLIBS+=1
+)
+if !WLIBS! geq 2 (
+    echo [1.5] Ghost Voice libraries already built ^(!WLIBS! libs^) — skipping.
+    echo.
+    goto :skip_ghostvoice
+)
+
+echo [1.5] Building Ghost Voice ^(whisper.cpp !WHISPER_VERSION!^)...
+echo.
+
+set WNEED=1
+if exist "!WHISPER_SRC!\.version" (
+    set /p WCACHED=<"!WHISPER_SRC!\.version"
+    if "!WCACHED!"=="!WHISPER_VERSION!" (
+        echo   Using cached whisper.cpp source
+        set WNEED=0
+    )
+)
+
+if !WNEED!==1 (
+    echo   Downloading whisper.cpp !WHISPER_VERSION!...
+    curl -fsSL "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/!WHISPER_VERSION!.tar.gz" -o "%BUILD_DIR%\whisper.tar.gz"
+    if !errorlevel! neq 0 (
+        echo   WARNING: Download failed — skipping Ghost Voice
+        set GHOSTVOICE=0
+        goto :skip_ghostvoice
+    )
+    cd /d "%BUILD_DIR%"
+    tar xzf whisper.tar.gz
+    for /d %%d in (whisper.cpp-*) do (
+        if exist "whisper-src" rmdir /s /q "whisper-src"
+        rename "%%d" whisper-src
+    )
+    echo !WHISPER_VERSION!> "!WHISPER_SRC!\.version"
+    del whisper.tar.gz 2>nul
+    cd /d "%~dp0"
+    echo   Downloaded OK
+)
+
+echo   Compiling whisper.cpp static libraries...
+set WBUILD=!WHISPER_SRC!\build
+if not exist "!WBUILD!" mkdir "!WBUILD!"
+cd /d "!WBUILD!"
+
+set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
+cmake .. -G "!GENERATOR_NAME!" ^
+    -DCMAKE_BUILD_TYPE=Release ^
+    -DCMAKE_C_COMPILER=gcc ^
+    -DCMAKE_CXX_COMPILER=g++ ^
+    -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+    -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+    -DBUILD_SHARED_LIBS=OFF ^
+    -DWHISPER_BUILD_TESTS=OFF ^
+    -DWHISPER_BUILD_EXAMPLES=OFF ^
+    -DGGML_STATIC=ON ^
+    -DGGML_CUDA=OFF ^
+    -DGGML_VULKAN=OFF ^
+    -DGGML_METAL=OFF ^
+    -DGGML_OPENMP=OFF ^
+    -DGGML_NATIVE=OFF ^
+    -DGGML_AVX=ON ^
+    -DGGML_AVX2=OFF
+if !errorlevel! neq 0 (
+    echo   WARNING: CMake failed — skipping Ghost Voice
+    cd /d "%~dp0"
+    set GHOSTVOICE=0
+    goto :skip_ghostvoice
+)
+
+cmake --build . --config Release -j %NPROC%
+if !errorlevel! neq 0 (
+    echo   WARNING: Build failed — skipping Ghost Voice
+    cd /d "%~dp0"
+    set GHOSTVOICE=0
+    goto :skip_ghostvoice
+)
+cd /d "%~dp0"
+
+if not exist "!WHISPER_OUT!\include" mkdir "!WHISPER_OUT!\include"
+if not exist "!WHISPER_OUT!\lib" mkdir "!WHISPER_OUT!\lib"
+
+:: Headers
+if exist "!WHISPER_SRC!\include\whisper.h" copy /y "!WHISPER_SRC!\include\whisper.h" "!WHISPER_OUT!\include\" >nul 2>&1
+if exist "!WHISPER_SRC!\whisper.h" copy /y "!WHISPER_SRC!\whisper.h" "!WHISPER_OUT!\include\" >nul 2>&1
+for /r "!WHISPER_SRC!" %%h in (ggml.h ggml-alloc.h ggml-backend.h) do copy /y "%%h" "!WHISPER_OUT!\include\" >nul 2>&1
+
+:: Libraries
+for /r "!WBUILD!" %%f in (*.a) do copy /y "%%f" "!WHISPER_OUT!\lib\" >nul 2>&1
+for %%f in ("!WHISPER_OUT!\lib\*.a") do (
+    set "wfn=%%~nxf"
+    if not "!wfn:~0,3!"=="lib" rename "%%f" "lib!wfn!"
+)
+
+set /a WCOUNT=0
+for %%f in ("!WHISPER_OUT!\lib\*.a") do set /a WCOUNT+=1
+if !WCOUNT!==0 (
+    echo   WARNING: No whisper libraries found
+    set GHOSTVOICE=0
+) else (
+    echo   Ghost Voice ready: !WCOUNT! libraries installed
+)
+echo.
+
+:skip_ghostvoice
+
+:: ============================================================
 :: Step 2 — Build frontend
 :: ============================================================
 if !GHOSTAI!==1 (
@@ -298,14 +418,18 @@ echo.
 :: ============================================================
 :: Step 3 — Build Go binary
 :: ============================================================
-if !GHOSTAI!==1 (
-    echo [3] Building GhostSpell with Ghost-AI ^(local AI enabled^)...
-    set CGO_ENABLED=1
-    set BUILD_TAGS=production ghostai
+set BUILD_TAGS=production
+if !GHOSTAI!==1 set BUILD_TAGS=!BUILD_TAGS! ghostai
+if !GHOSTVOICE!==1 set BUILD_TAGS=!BUILD_TAGS! ghostvoice
+
+if !GHOSTAI!==1 if !GHOSTVOICE!==1 (
+    echo [3] Building GhostSpell with Ghost-AI + Ghost Voice...
+) else if !GHOSTAI!==1 (
+    echo [3] Building GhostSpell with Ghost-AI ^(local AI^)...
 ) else (
     echo [2] Building GhostSpell ^(API-only mode^)...
-    set BUILD_TAGS=production
 )
+set CGO_ENABLED=1
 
 go build -tags "!BUILD_TAGS!" -o ghostspell.exe .
 if !errorlevel! neq 0 (
@@ -329,13 +453,10 @@ if !errorlevel! neq 0 (
 
 echo.
 echo ============================================
-if !GHOSTAI!==1 (
-    echo   BUILD COMPLETE: ghostspell.exe
-    echo   Mode: Full ^(local AI + API providers^)
-) else (
-    echo   BUILD COMPLETE: ghostspell.exe
-    echo   Mode: API-only ^(configure a provider in Settings^)
-)
+echo   BUILD COMPLETE: ghostspell.exe
+if !GHOSTAI!==1 echo   + Ghost-AI ^(local text AI^)
+if !GHOSTVOICE!==1 echo   + Ghost Voice ^(local speech-to-text^)
+if !GHOSTAI!==0 if !GHOSTVOICE!==0 echo   Mode: API-only
 echo ============================================
 echo.
 echo Starting GhostSpell...
