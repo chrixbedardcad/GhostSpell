@@ -40,9 +40,13 @@ func processVoice(
 	stopAnim func(),
 	transcriber stt.Transcriber,
 ) {
+	fmt.Printf("[voice] processVoice called: prompt=%s, transcriber=%v\n", promptName, transcriber != nil)
+	slog.Info("[voice] processVoice called", "prompt", promptName, "has_transcriber", transcriber != nil)
+
 	// Check if already recording — second press stops recording.
 	if voiceRecording.Load() {
 		slog.Info("[voice] Second press — stopping recording")
+		fmt.Println("[voice] Second Ctrl+G — stopping recording")
 		voiceStopMu.Lock()
 		if voiceStopCh != nil {
 			close(voiceStopCh)

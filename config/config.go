@@ -174,6 +174,10 @@ func DefaultConfig() Config {
 		MaxInputChars:     2000,
 		PreserveClipboard: true,
 		SoundEnabled:      boolPtr(true),
+		Voice: VoiceConfig{
+			Enabled: true,
+			Model:   "whisper-base",
+		},
 		LogLevel:          "debug",
 		LogFile:           "ghostspell.log",
 	}
@@ -591,6 +595,12 @@ func applyDefaults(cfg *Config) {
 			Vision:      true,
 			DisplayMode: "popup",
 		})
+	}
+
+	// Migrate: enable voice with default model if not set.
+	if cfg.Voice.Model == "" {
+		cfg.Voice.Enabled = true
+		cfg.Voice.Model = "whisper-base"
 	}
 
 	// Migrate: add voice prompts if missing (added in v0.56.0).

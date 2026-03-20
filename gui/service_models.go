@@ -178,6 +178,27 @@ func (s *SettingsService) VoiceStatus() string {
 	return string(data)
 }
 
+// SetVoiceModel sets the active voice model in config.
+func (s *SettingsService) SetVoiceModel(model string) string {
+	guiLog("[GUI] JS called: SetVoiceModel(%s)", model)
+	s.cfgCopy.Voice.Model = model
+	s.cfgCopy.Voice.Enabled = true
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+// SetVoiceLanguage sets the voice language preference.
+func (s *SettingsService) SetVoiceLanguage(lang string) string {
+	guiLog("[GUI] JS called: SetVoiceLanguage(%s)", lang)
+	s.cfgCopy.Voice.Language = lang
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // LocalAvailableModels returns the list of downloadable models as JSON.
 func (s *SettingsService) LocalAvailableModels() string {
 	models := llm.AvailableLocalModels()
