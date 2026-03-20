@@ -75,22 +75,20 @@ func ensureIndicatorWindow() {
 	fmt.Println("[indicator] Window created (React hybrid) URL=/indicator-react.html?window=indicator")
 	slog.Info("[gui] Indicator window created (React hybrid)", "url", "/indicator-react.html?window=indicator")
 
-	// Save position on user drag. Programmatic moves set indicatorMoving=true
-	// so they're ignored. Only actual Wails-native drag triggers a save.
+	// Save position on user drag. Programmatic moves are detected by comparing
+	// the reported position against lastMoveX/Y — if they match, it's not a drag.
 	indicatorWin.OnWindowEvent(events.Windows.WindowDidMove, func(e *application.WindowEvent) {
-		indicatorMu.Lock()
-		moving := indicatorMoving
-		indicatorMu.Unlock()
-		if moving {
-			return
-		}
 		x, y := indicatorWin.Position()
-		slog.Debug("[indicator] User drag detected", "x", x, "y", y)
 		indicatorMu.Lock()
+		if x == lastMoveX && y == lastMoveY {
+			indicatorMu.Unlock()
+			return // programmatic move, not user drag
+		}
 		indicatorPos = "custom"
 		indicatorSavedX = x
 		indicatorSavedY = y
 		indicatorMu.Unlock()
+		slog.Debug("[indicator] User drag detected", "x", x, "y", y)
 		if indicatorConfigSaver != nil {
 			indicatorConfigSaver(x, y)
 		}
@@ -155,9 +153,9 @@ var indicatorMode = "processing"
 // indicatorSavedX/Y stores the user's dragged position.
 var indicatorSavedX, indicatorSavedY int
 
-// indicatorMoving is true during programmatic SetPosition calls.
-// WindowDidMove only saves position when this is false (user drag).
-var indicatorMoving bool
+// lastMoveX/Y tracks the last programmatic SetPosition target.
+// WindowDidMove ignores events matching this position (not a user drag).
+var lastMoveX, lastMoveY int
 
 
 func SetIndicatorPosition(pos string) {
@@ -182,12 +180,10 @@ func SetIndicatorSavedPosition(x, y int) {
 // moveIndicatorWindow sets position programmatically without triggering save.
 func moveIndicatorWindow(win *application.WebviewWindow, x, y int) {
 	indicatorMu.Lock()
-	indicatorMoving = true
+	lastMoveX = x
+	lastMoveY = y
 	indicatorMu.Unlock()
 	win.SetPosition(x, y)
-	indicatorMu.Lock()
-	indicatorMoving = false
-	indicatorMu.Unlock()
 }
 
 
