@@ -321,7 +321,9 @@ if !WNEED!==1 (
 
 echo   Compiling whisper.cpp static libraries...
 set WBUILD=!WHISPER_SRC!\build
-if not exist "!WBUILD!" mkdir "!WBUILD!"
+:: Clean stale build dir to avoid "ninja: no work to do" with missing output
+if exist "!WBUILD!" rmdir /s /q "!WBUILD!"
+mkdir "!WBUILD!"
 cd /d "!WBUILD!"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
@@ -341,7 +343,10 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DGGML_OPENMP=OFF ^
     -DGGML_NATIVE=OFF ^
     -DGGML_AVX=ON ^
-    -DGGML_AVX2=OFF
+    -DGGML_AVX2=OFF ^
+    -DGGML_AVX512=OFF ^
+    -DGGML_FMA=OFF ^
+    -DGGML_F16C=OFF
 if !errorlevel! neq 0 (
     echo   WARNING: CMake failed — skipping Ghost Voice
     cd /d "%~dp0"
@@ -366,8 +371,17 @@ if exist "!WHISPER_SRC!\include\whisper.h" copy /y "!WHISPER_SRC!\include\whispe
 if exist "!WHISPER_SRC!\whisper.h" copy /y "!WHISPER_SRC!\whisper.h" "!WHISPER_OUT!\include\" >nul 2>&1
 for /r "!WHISPER_SRC!" %%h in (ggml.h ggml-alloc.h ggml-backend.h) do copy /y "%%h" "!WHISPER_OUT!\include\" >nul 2>&1
 
-:: Libraries
-for /r "!WBUILD!" %%f in (*.a) do copy /y "%%f" "!WHISPER_OUT!\lib\" >nul 2>&1
+:: Libraries — collect all .a files from whisper build tree
+echo   Collecting libraries from !WBUILD!...
+for /r "!WBUILD!" %%f in (*.a) do (
+    echo     Found: %%f
+    copy /y "%%f" "!WHISPER_OUT!\lib\" >nul
+)
+:: Also check for .lib files (MSVC-style output)
+for /r "!WBUILD!" %%f in (whisper*.lib ggml*.lib) do (
+    echo     Found: %%f
+    copy /y "%%f" "!WHISPER_OUT!\lib\" >nul
+)
 for %%f in ("!WHISPER_OUT!\lib\*.a") do (
     set "wfn=%%~nxf"
     if not "!wfn:~0,3!"=="lib" rename "%%f" "lib!wfn!"
@@ -375,8 +389,10 @@ for %%f in ("!WHISPER_OUT!\lib\*.a") do (
 
 set /a WCOUNT=0
 for %%f in ("!WHISPER_OUT!\lib\*.a") do set /a WCOUNT+=1
+for %%f in ("!WHISPER_OUT!\lib\*.lib") do set /a WCOUNT+=1
 if !WCOUNT!==0 (
-    echo   WARNING: No whisper libraries found
+    echo   WARNING: No whisper libraries found — listing build output:
+    dir /s /b "!WBUILD!\*.a" "!WBUILD!\*.lib" "!WBUILD!\*.dll" 2>nul
     set GHOSTVOICE=0
 ) else (
     echo   Ghost Voice ready: !WCOUNT! libraries installed
@@ -433,12 +449,14 @@ set CGO_ENABLED=1
 
 go build -tags "!BUILD_TAGS!" -o ghostspell.exe .
 if !errorlevel! neq 0 (
-    :: If ghostai build failed, try without it
+    :: If build failed, retry without ghostai but keep ghostvoice if available
     if !GHOSTAI!==1 (
         echo.
         echo   Ghost-AI link failed — retrying without local AI...
         set GHOSTAI=0
-        go build -tags "production" -o ghostspell.exe .
+        set RETRY_TAGS=production
+        if !GHOSTVOICE!==1 set RETRY_TAGS=!RETRY_TAGS! ghostvoice
+        go build -tags "!RETRY_TAGS!" -o ghostspell.exe .
         if !errorlevel! neq 0 (
             echo ERROR: Go build failed
             pause
