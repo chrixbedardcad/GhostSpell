@@ -87,7 +87,7 @@ type VoiceConfig struct {
 	Enabled   bool   `json:"enabled,omitempty"`
 	Language  string `json:"language,omitempty"` // BCP-47 code or empty for auto-detect
 	Model     string `json:"model,omitempty"`    // e.g. "whisper-base"
-	Streaming bool   `json:"streaming,omitempty"` // live partial transcription while recording (#245)
+	Streaming bool   `json:"streaming"` // live partial transcription while recording (#245)
 }
 
 // Overlay defines overlay display settings.
@@ -622,6 +622,10 @@ func applyDefaults(cfg *Config) {
 	if cfg.Voice.Model == "" {
 		cfg.Voice.Enabled = true
 		cfg.Voice.Model = "whisper-base"
+	}
+	// Default streaming to true for all configs (added v0.71.0).
+	// Uses omitempty so false is never explicitly saved — absent = true.
+	if !cfg.Voice.Streaming {
 		cfg.Voice.Streaming = true
 	}
 

@@ -152,7 +152,11 @@ func processVoice(
 
 	// Transcribe — distinct sound to indicate phase change.
 	sound.PlayClick()
-	gui.ShowIndicator("🎙️", "Transcribing...", "")
+	voiceModelName := cfg.Voice.Model
+	if transcriber != nil {
+		voiceModelName = transcriber.Name() + " (" + cfg.Voice.Model + ")"
+	}
+	gui.ShowIndicator("🎙️", "Transcribing...", voiceModelName)
 
 	if transcriber == nil {
 		slog.Error("[voice] No STT provider configured")
