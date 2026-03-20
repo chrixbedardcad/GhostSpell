@@ -54,8 +54,8 @@ func processVoice(
 	fmt.Printf("[%s] Voice recording started...\n", promptName)
 	sound.PlayMicStart()
 
-	// Show recording indicator.
-	gui.ShowIndicator("🎙️", "Recording...", "")
+	// Show recording indicator with recording flag for red dot + voice pulse.
+	gui.ShowRecordingIndicator()
 
 	// Record audio via malgo (miniaudio).
 	recorder := sound.NewRecorder()
@@ -68,8 +68,24 @@ func processVoice(
 		return
 	}
 
+	// Poll audio level during recording for visual feedback on the indicator.
+	levelCtx, levelCancel := context.WithCancel(context.Background())
+	go func() {
+		ticker := time.NewTicker(80 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				gui.EmitAudioLevel(recorder.Level())
+			case <-levelCtx.Done():
+				return
+			}
+		}
+	}()
+
 	fmt.Println("[voice] Starting audio capture...")
 	wavData, duration, err := recorder.Record(cancelCtx, stopCh)
+	levelCancel() // stop level polling
 	if err != nil {
 		slog.Error("[voice] Recording failed", "error", err)
 		gui.HideIndicator()

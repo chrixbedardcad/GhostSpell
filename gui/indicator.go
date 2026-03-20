@@ -270,6 +270,41 @@ func ShowIdle() {
 	emitIndicatorEvent(map[string]any{"state": "idle"})
 }
 
+// ShowRecordingIndicator shows the indicator in recording mode with the recording flag.
+// Uses pill size so the timer is visible, with ghost pulse + red dot.
+func ShowRecordingIndicator() {
+	slog.Debug("[indicator] ShowRecordingIndicator called")
+
+	indicatorMu.Lock()
+	pos := indicatorPos
+	if pos == "hidden" {
+		indicatorMu.Unlock()
+		return
+	}
+	ensureIndicatorWindow()
+	win := indicatorWin
+	indicatorMu.Unlock()
+	if win == nil {
+		return
+	}
+
+	win.SetSize(300, 52)
+	x, y := getIndicatorPosition()
+	win.SetPosition(x, y)
+	emitIndicatorEvent(map[string]any{
+		"state": "processing", "icon": "\U0001F399\uFE0F", "name": "Recording...",
+		"recording": true,
+	})
+}
+
+// EmitAudioLevel sends the current mic level to the indicator for visual feedback.
+func EmitAudioLevel(level float32) {
+	app := application.Get()
+	if app != nil {
+		app.Event.Emit("audioLevel", map[string]any{"level": level})
+	}
+}
+
 // ShowIndicator shows the processing state with prompt info.
 func ShowIndicator(promptIcon, promptName, modelLabel string) {
 	slog.Debug("[indicator] ShowIndicator called", "prompt", promptName, "icon", promptIcon, "model", modelLabel)

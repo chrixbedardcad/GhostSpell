@@ -18,11 +18,21 @@ import (
 type Recorder struct {
 	mu        sync.Mutex
 	recording bool
+	levelMu   sync.Mutex
+	level     float32 // current RMS audio level (0.0–1.0)
 }
 
 // NewRecorder creates a new audio recorder.
 func NewRecorder() *Recorder {
 	return &Recorder{}
+}
+
+// Level returns the current RMS audio level (0.0–1.0).
+// Safe to call concurrently while recording.
+func (r *Recorder) Level() float32 {
+	r.levelMu.Lock()
+	defer r.levelMu.Unlock()
+	return r.level
 }
 
 // MicAvailable returns true if a microphone is accessible.
@@ -82,6 +92,25 @@ func (r *Recorder) Record(ctx context.Context, stop <-chan struct{}) ([]byte, ti
 		pcmMu.Lock()
 		pcm.Write(inputSamples)
 		pcmMu.Unlock()
+
+		// Compute RMS level from this frame's samples.
+		nSamples := len(inputSamples) / 2
+		if nSamples > 0 {
+			var sumSq float64
+			for i := 0; i < nSamples; i++ {
+				s := int16(binary.LittleEndian.Uint16(inputSamples[i*2 : i*2+2]))
+				f := float64(s) / float64(math.MaxInt16)
+				sumSq += f * f
+			}
+			rms := float32(math.Sqrt(sumSq / float64(nSamples)))
+			// Clamp to 0.0–1.0.
+			if rms > 1.0 {
+				rms = 1.0
+			}
+			r.levelMu.Lock()
+			r.level = rms
+			r.levelMu.Unlock()
+		}
 	}
 
 	device, err := malgo.InitDevice(mctx.Context, deviceConfig, malgo.DeviceCallbacks{Data: onRecvFrames})

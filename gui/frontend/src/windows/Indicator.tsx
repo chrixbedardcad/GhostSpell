@@ -22,6 +22,7 @@ interface StateData {
   elapsed?: number;
   voice?: boolean;
   vision?: boolean;
+  recording?: boolean;
 }
 
 export function IndicatorWindow() {
@@ -38,6 +39,8 @@ export function IndicatorWindow() {
   const [isVoice, setIsVoice] = useState(false);
   const [isVision, setIsVision] = useState(false);
   const [lastStatusIcon, setLastStatusIcon] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
   const timerRef = useRef<number | null>(null);
   const [eventsReady, setEventsReady] = useState(false);
 
@@ -110,6 +113,9 @@ export function IndicatorWindow() {
         } else if (d.state === "processing") {
           setLastStatusIcon(""); // clear on new processing
         }
+        // Recording flag for red dot + voice pulse.
+        setIsRecording(!!d.recording);
+        if (!d.recording) setAudioLevel(0);
         // Voice/vision flags come with every event from Go.
         if (d.voice !== undefined) setIsVoice(d.voice);
         if (d.vision !== undefined) setIsVision(d.vision);
@@ -139,6 +145,15 @@ export function IndicatorWindow() {
       if (unsub) unsub();
       if (timerRef.current) clearInterval(timerRef.current);
     };
+  }, []);
+
+  // Listen for audio level events from the mic recorder.
+  useEffect(() => {
+    const unsub = onEvent("audioLevel", (data) => {
+      const d = data as { level: number };
+      if (d.level !== undefined) setAudioLevel(d.level);
+    });
+    return unsub;
   }, []);
 
   // Close menu when window loses focus (user clicked elsewhere on screen).
@@ -308,15 +323,29 @@ export function IndicatorWindow() {
           overflow: "hidden",
         } as React.CSSProperties}
       >
-        <img
-          src="/ghostspell-ghost.png"
-          alt=""
-          style={{
-            width: "28px", height: "28px", flexShrink: 0,
-            animation: state === "processing" ? "bounce 1.5s ease-in-out infinite" : "none",
-            pointerEvents: "none",
-          }}
-        />
+        <div style={{ position: "relative", flexShrink: 0, width: "28px", height: "28px" }}>
+          <img
+            src="/ghostspell-ghost.png"
+            alt=""
+            style={{
+              width: "28px", height: "28px",
+              transform: isRecording ? `scale(${1 + audioLevel * 0.3})` : "none",
+              transition: isRecording ? "transform 80ms ease-out" : "none",
+              animation: !isRecording && state === "processing" ? "bounce 1.5s ease-in-out infinite" : "none",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Red recording dot */}
+          {isRecording && (
+            <span style={{
+              position: "absolute", bottom: "-2px", right: "-2px",
+              width: "8px", height: "8px", borderRadius: "50%",
+              background: "#f38ba8",
+              animation: "recPulse 1.2s ease-in-out infinite",
+              boxShadow: "0 0 4px #f38ba8",
+            }} />
+          )}
+        </div>
         <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", whiteSpace: "nowrap", gap: "1px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             {icon && <span style={{ fontSize: "14px", flexShrink: 0 }}>{icon}</span>}
@@ -361,6 +390,7 @@ export function IndicatorWindow() {
         <style>{`
           @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
           @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+          @keyframes recPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.8)} }
         `}</style>
       </div>
     );
