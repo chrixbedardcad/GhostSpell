@@ -308,32 +308,53 @@ func main() {
 // initSTT initializes the speech-to-text provider.
 // Tries Ghost Voice (local whisper.cpp) first, falls back to OpenAI Whisper API.
 func initSTT(cfg *config.Config) {
-	// Try Ghost Voice (local) if a voice model is configured.
+	fmt.Println("[stt] Initializing speech-to-text...")
+	slog.Info("[stt] initSTT called", "voice_enabled", cfg.Voice.Enabled, "voice_model", cfg.Voice.Model)
+
+	// Try Ghost Voice (local whisper.cpp) if a voice model is configured.
 	if cfg.Voice.Model != "" {
+		fmt.Printf("[stt] Voice model configured: %s\n", cfg.Voice.Model)
 		modelsDir, err := llm.LocalModelsDir()
-		if err == nil {
+		if err != nil {
+			fmt.Printf("[stt] Failed to get models dir: %v\n", err)
+			slog.Warn("[stt] Failed to get models dir", "error", err)
+		} else {
 			client, err := stt.NewGhostVoiceClient(cfg.Voice.Model, modelsDir)
 			if err == nil {
 				appSTT = client
+				fmt.Printf("[stt] Ghost Voice initialized: %s\n", cfg.Voice.Model)
 				slog.Info("[stt] Ghost Voice initialized", "model", cfg.Voice.Model)
 				return
 			}
+			fmt.Printf("[stt] Ghost Voice unavailable: %v\n", err)
 			slog.Warn("[stt] Ghost Voice unavailable", "error", err)
 		}
+	} else {
+		fmt.Println("[stt] No voice model configured in config")
 	}
 
 	// Fall back to cloud Whisper API if OpenAI/ChatGPT provider is configured.
 	for provType, prov := range cfg.Providers {
 		if provType == "openai" || provType == "chatgpt" {
-			if prov.APIKey != "" {
-				appSTT = stt.NewWhisperCloud(prov.APIKey, "", "")
+			// Use API key directly, or refresh from OAuth token.
+			apiKey := prov.APIKey
+			if apiKey == "" && prov.RefreshToken != "" {
+				fmt.Printf("[stt] Provider %s has OAuth token, will refresh on use\n", provType)
+				// For OAuth (ChatGPT), create client with empty key — it refreshes on first call.
+				apiKey = "oauth-pending"
+			}
+			if apiKey != "" {
+				appSTT = stt.NewWhisperCloud(apiKey, "", "")
+				fmt.Printf("[stt] Using cloud Whisper API via %s\n", provType)
 				slog.Info("[stt] Using cloud Whisper API", "provider", provType)
 				return
 			}
 		}
 	}
 
-	slog.Info("[stt] No STT provider available — voice prompts will not work")
+	fmt.Println("[stt] WARNING: No STT provider available — voice prompts will not work")
+	fmt.Println("[stt] To enable: download a voice model in Settings > Voice, or configure OpenAI/ChatGPT")
+	slog.Warn("[stt] No STT provider available — voice prompts will not work")
 }
 
 // newClientFromConfig builds an LLM client by merging a named model entry
