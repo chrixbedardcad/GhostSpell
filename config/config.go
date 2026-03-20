@@ -165,7 +165,7 @@ func DefaultPrompts() []PromptEntry {
 		{Name: "Ask", Prompt: DefaultAskPrompt, Icon: "\u2753"},
 		{Name: "Define", Prompt: DefaultDefinePrompt, Icon: "\U0001F4D6", DisplayMode: "popup"},
 		{Name: "Describe Screenshot", Prompt: DefaultDescribeScreenPrompt, Icon: "\U0001F4F8", Vision: true, DisplayMode: "popup"},
-		{Name: "Screenshot OCR", Prompt: DefaultScreenshotOCRPrompt, Icon: "\U0001F441\uFE0F", Vision: true, DisplayMode: "popup"},
+		{Name: "Screenshot OCR", Prompt: DefaultScreenshotOCRPrompt, Icon: "\U0001F5A5\uFE0F", Vision: true, DisplayMode: "popup"},
 		{Name: "Voice to Text", Prompt: DefaultVoiceToTextPrompt, Icon: "\U0001F4AC", Voice: true, VoiceMode: "dictation"},
 		{Name: "Voice Note", Prompt: DefaultVoiceNotePrompt, Icon: "\U0001F4DD", Voice: true, VoiceMode: "skill"},
 	}
@@ -619,7 +619,7 @@ func applyDefaults(cfg *Config) {
 		cfg.Prompts = append(cfg.Prompts, PromptEntry{
 			Name:        "Screenshot OCR",
 			Prompt:      DefaultScreenshotOCRPrompt,
-			Icon:        "\U0001F441\uFE0F",
+			Icon:        "\U0001F5A5\uFE0F",
 			Vision:      true,
 			DisplayMode: "popup",
 		})
