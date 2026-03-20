@@ -95,15 +95,19 @@ jobs:
         run: |
           chmod +x scripts/build-ghostai.sh
           ./scripts/build-ghostai.sh
+      - name: Build Ghost Voice static libraries
+        run: |
+          chmod +x scripts/build-ghostvoice.sh
+          ./scripts/build-ghostvoice.sh
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: ${{ matrix.cgo }}
         run: |
-          TAGS="production ghostai"
+          TAGS="production ghostai ghostvoice"
           if [ "${{ matrix.goos }}" = "linux" ]; then
-            TAGS="webkit2_41 production ghostai"
+            TAGS="webkit2_41 production ghostai ghostvoice"
           fi
           if [ "${{ matrix.goos }}" = "windows" ]; then
             # Static link MinGW runtime (libwinpthread, libgcc, libstdc++) so users don't need DLLs.

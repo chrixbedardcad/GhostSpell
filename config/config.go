@@ -128,7 +128,7 @@ const (
 	DefaultDefinePrompt           = "Define the following word or phrase. Provide a clear, concise definition. If applicable, include the part of speech and a brief example of usage. Keep it short and helpful."
 	DefaultDescribeScreenPrompt   = "Describe what you see in this image. Be concise."
 	DefaultScreenshotOCRPrompt    = "Extract all text from this image. Return only the text, preserving formatting."
-	DefaultDictatePrompt          = "Transcribe the following speech accurately. Preserve the speaker's words exactly, only fixing obvious speech-to-text errors. Do not rephrase or summarize."
+	DefaultVoiceToTextPrompt      = "Transcribe the following speech accurately. Preserve the speaker's words exactly, only fixing obvious speech-to-text errors. Do not rephrase or summarize."
 	DefaultVoiceNotePrompt        = "The following is a voice transcription. Clean it up into well-structured text. Fix grammar and remove filler words, but preserve the meaning."
 )
 
@@ -145,7 +145,7 @@ func DefaultPrompts() []PromptEntry {
 		{Name: "Define", Prompt: DefaultDefinePrompt, Icon: "\U0001F4D6", DisplayMode: "popup"},
 		{Name: "Describe Screenshot", Prompt: DefaultDescribeScreenPrompt, Icon: "\U0001F4F8", Vision: true, DisplayMode: "popup"},
 		{Name: "Screenshot OCR", Prompt: DefaultScreenshotOCRPrompt, Icon: "\U0001F441\uFE0F", Vision: true, DisplayMode: "popup"},
-		{Name: "Dictate", Prompt: DefaultDictatePrompt, Icon: "\U0001F399\uFE0F", Voice: true, VoiceMode: "dictation"},
+		{Name: "Voice to Text", Prompt: DefaultVoiceToTextPrompt, Icon: "\U0001F399\uFE0F", Voice: true, VoiceMode: "dictation"},
 		{Name: "Voice Note", Prompt: DefaultVoiceNotePrompt, Icon: "\U0001F4DD", Voice: true, VoiceMode: "skill"},
 	}
 }
@@ -597,7 +597,7 @@ func applyDefaults(cfg *Config) {
 	hasDictate := false
 	hasVoiceNote := false
 	for _, p := range cfg.Prompts {
-		if p.Name == "Dictate" {
+		if p.Name == "Voice to Text" || p.Name == "Dictate" {
 			hasDictate = true
 		}
 		if p.Name == "Voice Note" {
@@ -606,8 +606,8 @@ func applyDefaults(cfg *Config) {
 	}
 	if !hasDictate {
 		cfg.Prompts = append(cfg.Prompts, PromptEntry{
-			Name:      "Dictate",
-			Prompt:    DefaultDictatePrompt,
+			Name:      "Voice to Text",
+			Prompt:    DefaultVoiceToTextPrompt,
 			Icon:      "\U0001F399\uFE0F",
 			Voice:     true,
 			VoiceMode: "dictation",

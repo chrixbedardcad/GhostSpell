@@ -118,7 +118,23 @@ func AvailableVoiceModels() []VoiceModel {
 			URL:      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
 			Size:     1_500_000_000,
 			Tag:      "heavy",
-			Desc:     "Highest accuracy, 769M params. Needs 2GB+ RAM.",
+			Desc:     "High accuracy, 769M params. Needs 2GB+ RAM.",
+		},
+		{
+			Name:     "whisper-large-v3-turbo",
+			FileName: "ggml-large-v3-turbo.bin",
+			URL:      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+			Size:     1_600_000_000,
+			Tag:      "best",
+			Desc:     "Best accuracy + speed. Turbo variant of large-v3. 809M params.",
+		},
+		{
+			Name:     "whisper-large-v3",
+			FileName: "ggml-large-v3.bin",
+			URL:      "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+			Size:     3_100_000_000,
+			Tag:      "heavy",
+			Desc:     "Maximum accuracy, 1.55B params. Needs 4GB+ RAM. Slowest.",
 		},
 	}
 }

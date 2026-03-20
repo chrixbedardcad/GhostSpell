@@ -3,9 +3,12 @@ package gui
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 
 	"github.com/chrixbedardcad/GhostSpell/llm"
+	"github.com/chrixbedardcad/GhostSpell/stt"
 )
 
 // downloadActive prevents concurrent model downloads.
@@ -103,6 +106,76 @@ func (s *SettingsService) SetLocalKeepAlive(providerType string, enabled bool) s
 		return fmt.Sprintf("error: %v", err)
 	}
 	return "ok"
+}
+
+// --- Ghost Voice (speech-to-text) model management ---
+
+// VoiceDownloadModel downloads a voice model by name (blocking).
+func (s *SettingsService) VoiceDownloadModel(name string) string {
+	guiLog("[GUI] JS called: VoiceDownloadModel(%s)", name)
+	if !downloadActive.CompareAndSwap(false, true) {
+		return "error: a download is already in progress"
+	}
+	defer downloadActive.Store(false)
+	s.downloadProgress.Store(&llm.DownloadProgress{})
+	if err := stt.DownloadVoiceModel(name, func(p llm.DownloadProgress) {
+		s.downloadProgress.Store(&p)
+	}); err != nil {
+		s.downloadProgress.Store((*llm.DownloadProgress)(nil))
+		return fmt.Sprintf("error: %v", err)
+	}
+	s.downloadProgress.Store((*llm.DownloadProgress)(nil))
+	return "ok"
+}
+
+// VoiceDeleteModel deletes a downloaded voice model.
+func (s *SettingsService) VoiceDeleteModel(name string) string {
+	guiLog("[GUI] JS called: VoiceDeleteModel(%s)", name)
+	if err := stt.DeleteVoiceModel(name); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+// VoiceAvailableModels returns the list of available voice models as JSON.
+func (s *SettingsService) VoiceAvailableModels() string {
+	models := stt.AvailableVoiceModels()
+	data, _ := json.Marshal(models)
+	return string(data)
+}
+
+// VoiceStatus returns installed + available voice models as JSON.
+func (s *SettingsService) VoiceStatus() string {
+	modelsDir, err := stt.VoiceModelsDir()
+	if err != nil {
+		return fmt.Sprintf(`{"error":"%s"}`, err.Error())
+	}
+	type modelStatus struct {
+		Name      string `json:"name"`
+		FileName  string `json:"file_name"`
+		Size      int64  `json:"size"`
+		Tag       string `json:"tag"`
+		Desc      string `json:"desc"`
+		Installed bool   `json:"installed"`
+	}
+	var result []modelStatus
+	for _, m := range stt.AvailableVoiceModels() {
+		ms := modelStatus{
+			Name:     m.Name,
+			FileName: m.FileName,
+			Size:     m.Size,
+			Tag:      m.Tag,
+			Desc:     m.Desc,
+		}
+		path := filepath.Join(modelsDir, m.FileName)
+		if info, err := os.Stat(path); err == nil && info.Size() > 0 {
+			ms.Installed = true
+			ms.Size = info.Size()
+		}
+		result = append(result, ms)
+	}
+	data, _ := json.Marshal(result)
+	return string(data)
 }
 
 // LocalAvailableModels returns the list of downloadable models as JSON.

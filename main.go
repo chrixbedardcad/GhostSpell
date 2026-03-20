@@ -16,6 +16,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/internal/sysinfo"
 	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/chrixbedardcad/GhostSpell/mode"
+	"github.com/chrixbedardcad/GhostSpell/stt"
 	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/chrixbedardcad/GhostSpell/stats"
 )
@@ -201,6 +202,9 @@ func main() {
 	appStats = stats.New(configDir)
 	debugState.InitFromConfig(cfg.LogLevel)
 
+	// Initialize speech-to-text provider (Ghost Voice or cloud fallback).
+	initSTT(cfg)
+
 	slog.Info("GhostSpell starting",
 		"version", Version,
 		"default_model", cfg.DefaultModel,
@@ -299,6 +303,37 @@ func main() {
 	)
 
 	runApp(cfg, router, configPath, needsSetup, initError)
+}
+
+// initSTT initializes the speech-to-text provider.
+// Tries Ghost Voice (local whisper.cpp) first, falls back to OpenAI Whisper API.
+func initSTT(cfg *config.Config) {
+	// Try Ghost Voice (local) if a voice model is configured.
+	if cfg.Voice.Model != "" {
+		modelsDir, err := llm.LocalModelsDir()
+		if err == nil {
+			client, err := stt.NewGhostVoiceClient(cfg.Voice.Model, modelsDir)
+			if err == nil {
+				appSTT = client
+				slog.Info("[stt] Ghost Voice initialized", "model", cfg.Voice.Model)
+				return
+			}
+			slog.Warn("[stt] Ghost Voice unavailable", "error", err)
+		}
+	}
+
+	// Fall back to cloud Whisper API if OpenAI/ChatGPT provider is configured.
+	for provType, prov := range cfg.Providers {
+		if provType == "openai" || provType == "chatgpt" {
+			if prov.APIKey != "" {
+				appSTT = stt.NewWhisperCloud(prov.APIKey, "", "")
+				slog.Info("[stt] Using cloud Whisper API", "provider", provType)
+				return
+			}
+		}
+	}
+
+	slog.Info("[stt] No STT provider available — voice prompts will not work")
 }
 
 // newClientFromConfig builds an LLM client by merging a named model entry
