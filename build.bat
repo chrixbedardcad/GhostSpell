@@ -277,33 +277,36 @@ set WHISPER_VERSION=v1.7.5
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
+:: Skip if libraries AND headers already built
 set /a WLIBS=0
-set WHEADERS_OK=0
-if exist "!WHISPER_OUT!\lib" (
-    for /f "delims=" %%f in ('dir /b "!WHISPER_OUT!\lib\*.a" 2^>nul') do set /a WLIBS+=1
+if exist "%WHISPER_OUT%\lib" (
+    for %%f in ("%WHISPER_OUT%\lib\*.a") do set /a WLIBS+=1
 )
-if exist "!WHISPER_OUT!\include\whisper.h" if exist "!WHISPER_OUT!\include\ggml.h" set WHEADERS_OK=1
+set WHEADERS_OK=0
+if exist "%WHISPER_OUT%\include\whisper.h" if exist "%WHISPER_OUT%\include\ggml.h" set WHEADERS_OK=1
 if !WLIBS! geq 2 if !WHEADERS_OK!==1 (
     echo [1.5] Ghost Voice libraries already built ^(!WLIBS! libs^) — skipping.
+    echo     To rebuild: delete the build\whisper folder and re-run.
     echo.
     goto :skip_ghostvoice
 )
 
-echo [1.5] Building Ghost Voice ^(whisper.cpp !WHISPER_VERSION!^)...
+echo [1.5] Building Ghost Voice ^(whisper.cpp %WHISPER_VERSION%^)...
 echo.
 
+:: --- Download whisper.cpp source ---
 set WNEED=1
-if exist "!WHISPER_SRC!\.version" (
-    set /p WCACHED=<"!WHISPER_SRC!\.version"
-    if "!WCACHED!"=="!WHISPER_VERSION!" (
+if exist "%WHISPER_SRC%\.version" (
+    set /p WCACHED=<"%WHISPER_SRC%\.version"
+    if "!WCACHED!"=="%WHISPER_VERSION%" (
         echo   Using cached whisper.cpp source
         set WNEED=0
     )
 )
 
 if !WNEED!==1 (
-    echo   Downloading whisper.cpp !WHISPER_VERSION!...
-    curl -fsSL "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/!WHISPER_VERSION!.tar.gz" -o "%BUILD_DIR%\whisper.tar.gz"
+    echo   Downloading whisper.cpp %WHISPER_VERSION%...
+    curl -fsSL "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/%WHISPER_VERSION%.tar.gz" -o "%BUILD_DIR%\whisper.tar.gz"
     if !errorlevel! neq 0 (
         echo   WARNING: Download failed — skipping Ghost Voice
         set GHOSTVOICE=0
@@ -315,20 +318,23 @@ if !WNEED!==1 (
         if exist "whisper-src" rmdir /s /q "whisper-src"
         rename "%%d" whisper-src
     )
-    echo !WHISPER_VERSION!> "!WHISPER_SRC!\.version"
+    echo %WHISPER_VERSION%> "%WHISPER_SRC%\.version"
     del whisper.tar.gz 2>nul
     cd /d "%~dp0"
     echo   Downloaded OK
 )
 
+:: --- Build static libraries with CMake ---
 echo   Compiling whisper.cpp static libraries...
-set WBUILD=!WHISPER_SRC!\build
-:: Clean stale build dir to avoid "ninja: no work to do" with missing output
-if exist "!WBUILD!" rmdir /s /q "!WBUILD!"
-mkdir "!WBUILD!"
-cd /d "!WBUILD!"
+
+set WHISPER_BUILD=%WHISPER_SRC%\build
+:: Clean stale build dir to force a fresh build
+if exist "%WHISPER_BUILD%" rmdir /s /q "%WHISPER_BUILD%"
+mkdir "%WHISPER_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
+
+cd /d "%WHISPER_BUILD%"
 cmake .. -G "!GENERATOR_NAME!" ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_C_COMPILER=gcc ^
@@ -365,43 +371,37 @@ if !errorlevel! neq 0 (
 )
 cd /d "%~dp0"
 
-if not exist "!WHISPER_OUT!\include" mkdir "!WHISPER_OUT!\include"
-if not exist "!WHISPER_OUT!\lib" mkdir "!WHISPER_OUT!\lib"
+:: --- Install headers + libraries (same pattern as Ghost-AI) ---
+if not exist "%WHISPER_OUT%\include" mkdir "%WHISPER_OUT%\include"
+if not exist "%WHISPER_OUT%\lib" mkdir "%WHISPER_OUT%\lib"
 
-:: Headers — copy all .h files from whisper source include dirs
-:: NOTE: for /r does not work with delayed-expansion paths (!VAR!), use dir+for /f
+:: Headers — copy all .h from whisper's include dirs
 echo   Collecting headers...
-for /f "delims=" %%p in ('dir /s /b "!WHISPER_SRC!\include\*.h" 2^>nul') do (
-    echo     Header: %%~nxp
-    copy /y "%%p" "!WHISPER_OUT!\include\" >nul 2>&1
-)
-:: Also grab ggml headers from ggml/include if present
-if exist "!WHISPER_SRC!\ggml\include" (
-    for /f "delims=" %%p in ('dir /s /b "!WHISPER_SRC!\ggml\include\*.h" 2^>nul') do (
-        echo     Header: %%~nxp
-        copy /y "%%p" "!WHISPER_OUT!\include\" >nul 2>&1
-    )
+copy /y "%WHISPER_SRC%\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
+if exist "%WHISPER_SRC%\ggml\include" (
+    copy /y "%WHISPER_SRC%\ggml\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
 )
 
-:: Libraries — collect all .a files from whisper build tree
-:: NOTE: for /r does not work with delayed-expansion paths (!VAR!), use dir+for /f
-echo   Collecting libraries from !WBUILD!...
-for /f "delims=" %%f in ('dir /s /b "!WBUILD!\*.a" 2^>nul') do (
-    echo     Found: %%f
-    copy /y "%%f" "!WHISPER_OUT!\lib\" >nul
+:: Static libraries — collect all .a from build tree
+echo   Collecting libraries...
+for /r "%WHISPER_BUILD%" %%f in (*.a) do (
+    echo     Found: %%~nxf
+    copy /y "%%f" "%WHISPER_OUT%\lib\" >nul 2>&1
 )
-for /f "delims=" %%f in ('dir /b "!WHISPER_OUT!\lib\*.a" 2^>nul') do (
-    set "wfn=%%f"
+
+:: Ensure lib* prefix for MinGW linker
+for %%f in ("%WHISPER_OUT%\lib\*.a") do (
+    set "wfn=%%~nxf"
     if not "!wfn:~0,3!"=="lib" (
-        if not exist "!WHISPER_OUT!\lib\lib%%f" rename "!WHISPER_OUT!\lib\%%f" "lib%%f"
+        rename "%%f" "lib!wfn!"
     )
 )
 
+:: Verify we got libraries
 set /a WCOUNT=0
-for /f "delims=" %%f in ('dir /b "!WHISPER_OUT!\lib\*.a" 2^>nul') do set /a WCOUNT+=1
+for %%f in ("%WHISPER_OUT%\lib\*.a") do set /a WCOUNT+=1
 if !WCOUNT!==0 (
-    echo   WARNING: No whisper libraries found — listing build output:
-    dir /s /b "!WBUILD!\*.a" "!WBUILD!\*.lib" "!WBUILD!\*.dll" 2>nul
+    echo   WARNING: No whisper libraries found — falling back without Ghost Voice
     set GHOSTVOICE=0
 ) else (
     echo   Ghost Voice ready: !WCOUNT! libraries installed
