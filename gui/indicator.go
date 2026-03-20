@@ -184,14 +184,10 @@ func moveIndicatorWindow(win *application.WebviewWindow, x, y int) {
 	indicatorMu.Lock()
 	indicatorMoving = true
 	indicatorMu.Unlock()
-	moveIndicatorWindow(win, x, y)
-	// Small delay to let WindowDidMove fire and be ignored before clearing flag.
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		indicatorMu.Lock()
-		indicatorMoving = false
-		indicatorMu.Unlock()
-	}()
+	win.SetPosition(x, y)
+	indicatorMu.Lock()
+	indicatorMoving = false
+	indicatorMu.Unlock()
 }
 
 
