@@ -83,46 +83,6 @@ func processVoice(
 		}
 	}()
 
-	// "Over" voice command detection — runs streaming whisper in the background
-	// purely to detect the stop command. No live text display.
-	var overStopped atomic.Bool
-	streamDone := make(chan struct{})
-	canStream := cfg.Voice.Streaming
-	if canStream {
-		if st, ok := transcriber.(stt.StreamingTranscriber); ok {
-			canStream = st.SupportsStreaming()
-		} else {
-			canStream = false
-		}
-	}
-	if canStream {
-		go func() {
-			defer close(streamDone)
-			slog.Info("[voice] 'Over' detection enabled (streaming)")
-			stt.TranscribeStreaming(
-				recCtx, transcriber, recorder.SnapshotWAV,
-				cfg.Voice.Language,
-				func(text string) {
-					if endsWithOver(text) {
-						slog.Info("[voice] 'over' voice command detected — stopping recording")
-						fmt.Println("[voice] 'over' detected — auto-stopping")
-						overStopped.Store(true)
-						sound.PlayMicStop()
-						voiceStopMu.Lock()
-						if voiceStopCh != nil {
-							close(voiceStopCh)
-							voiceStopCh = nil
-						}
-						voiceStopMu.Unlock()
-					}
-				},
-				2*time.Second,
-			)
-		}()
-	} else {
-		close(streamDone)
-	}
-
 	fmt.Println("[voice] Starting audio capture...")
 	wavData, duration, err := recorder.Record(cancelCtx, stopCh)
 
@@ -132,7 +92,7 @@ func processVoice(
 	voiceStopCh = nil
 	voiceStopMu.Unlock()
 
-	recCancel() // stop level polling + over detection
+	recCancel() // stop level polling
 
 	if err != nil {
 		slog.Error("[voice] Recording failed", "error", err)
@@ -150,11 +110,9 @@ func processVoice(
 	}
 
 	slog.Info("[voice] Recording complete", "duration", duration, "wav_size", len(wavData))
-	if !overStopped.Load() {
-		sound.PlayMicStop()
-	}
+	sound.PlayMicStop()
 
-	// Show transcribing indicator IMMEDIATELY — no gap between recording and processing.
+	// Show transcribing indicator IMMEDIATELY — no gap.
 	voiceModelName := cfg.Voice.Model
 	if transcriber != nil {
 		voiceModelName = transcriber.Name() + " (" + cfg.Voice.Model + ")"
@@ -162,13 +120,6 @@ func processVoice(
 	gui.ShowIndicator("🎙️", "Transcribing...", voiceModelName)
 	sound.PlayClick()
 	sound.StartWorkingLoop()
-
-	// Wait for streaming goroutine to release whisper mutex before final transcription.
-	select {
-	case <-streamDone:
-	case <-time.After(5 * time.Second):
-		slog.Warn("[voice] Over-detection goroutine slow to stop — proceeding")
-	}
 
 	if transcriber == nil {
 		slog.Error("[voice] No STT provider configured")
@@ -194,7 +145,6 @@ func processVoice(
 	}
 
 	transcript = strings.TrimSpace(transcript)
-	transcript = stripOverCommand(transcript)
 	if transcript == "" {
 		slog.Warn("[voice] Empty transcription")
 		gui.HideIndicator()
@@ -326,32 +276,4 @@ func processVoice(
 
 	slog.Info("[voice] Complete", "prompt", promptName, "transcript_len", len(transcript), "result_len", len(result))
 	fmt.Printf("[%s] Voice complete (%d chars → %d chars)\n", promptName, len(transcript), len(result))
-}
-
-// endsWithOver checks if the transcript ends with the "over" voice command.
-func endsWithOver(text string) bool {
-	text = strings.TrimSpace(strings.ToLower(text))
-	text = strings.TrimRight(text, ".,!?;:")
-	text = strings.TrimSpace(text)
-	return text == "over" || strings.HasSuffix(text, " over")
-}
-
-// stripOverCommand removes the trailing "over" from a transcript.
-func stripOverCommand(text string) string {
-	lower := strings.TrimSpace(strings.ToLower(text))
-	stripped := strings.TrimRight(lower, ".,!?;:")
-	stripped = strings.TrimSpace(stripped)
-	if stripped == "over" {
-		return ""
-	}
-	if strings.HasSuffix(stripped, " over") {
-		idx := len(text) - 1
-		for idx >= 0 && (text[idx] == '.' || text[idx] == ',' || text[idx] == '!' || text[idx] == '?' || text[idx] == ' ') {
-			idx--
-		}
-		if idx >= 3 {
-			return strings.TrimSpace(text[:idx-3])
-		}
-	}
-	return text
 }
