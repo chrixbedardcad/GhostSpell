@@ -639,12 +639,16 @@ func (s *SettingsService) GetIndicatorMenu() string {
 		Active bool   `json:"active"`
 	}
 	type menuData struct {
-		Prompts      []menuPrompt `json:"prompts"`
-		Version      string       `json:"version"`
-		ActiveModel  string       `json:"activeModel"`
+		Prompts       []menuPrompt `json:"prompts"`
+		Version       string       `json:"version"`
+		ActiveModel   string       `json:"activeModel"`
+		IndicatorMode string       `json:"indicatorMode"`
 	}
 	var data menuData
 	data.Version = version.Version
+	indicatorMu.Lock()
+	data.IndicatorMode = indicatorMode
+	indicatorMu.Unlock()
 	cfg := s.indicatorCfg()
 	if cfg != nil {
 		for i, p := range cfg.Prompts {
@@ -684,11 +688,33 @@ func (s *SettingsService) SetActivePromptFromIndicator(idx int) string {
 	return "ok"
 }
 
-// GetActivePromptInfo returns the active prompt name and icon as JSON (for tooltip).
+// SetIndicatorModeFromIndicator changes the indicator display mode from the context menu.
+func (s *SettingsService) SetIndicatorModeFromIndicator(mode string) string {
+	slog.Info("[GUI] SetIndicatorModeFromIndicator called", "mode", mode)
+	if mode != "always" && mode != "processing" && mode != "hidden" {
+		return "error: invalid mode"
+	}
+	SetIndicatorMode(mode)
+	cfg := s.indicatorCfg()
+	if cfg != nil {
+		cfg.IndicatorMode = mode
+		if mode == "always" {
+			go ShowIdle()
+		} else {
+			go HideIndicator()
+		}
+	}
+	SaveIndicatorMode(mode)
+	return "ok"
+}
+
+// GetActivePromptInfo returns the active prompt name, icon, and mode flags as JSON.
 func (s *SettingsService) GetActivePromptInfo() string {
 	type info struct {
-		Name string `json:"name"`
-		Icon string `json:"icon"`
+		Name   string `json:"name"`
+		Icon   string `json:"icon"`
+		Voice  bool   `json:"voice"`
+		Vision bool   `json:"vision"`
 	}
 	cfg := s.indicatorCfg()
 	if cfg == nil || len(cfg.Prompts) == 0 {
@@ -699,7 +725,7 @@ func (s *SettingsService) GetActivePromptInfo() string {
 		idx = 0
 	}
 	p := cfg.Prompts[idx]
-	j, _ := json.Marshal(info{Name: p.Name, Icon: p.Icon})
+	j, _ := json.Marshal(info{Name: p.Name, Icon: p.Icon, Voice: p.Voice, Vision: p.Vision})
 	return string(j)
 }
 

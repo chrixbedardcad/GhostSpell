@@ -99,13 +99,28 @@ func ensureIndicatorWindow() {
 // indicatorConfigSaver persists drag position to config file.
 var indicatorConfigSaver func(x, y int)
 
-// SetIndicatorConfigSaver sets the callback to persist position to config.
+// SetIndicatorConfigSaver sets the callback to persist position and mode to config.
 func SetIndicatorConfigSaver(cfg *config.Config, configPath string) {
 	indicatorConfigSaver = func(x, y int) {
 		cfg.IndicatorX = x
 		cfg.IndicatorY = y
 		config.WriteDefault(configPath, cfg)
 		slog.Info("[indicator] Position saved to config", "x", x, "y", y)
+	}
+	indicatorModeSaver = func(mode string) {
+		cfg.IndicatorMode = mode
+		config.WriteDefault(configPath, cfg)
+		slog.Info("[indicator] Mode saved to config", "mode", mode)
+	}
+}
+
+// indicatorModeSaver persists indicator mode to config file.
+var indicatorModeSaver func(mode string)
+
+// SaveIndicatorMode persists the indicator mode via the registered saver.
+func SaveIndicatorMode(mode string) {
+	if indicatorModeSaver != nil {
+		indicatorModeSaver(mode)
 	}
 }
 

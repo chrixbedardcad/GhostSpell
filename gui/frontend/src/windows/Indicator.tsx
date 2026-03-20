@@ -39,8 +39,26 @@ export function IndicatorWindow() {
   const [menuItems, setMenuItems] = useState<MenuPrompt[]>([]);
   const [menuVersion, setMenuVersion] = useState("");
   const [menuModel, setMenuModel] = useState("");
+  const [menuMode, setMenuMode] = useState("processing");
+  const [isVoice, setIsVoice] = useState(false);
+  const [isVision, setIsVision] = useState(false);
   const timerRef = useRef<number | null>(null);
   const [eventsReady, setEventsReady] = useState(false);
+
+  // Fetch active prompt info (name, icon, voice, vision flags).
+  function fetchPromptInfo() {
+    goCall("getActivePromptInfo").then((raw) => {
+      if (raw) {
+        try {
+          const info = JSON.parse(raw);
+          if (info.name) setName(info.name);
+          if (info.icon) setIcon(info.icon);
+          setIsVoice(!!info.voice);
+          setIsVision(!!info.vision);
+        } catch { /* ignore */ }
+      }
+    });
+  }
 
   // Set up backgrounds and fetch initial prompt.
   useEffect(() => {
@@ -49,18 +67,7 @@ export function IndicatorWindow() {
     document.body.style.cssText = "background:transparent;margin:0;padding:0;overflow:hidden";
     const root = document.getElementById("root");
     if (root) root.style.cssText = "background:transparent;width:100%;height:100%";
-
-    // Fetch current active prompt so idle indicator shows which prompt is selected.
-    goCall("getActivePromptInfo").then((raw) => {
-      if (raw) {
-        try {
-          const info = JSON.parse(raw);
-          if (info.name) setName(info.name);
-          if (info.icon) setIcon(info.icon);
-          console.log("[Indicator] Active prompt loaded:", info.name);
-        } catch { /* ignore */ }
-      }
-    });
+    fetchPromptInfo();
   }, []);
 
   // Listen for state events from Go — retry subscription until it works.
@@ -91,6 +98,10 @@ export function IndicatorWindow() {
         // Capture final elapsed for done state.
         if (d.state === "done" && d.elapsed !== undefined) {
           setDoneElapsed(d.elapsed);
+        }
+        // Re-fetch prompt info on pop/idle to update voice/vision badges.
+        if (d.state === "pop" || d.state === "idle") {
+          fetchPromptInfo();
         }
       });
     }
@@ -162,9 +173,10 @@ export function IndicatorWindow() {
         setMenuItems(data.prompts || []);
         if (data.version) setMenuVersion(data.version);
         if (data.activeModel) setMenuModel(data.activeModel);
+        if (data.indicatorMode) setMenuMode(data.indicatorMode);
         setMenuOpen(true);
-        // Height: version(26) + prompts(34 each) + divider(5) + settings(34) + quit(34) + border/padding(20)
-        const menuH = 26 + (data.prompts?.length || 0) * 34 + 5 + 34 + 34 + 20;
+        // Height: version(26) + prompts(34 each) + divider(5) + mode section(90) + settings(34) + quit(34) + padding(20)
+        const menuH = 26 + (data.prompts?.length || 0) * 34 + 5 + 90 + 34 + 34 + 20;
         goCall("resizeIndicatorForMenu", 220, menuH);
       } catch (err) { console.error("[Indicator] onContextMenu: parse error", err); }
     }
@@ -184,6 +196,22 @@ export function IndicatorWindow() {
     await goCall("setActivePromptFromIndicator", idx);
   }
 
+  async function setDisplayMode(mode: string) {
+    setMenuMode(mode);
+    closeMenu();
+    await goCall("setIndicatorModeFromIndicator", mode);
+  }
+
+  // --- Badge style for mic/camera on idle circle ---
+  const badgeStyle = (position: "bottom-right" | "bottom-left"): React.CSSProperties => ({
+    position: "absolute",
+    ...(position === "bottom-right" ? { bottom: "1px", right: "1px" } : { bottom: "1px", left: "1px" }),
+    fontSize: "10px",
+    lineHeight: 1,
+    pointerEvents: "none",
+    opacity: 0.8,
+  });
+
   // --- Render ---
   const isPill = state === "processing" || state === "pop" || state === "done";
 
@@ -191,7 +219,7 @@ export function IndicatorWindow() {
     return <div style={{ background: "rgb(30,30,46)" }} />;
   }
 
-  // Idle state: 48x48 circle with ghost icon + active prompt icon overlay.
+  // Idle state: 48x48 circle with ghost icon + active prompt icon overlay + badges.
   if (!isPill && !menuOpen) {
     return (
       <div
@@ -229,6 +257,8 @@ export function IndicatorWindow() {
             fontSize: "12px", lineHeight: 1, pointerEvents: "none",
           }}>{icon}</span>
         )}
+        {isVoice && <span style={badgeStyle("bottom-right")}>{"\uD83C\uDF99\uFE0F"}</span>}
+        {isVision && <span style={badgeStyle("bottom-left")}>{"\uD83D\uDCF7"}</span>}
         <style>{`@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
       </div>
     );
@@ -319,6 +349,11 @@ export function IndicatorWindow() {
     background: "none", border: "none", cursor: "pointer",
     color: "#a6adc8", transition: "background 150ms",
   };
+  const modeOptions = [
+    { key: "always", label: "Always visible" },
+    { key: "processing", label: "Process only" },
+    { key: "hidden", label: "Hidden" },
+  ];
   return (
     <div style={{
       background: "rgba(24, 24, 37, 0.98)",
@@ -345,6 +380,25 @@ export function IndicatorWindow() {
           <span style={{ width: "18px", textAlign: "center", flexShrink: 0 }}>{item.icon || "\ud83d\udcdd"}</span>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
           {item.active && <span style={{ marginLeft: "auto", fontSize: "8px", color: "#89b4fa" }}>{"\u25cf"}</span>}
+        </button>
+      ))}
+      <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
+      {/* Display mode section */}
+      <div style={{ padding: "4px 12px 2px", fontSize: "10px", color: "#585b70", letterSpacing: "0.5px" }}>
+        Display
+      </div>
+      {modeOptions.map((opt) => (
+        <button
+          key={opt.key}
+          onClick={() => setDisplayMode(opt.key)}
+          style={{ ...mBtn, padding: "6px 12px", fontSize: "11px", color: menuMode === opt.key ? "#89b4fa" : "#a6adc8" }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+        >
+          <span style={{ width: "18px", textAlign: "center", flexShrink: 0, fontSize: "8px" }}>
+            {menuMode === opt.key ? "\u25cf" : ""}
+          </span>
+          <span>{opt.label}</span>
         </button>
       ))}
       <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
