@@ -90,6 +90,7 @@ func processVoice(
 			canStream = st.SupportsStreaming()
 		}
 	}
+	var overStopped atomic.Bool
 	if canStream {
 		go func() {
 			slog.Info("[voice] Streaming transcription enabled")
@@ -99,6 +100,19 @@ func processVoice(
 				func(text string) {
 					slog.Debug("[voice] Partial transcript", "text", text)
 					gui.UpdateTranscript(text)
+					// "Over" voice command — stop recording when detected at end of speech.
+					if endsWithOver(text) {
+						slog.Info("[voice] 'over' voice command detected — stopping recording")
+						fmt.Println("[voice] 'over' detected — auto-stopping recording")
+						overStopped.Store(true)
+						sound.PlayMicStop()
+						voiceStopMu.Lock()
+						if voiceStopCh != nil {
+							close(voiceStopCh)
+							voiceStopCh = nil
+						}
+						voiceStopMu.Unlock()
+					}
 				},
 				2*time.Second,
 			)
@@ -131,7 +145,10 @@ func processVoice(
 	voiceStopMu.Unlock()
 
 	slog.Info("[voice] Recording complete", "duration", duration, "wav_size", len(wavData))
-	sound.PlayMicStop()
+	// Play mic stop sound unless "over" command already played it.
+	if !overStopped.Load() {
+		sound.PlayMicStop()
+	}
 
 	// Transcribe — distinct sound to indicate phase change.
 	sound.PlayClick()
@@ -161,6 +178,8 @@ func processVoice(
 	}
 
 	transcript = strings.TrimSpace(transcript)
+	// Strip "over" voice command from the final transcript.
+	transcript = stripOverCommand(transcript)
 	if transcript == "" {
 		slog.Warn("[voice] Empty transcription")
 		gui.HideIndicator()
@@ -284,4 +303,37 @@ func processVoice(
 
 	slog.Info("[voice] Complete", "prompt", promptName, "transcript_len", len(transcript), "result_len", len(result))
 	fmt.Printf("[%s] Voice complete (%d chars → %d chars)\n", promptName, len(transcript), len(result))
+}
+
+// endsWithOver checks if the transcript ends with the "over" voice command.
+// Handles punctuation and case variations: "over", "Over.", "OVER!", etc.
+func endsWithOver(text string) bool {
+	text = strings.TrimSpace(strings.ToLower(text))
+	// Strip trailing punctuation.
+	text = strings.TrimRight(text, ".,!?;:")
+	text = strings.TrimSpace(text)
+	return text == "over" || strings.HasSuffix(text, " over")
+}
+
+// stripOverCommand removes the trailing "over" voice command from a transcript.
+func stripOverCommand(text string) string {
+	lower := strings.TrimSpace(strings.ToLower(text))
+	stripped := strings.TrimRight(lower, ".,!?;:")
+	stripped = strings.TrimSpace(stripped)
+	if stripped == "over" {
+		return ""
+	}
+	if strings.HasSuffix(stripped, " over") {
+		// Find the position in the original text and trim.
+		idx := len(text) - 1
+		for idx >= 0 && (text[idx] == '.' || text[idx] == ',' || text[idx] == '!' || text[idx] == '?' || text[idx] == ' ') {
+			idx--
+		}
+		// idx now points to the last char of "over" — back up 4 more chars ("over" = 4).
+		if idx >= 3 {
+			result := strings.TrimSpace(text[:idx-3])
+			return result
+		}
+	}
+	return text
 }
