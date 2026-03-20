@@ -110,6 +110,15 @@ func processMode(
 		processingGuard.Unlock()
 	}()
 	slog.Info(promptName + " triggered")
+
+	// --- Voice path: record microphone instead of capture text (#236) ---
+	// Check BEFORE starting the working loop — voice needs silence, not background sounds.
+	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Voice {
+		processVoice(promptName, promptIdx, cfg, router, cb, kb, mu, cancelCtx, startAnim, stopAnim, appSTT)
+		return
+	}
+
+	// Start working sound loop (not for voice — would create noise during recording).
 	slog.Debug("Playing working sound loop...")
 	sound.StartWorkingLoop()
 	if startAnim != nil {
@@ -119,12 +128,6 @@ func processMode(
 	// --- Vision path: capture screenshot instead of text ---
 	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Vision {
 		processVision(promptName, promptIdx, cfg, router, kb, cancelCtx, startAnim, stopAnim)
-		return
-	}
-
-	// --- Voice path: record microphone instead of capture text (#236) ---
-	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].Voice {
-		processVoice(promptName, promptIdx, cfg, router, cb, kb, mu, cancelCtx, startAnim, stopAnim, appSTT)
 		return
 	}
 
