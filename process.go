@@ -101,10 +101,13 @@ func processMode(
 		if stopAnim != nil {
 			stopAnim()
 		}
-		// Don't hide if we just showed a completion summary — PopIndicator
-		// has its own auto-hide timer.
+		// Clear processing flag and hide indicator. ForceHideIndicator
+		// bypasses the processing guard so it always hides.
 		if !showedDoneSummary {
-			gui.HideIndicator()
+			gui.ForceHideIndicator()
+		} else {
+			// Done summary shown — just clear the processing flag.
+			gui.ClearIndicatorProcessing()
 		}
 		processingActive.Store(false)
 		processingGuard.Unlock()

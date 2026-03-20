@@ -39,7 +39,6 @@ export function IndicatorWindow() {
   const [menuMode, setMenuMode] = useState("processing");
   const [isVoice, setIsVoice] = useState(false);
   const [isVision, setIsVision] = useState(false);
-  const [lastStatusIcon, setLastStatusIcon] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const timerRef = useRef<number | null>(null);
@@ -107,12 +106,6 @@ export function IndicatorWindow() {
         // Capture final elapsed for done state.
         if (d.state === "done" && d.elapsed !== undefined) {
           setDoneElapsed(d.elapsed);
-        }
-        // Save last status icon from pop/done for idle center display.
-        if (d.state === "pop" && d.icon) {
-          setLastStatusIcon(d.icon);
-        } else if (d.state === "processing") {
-          setLastStatusIcon(""); // clear on new processing
         }
         // Recording flag for red dot + voice pulse.
         setIsRecording(!!d.recording);
@@ -283,15 +276,6 @@ export function IndicatorWindow() {
             pointerEvents: "none",
           }}
         />
-        {/* Center: last status icon (error, cancel, etc.) */}
-        {lastStatusIcon && (
-          <span style={{
-            position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: "16px", lineHeight: 1, pointerEvents: "none",
-            filter: "drop-shadow(0 0 3px rgba(0,0,0,0.8))",
-          }}>{lastStatusIcon}</span>
-        )}
         {/* Top-right: active skill icon */}
         {icon && (
           <span style={{ ...badgeBase, top: "1px", right: "1px" }}>{icon}</span>

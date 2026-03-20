@@ -239,8 +239,27 @@ func getIndicatorPositionForSize(w, h int) (int, int) {
 	}
 }
 
-func getIndicatorPosition() (int, int) { return getIndicatorPositionForSize(300, 52) }
-func getIdlePosition() (int, int)      { return getIndicatorPositionForSize(48, 48) }
+// getIndicatorPosition returns the pill position anchored to the same corner as idle.
+// The pill expands leftward from the idle circle's right edge (for right-side presets)
+// or rightward from the left edge (for left-side presets).
+func getIndicatorPosition() (int, int) {
+	ix, iy := getIndicatorPositionForSize(48, 48)
+	indicatorMu.Lock()
+	pos := indicatorPos
+	indicatorMu.Unlock()
+	// For right-anchored positions, pill extends leftward from the idle circle.
+	if pos == "top-right" || pos == "bottom-right" || pos == "custom" {
+		return ix - (300 - 48), iy
+	}
+	// For center positions, center the pill on the idle circle.
+	if pos == "center-top" || pos == "center" {
+		return ix - (300-48)/2, iy
+	}
+	// Left-anchored: same left edge.
+	return ix, iy
+}
+
+func getIdlePosition() (int, int) { return getIndicatorPositionForSize(48, 48) }
 
 // PreviewIndicatorPosition shows the indicator briefly.
 func PreviewIndicatorPosition() {
@@ -293,6 +312,22 @@ func ShowIdle() {
 	emitIndicatorEvent(map[string]any{"state": "idle"})
 }
 
+// ClearIndicatorProcessing clears the processing flag without hiding.
+func ClearIndicatorProcessing() {
+	indicatorMu.Lock()
+	indicatorProcessing = false
+	indicatorMu.Unlock()
+}
+
+// ForceHideIndicator hides the indicator regardless of processing state.
+// Called from processMode's defer when the task truly ends.
+func ForceHideIndicator() {
+	indicatorMu.Lock()
+	indicatorProcessing = false
+	indicatorMu.Unlock()
+	HideIndicator()
+}
+
 // ShowRecordingIndicator shows the indicator in recording mode with the recording flag.
 // Uses pill size so the timer is visible, with ghost pulse + red dot.
 func ShowRecordingIndicator() {
@@ -304,6 +339,7 @@ func ShowRecordingIndicator() {
 		indicatorMu.Unlock()
 		return
 	}
+	indicatorProcessing = true
 	ensureIndicatorWindow()
 	win := indicatorWin
 	indicatorMu.Unlock()
@@ -357,6 +393,7 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 		indicatorMu.Unlock()
 		return
 	}
+	indicatorProcessing = true
 	ensureIndicatorWindow()
 	win := indicatorWin
 	indicatorMu.Unlock()
@@ -373,13 +410,28 @@ func ShowIndicator(promptIcon, promptName, modelLabel string) {
 	})
 }
 
+// indicatorProcessing tracks whether the indicator is in an active processing state.
+// Set to true by ShowIndicator/ShowRecordingIndicator, cleared by explicit hide calls
+// from processMode's defer. Prevents pop auto-hide timers from collapsing during work.
+var indicatorProcessing bool
+
 // HideIndicator hides the indicator or returns to idle in "always" mode.
+// Skips if the indicator is in an active processing state (recording, transcribing, etc.)
+// unless forceHide is used internally.
 func HideIndicator() {
 	indicatorMu.Lock()
 	win := indicatorWin
 	mode := indicatorMode
+	processing := indicatorProcessing
 	indicatorMu.Unlock()
 	if win == nil {
+		return
+	}
+
+	// Don't collapse to idle while actively processing (recording, transcribing, LLM).
+	// The processMode defer calls ForceHideIndicator when the task truly ends.
+	if processing {
+		slog.Debug("[indicator] HideIndicator: skipped (processing active)")
 		return
 	}
 

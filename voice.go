@@ -161,6 +161,7 @@ func processVoice(
 	}
 	gui.ShowIndicator("🎙️", "Transcribing...", voiceModelName)
 	sound.PlayClick()
+	sound.StartWorkingLoop()
 
 	// Wait for streaming goroutine to release whisper mutex before final transcription.
 	select {
