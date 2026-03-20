@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -82,15 +84,24 @@ func (s *SettingsService) SubmitBugReport(description string) string {
 	fmt.Fprintf(&body, "| **Default Model** | %s |\n", defaultModel)
 	fmt.Fprintf(&body, "| **Fingerprint** | `%s` |\n", fingerprint)
 
+	// Save the full log to a temp file for drag-and-drop attachment.
+	logFilePath := ""
 	if logTail != "" {
-		body.WriteString("\n## Recent Log (last ~200 lines)\n\n")
-		body.WriteString("<details><summary>Click to expand</summary>\n\n```\n")
-		// Limit log to ~6000 chars to stay within URL limits.
-		if len(logTail) > 6000 {
-			logTail = logTail[len(logTail)-6000:]
+		tmpDir := os.TempDir()
+		logFilePath = filepath.Join(tmpDir, fmt.Sprintf("ghostspell-bugreport-%s.log", fingerprint))
+		if err := os.WriteFile(logFilePath, []byte(logTail), 0644); err != nil {
+			slog.Error("[bugreport] failed to write log file", "error", err)
+			logFilePath = ""
+		} else {
+			slog.Info("[bugreport] log saved for attachment", "path", logFilePath)
 		}
-		body.WriteString(logTail)
-		body.WriteString("\n```\n\n</details>\n")
+	}
+
+	if logFilePath != "" {
+		body.WriteString("\n## Log File\n\n")
+		body.WriteString("**Please drag and drop the log file into this issue:**\n\n")
+		fmt.Fprintf(&body, "`%s`\n\n", logFilePath)
+		body.WriteString("_(The file has been saved automatically. Drag it from the path above into this text area.)_\n")
 	}
 
 	// Build the GitHub new issue URL.
@@ -135,7 +146,12 @@ func (s *SettingsService) SubmitBugReport(description string) string {
 		return "error: failed to open browser — " + err.Error()
 	}
 
-	slog.Info("[bugreport] bug report submitted", "fingerprint", fingerprint)
+	// Open the log file in file explorer so the user can drag it into the issue.
+	if logFilePath != "" {
+		OpenFile(logFilePath)
+	}
+
+	slog.Info("[bugreport] bug report submitted", "fingerprint", fingerprint, "log_file", logFilePath)
 	return "ok"
 }
 
