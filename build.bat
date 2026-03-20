@@ -366,10 +366,15 @@ cd /d "%~dp0"
 if not exist "!WHISPER_OUT!\include" mkdir "!WHISPER_OUT!\include"
 if not exist "!WHISPER_OUT!\lib" mkdir "!WHISPER_OUT!\lib"
 
-:: Headers
+:: Headers — copy whisper.h and ggml headers
+:: NOTE: for /r does not work with delayed-expansion paths (!VAR!), use dir+for /f
 if exist "!WHISPER_SRC!\include\whisper.h" copy /y "!WHISPER_SRC!\include\whisper.h" "!WHISPER_OUT!\include\" >nul 2>&1
 if exist "!WHISPER_SRC!\whisper.h" copy /y "!WHISPER_SRC!\whisper.h" "!WHISPER_OUT!\include\" >nul 2>&1
-for /r "!WHISPER_SRC!" %%h in (ggml.h ggml-alloc.h ggml-backend.h) do copy /y "%%h" "!WHISPER_OUT!\include\" >nul 2>&1
+for %%h in (ggml.h ggml-alloc.h ggml-backend.h) do (
+    for /f "delims=" %%p in ('dir /s /b "!WHISPER_SRC!\%%h" 2^>nul') do (
+        copy /y "%%p" "!WHISPER_OUT!\include\" >nul 2>&1
+    )
+)
 
 :: Libraries — collect all .a files from whisper build tree
 :: NOTE: for /r does not work with delayed-expansion paths (!VAR!), use dir+for /f
