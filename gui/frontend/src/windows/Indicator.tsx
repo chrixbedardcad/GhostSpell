@@ -235,10 +235,10 @@ export function IndicatorWindow() {
   // --- Badge positions for idle circle overlay icons ---
   const badgeBase: React.CSSProperties = {
     position: "absolute",
-    fontSize: "11px",
+    fontSize: "14px",
     lineHeight: 1,
     pointerEvents: "none",
-    filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))",
+    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.9))",
   };
 
   // --- Render ---
@@ -329,8 +329,8 @@ export function IndicatorWindow() {
             alt=""
             style={{
               width: "28px", height: "28px",
-              transform: isRecording ? `scale(${1 + Math.min(audioLevel * 4, 1) * 0.25})` : "none",
-              transition: isRecording ? "transform 80ms ease-out" : "none",
+              transform: isRecording ? `scale(${0.75 + Math.min(audioLevel * 5, 1) * 0.5})` : "none",
+              transition: isRecording ? "transform 100ms ease-out" : "none",
               animation: !isRecording && state === "processing" ? "bounce 1.5s ease-in-out infinite" : "none",
               pointerEvents: "none",
             }}

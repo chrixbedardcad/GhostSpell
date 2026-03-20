@@ -134,13 +134,6 @@ func processVoice(
 
 	recCancel() // stop level polling + over detection
 
-	// Wait briefly for streaming goroutine to release whisper mutex.
-	select {
-	case <-streamDone:
-	case <-time.After(5 * time.Second):
-		slog.Warn("[voice] Over-detection goroutine slow to stop — proceeding")
-	}
-
 	if err != nil {
 		slog.Error("[voice] Recording failed", "error", err)
 		gui.HideIndicator()
@@ -161,13 +154,20 @@ func processVoice(
 		sound.PlayMicStop()
 	}
 
-	// Transcribe — distinct sound to indicate phase change.
-	sound.PlayClick()
+	// Show transcribing indicator IMMEDIATELY — no gap between recording and processing.
 	voiceModelName := cfg.Voice.Model
 	if transcriber != nil {
 		voiceModelName = transcriber.Name() + " (" + cfg.Voice.Model + ")"
 	}
 	gui.ShowIndicator("🎙️", "Transcribing...", voiceModelName)
+	sound.PlayClick()
+
+	// Wait for streaming goroutine to release whisper mutex before final transcription.
+	select {
+	case <-streamDone:
+	case <-time.After(5 * time.Second):
+		slog.Warn("[voice] Over-detection goroutine slow to stop — proceeding")
+	}
 
 	if transcriber == nil {
 		slog.Error("[voice] No STT provider configured")
