@@ -7,9 +7,13 @@
 </head>
 <body>
   <div id="root"></div>
-  <!-- Wails runtime must load before React. The /wails/ path is served by
-       Wails at runtime, not available during Vite build. -->
-  <script src="/wails/runtime.js"></script>
+  <!-- Wails runtime is loaded dynamically to avoid Vite build warnings.
+       The /wails/ path is served by Wails at runtime, not available during build. -->
+  <script>
+    var s = document.createElement("script");
+    s.src = "/wails/runtime.js";
+    document.head.appendChild(s);
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
