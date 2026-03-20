@@ -10,6 +10,8 @@ interface Prompt {
   timeout_ms: number;
   display_mode: string;
   vision: boolean;
+  voice: boolean;
+  voice_mode: string;
 }
 
 /**
@@ -40,7 +42,7 @@ export function PromptsTab() {
 
   async function savePrompt(idx: number, p: Prompt) {
     const timeoutSec = Math.round((p.timeout_ms || 30000) / 1000);
-    await goCall("savePrompt", idx, p.name, p.prompt, p.llm, p.icon, timeoutSec, p.display_mode, p.vision);
+    await goCall("savePrompt", idx, p.name, p.prompt, p.llm, p.icon, timeoutSec, p.display_mode, p.vision, p.voice, p.voice_mode || "");
     setStatus("Saved");
     setTimeout(() => setStatus(""), 2000);
     loadPrompts();
@@ -78,6 +80,7 @@ export function PromptsTab() {
                 <span className="text-sm font-medium text-text">{p.name}</span>
                 {idx === activeIdx && <Badge variant="active" />}
                 {p.vision && <Badge variant="vision" />}
+                {p.voice && <Badge variant="voice" />}
                 {p.display_mode === "popup" && (
                   <span className="text-[10px] text-overlay-0 bg-surface-0 px-1.5 py-0.5 rounded">popup</span>
                 )}
@@ -212,19 +215,32 @@ function PromptEditor({
           </select>
         </div>
 
-        {/* Vision toggle */}
+        {/* Input mode */}
         <div className="flex items-center gap-2">
-          <label className="text-xs text-overlay-0">Vision</label>
-          <button
-            onClick={() => update({ vision: !p.vision })}
-            className={`relative w-8 h-[18px] rounded-full transition-colors ${
-              p.vision ? "bg-accent-sky" : "bg-surface-1"
-            }`}
+          <label className="text-xs text-overlay-0">Input</label>
+          <select
+            value={
+              p.voice && p.voice_mode === "dictation" ? "voice-dictation"
+              : p.voice ? "voice-skill"
+              : p.vision ? "screenshot"
+              : "text"
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              update({
+                voice: v === "voice-skill" || v === "voice-dictation",
+                voice_mode: v === "voice-dictation" ? "dictation" : v === "voice-skill" ? "skill" : "",
+                vision: v === "screenshot",
+              });
+            }}
+            className="bg-crust border border-surface-0 rounded-lg px-2 py-1 text-xs text-subtext-0
+                       focus:outline-none"
           >
-            <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-text transition-transform ${
-              p.vision ? "translate-x-[14px]" : "translate-x-[2px]"
-            }`} />
-          </button>
+            <option value="text">Text</option>
+            <option value="voice-skill">Voice</option>
+            <option value="voice-dictation">Voice (Dictation)</option>
+            <option value="screenshot">Screenshot</option>
+          </select>
         </div>
       </div>
 
