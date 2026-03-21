@@ -119,14 +119,32 @@ for f in "$WHISPER_OUT/lib"/*.dll.a; do
     [ -f "$f" ] && mv "$f" "${f%.dll.a}.a"
 done
 
-# Copy whisper-cli binary — used as the STT subprocess.
-CLI_BIN=$(find "$WHISPER_SRC/build-static" -name "whisper-cli" -o -name "whisper-cli.exe" 2>/dev/null | head -1)
-if [ -n "$CLI_BIN" ]; then
-    cp "$CLI_BIN" "$WHISPER_OUT/bin/"
-    echo "whisper-cli: $WHISPER_OUT/bin/$(basename "$CLI_BIN")"
-else
-    echo "WARNING: whisper-cli not found in build output"
-fi
+# Build ghostvoice binary — GhostSpell's own STT helper (pure C++).
+echo "Building ghostvoice..."
+GHOSTVOICE_SRC="$PROJECT_ROOT/ghostvoice/main.cpp"
+GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice_bin"
+case "$OS" in
+    MINGW*|MSYS*|CYGWIN*)
+        GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice.exe"
+        g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+            -I"$WHISPER_SRC/include" -I"$WHISPER_SRC/ggml/include" \
+            -L"$WHISPER_SRC/build-static/src" -L"$WHISPER_SRC/build-static/ggml/src" \
+            -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a \
+            -lstdc++ -lm -lpthread -lkernel32
+        ;;
+    Darwin)
+        g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+            -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
+            -lwhisper -lggml -lggml-cpu -lggml-base \
+            -lc++ -lm -lpthread -framework Accelerate
+        ;;
+    *)
+        g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+            -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
+            -Wl,--start-group -lwhisper -lggml -lggml-cpu -lggml-base -Wl,--end-group \
+            -lstdc++ -lm -lpthread
+        ;;
+esac
 
 echo ""
 echo "=== Ghost Voice Build Complete ==="
@@ -134,7 +152,6 @@ echo "Headers: $WHISPER_OUT/include/"
 ls "$WHISPER_OUT/include/" 2>/dev/null
 echo "Libraries: $WHISPER_OUT/lib/"
 ls "$WHISPER_OUT/lib/" 2>/dev/null
-echo "Binaries: $WHISPER_OUT/bin/"
-ls "$WHISPER_OUT/bin/" 2>/dev/null
+echo "ghostvoice: $GHOSTVOICE_OUT"
 echo ""
-echo "Place whisper-cli next to ghostspell.exe, then run GhostSpell."
+echo "Place ghostvoice next to ghostspell, then run GhostSpell."

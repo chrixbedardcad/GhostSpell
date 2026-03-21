@@ -43,12 +43,12 @@ func NewGhostVoiceClient(modelName, modelsDir string) (*GhostVoiceClient, error)
 		return nil, fmt.Errorf("ghost-voice: model file appears truncated (%dMB, expected ~%dMB) — re-download in Settings", fileSizeMB, expectedMB)
 	}
 
-	cliPath, err := findWhisperCLI()
+	cliPath, err := findGhostVoice()
 	if err != nil {
 		return nil, err
 	}
 
-	slog.Info("[ghost-voice] client ready (whisper-cli mode)", "model", modelName, "cli", cliPath)
+	slog.Info("[ghost-voice] client ready", "model", modelName, "helper", cliPath)
 	return &GhostVoiceClient{
 		modelPath: modelPath,
 		modelName: modelName,
@@ -75,20 +75,17 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 	}
 	tmp.Close()
 
-	// Build whisper-cli command.
-	// -m model  -f file  -nt (no timestamps)  -np (no progress)  -t threads
+	// Build ghostvoice command: -m model -f file [-l lang] [-t threads]
 	args := []string{
 		"-m", c.modelPath,
 		"-f", tmpPath,
-		"-nt",        // no timestamps — plain text output
-		"-np",        // no progress bar on stderr
-		"-t", "4",    // threads
+		"-t", "4",
 	}
 	if language != "" {
 		args = append(args, "-l", language)
 	}
 
-	slog.Info("[ghost-voice] spawning whisper-cli", "cli", c.cliPath, "model", c.modelName, "wav_bytes", len(wavData))
+	slog.Info("[ghost-voice] spawning ghostvoice", "path", c.cliPath, "model", c.modelName, "wav_bytes", len(wavData))
 
 	cmd := exec.CommandContext(ctx, c.cliPath, args...)
 	var stderr strings.Builder
@@ -98,14 +95,14 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 
 	errOut := strings.TrimSpace(stderr.String())
 	if errOut != "" {
-		slog.Debug("[ghost-voice] whisper-cli stderr", "output", errOut)
+		slog.Debug("[ghost-voice] ghostvoice stderr", "output", errOut)
 	}
 
 	if err != nil {
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-		return "", fmt.Errorf("ghost-voice: whisper-cli failed: %w: %s", err, errOut)
+		return "", fmt.Errorf("ghost-voice: %w: %s", err, errOut)
 	}
 
 	text := strings.TrimSpace(string(output))
@@ -113,11 +110,11 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 	return text, nil
 }
 
-// findWhisperCLI locates the whisper-cli binary.
-func findWhisperCLI() (string, error) {
-	name := "whisper-cli"
+// findGhostVoice locates the ghostvoice helper binary.
+func findGhostVoice() (string, error) {
+	name := "ghostvoice"
 	if runtime.GOOS == "windows" {
-		name = "whisper-cli.exe"
+		name = "ghostvoice.exe"
 	}
 
 	// Look next to the main executable.
@@ -133,7 +130,7 @@ func findWhisperCLI() (string, error) {
 		return path, nil
 	}
 
-	return "", fmt.Errorf("ghost-voice: %s not found — build whisper.cpp with: scripts/build-ghostvoice.sh", name)
+	return "", fmt.Errorf("ghost-voice: %s not found — run _build.bat to build it", name)
 }
 
 // VoiceModel describes a downloadable whisper model.

@@ -291,10 +291,10 @@ set WHISPER_VERSION=v1.7.5
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
-:: Skip if whisper-cli already built
-if exist "%~dp0whisper-cli.exe" (
-    echo [1.5] Ghost Voice already built ^(whisper-cli.exe found^) — skipping.
-    echo     To rebuild: delete whisper-cli.exe and the build\whisper folder, then re-run.
+:: Skip if ghostvoice already built
+if exist "%~dp0ghostvoice.exe" (
+    echo [1.5] Ghost Voice already built ^(ghostvoice.exe found^) — skipping.
+    echo     To rebuild: delete ghostvoice.exe and the build\whisper folder, then re-run.
     echo.
     goto :skip_ghostvoice
 )
@@ -392,10 +392,18 @@ if exist "%WHISPER_SRC%\ggml\include" (
     copy /y "%WHISPER_SRC%\ggml\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
 )
 
-:: Copy whisper-cli for standalone testing (bypasses all Go/CGo code).
-for /r "%WHISPER_BUILD%" %%f in (whisper-cli.exe) do (
-    copy /y "%%f" "%~dp0whisper-cli.exe" >nul 2>&1
-    echo   whisper-cli.exe copied for standalone testing
+:: Build ghostvoice.exe — GhostSpell's own speech-to-text helper (pure C++, links whisper static libs).
+echo   Building ghostvoice.exe...
+g++ -O2 -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
+    -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
+    -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
+    -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a ^
+    -lstdc++ -lm -lpthread -lkernel32
+if !errorlevel! neq 0 (
+    echo   WARNING: ghostvoice.exe build failed
+    set GHOSTVOICE=0
+) else (
+    echo   ghostvoice.exe built OK
 )
 
 :: Static libraries — collect all .a from build tree
