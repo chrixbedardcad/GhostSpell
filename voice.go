@@ -15,6 +15,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/stats"
 	"github.com/chrixbedardcad/GhostSpell/stt"
 )
 
@@ -124,6 +125,7 @@ func processVoice(
 	gui.ShowIndicator("🎙️", "Transcribing...", voiceModelName)
 	sound.PlayClick()
 	sound.StartWorkingLoop()
+	transcribeStart := time.Now()
 
 	if transcriber == nil {
 		slog.Error("[voice] No STT provider configured")
@@ -166,6 +168,8 @@ func processVoice(
 		voiceMode = cfg.Prompts[promptIdx].VoiceMode
 	}
 
+	transcribeElapsed := time.Since(transcribeStart)
+
 	if voiceMode == "dictation" {
 		// Direct paste — no LLM processing.
 		slog.Info("[voice] Dictation mode — pasting transcript directly")
@@ -181,6 +185,21 @@ func processVoice(
 		time.Sleep(150 * time.Millisecond)
 		gui.HideIndicator()
 		sound.PlaySuccess()
+		if appStats != nil {
+			appStats.Record(stats.Entry{
+				Timestamp:   time.Now(),
+				Prompt:      promptName,
+				PromptIcon:  "🎙️",
+				Provider:    "ghost-voice",
+				Model:       cfg.Voice.Model,
+				ModelLabel:  "Ghost Voice",
+				InputChars:  len(wavData),
+				OutputChars: len(transcript),
+				OutputWords: len(strings.Fields(transcript)),
+				DurationMs:  transcribeElapsed.Milliseconds(),
+				Status:      "success",
+			})
+		}
 		fmt.Printf("[%s] Dictation complete (%d chars)\n", promptName, len(transcript))
 		return
 	}

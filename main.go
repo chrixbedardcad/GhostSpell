@@ -316,7 +316,7 @@ func initSTT(cfg *config.Config) {
 			fmt.Printf("[stt] Failed to get models dir: %v\n", err)
 			slog.Warn("[stt] Failed to get models dir", "error", err)
 		} else {
-			client, err := stt.NewGhostVoiceClient(cfg.Voice.Model, modelsDir)
+			client, err := stt.NewGhostVoiceClient(cfg.Voice.Model, modelsDir, cfg.Voice.KeepAlive)
 			if err == nil {
 				appSTT = client
 				fmt.Printf("[stt] Ghost Voice initialized: %s\n", cfg.Voice.Model)

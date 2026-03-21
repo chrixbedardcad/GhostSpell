@@ -89,6 +89,7 @@ type VoiceConfig struct {
 	NativeLanguage string `json:"native_language,omitempty"` // speaker's native language (helps LLM correct accent errors)
 	Model          string `json:"model,omitempty"`           // e.g. "whisper-base"
 	Streaming      bool   `json:"streaming"`                 // live partial transcription while recording (#245)
+	KeepAlive      bool   `json:"keep_alive,omitempty"`      // keep voice model loaded in memory (faster, more RAM)
 }
 
 // Overlay defines overlay display settings.

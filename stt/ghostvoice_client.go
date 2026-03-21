@@ -1,28 +1,49 @@
 package stt
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 )
 
-// GhostVoiceClient implements Transcriber by spawning whisper-cli (from whisper.cpp).
-// Each transcription spawns a fresh process — no ggml symbol collision with Ghost-AI.
+const (
+	// voiceIdleTimeout is how long the daemon stays alive after the last
+	// transcription when keep_alive is false. Matches Ghost-AI's pattern.
+	voiceIdleTimeout = 5 * time.Minute
+)
+
+// GhostVoiceClient implements Transcriber using the ghostvoice helper binary.
+// Supports two modes:
+//   - Daemon (default): ghostvoice stays running with model loaded. Subsequent
+//     transcriptions skip the model load (~500ms-2s savings).
+//   - When keep_alive=false, the daemon auto-exits after 5 minutes of idle.
+//   - When keep_alive=true, the daemon stays alive until the app exits.
 type GhostVoiceClient struct {
 	modelPath string
 	modelName string
 	cliPath   string
+	keepAlive bool
+
+	mu        sync.Mutex
+	proc      *exec.Cmd
+	stdin     io.WriteCloser
+	stdout    *bufio.Scanner
+	running   bool
+	idleTimer *time.Timer
 }
 
 // NewGhostVoiceClient creates a local STT client.
-// modelName is the friendly name (e.g. "whisper-base").
-// modelsDir is the directory containing downloaded GGML models.
-func NewGhostVoiceClient(modelName, modelsDir string) (*GhostVoiceClient, error) {
+func NewGhostVoiceClient(modelName, modelsDir string, keepAlive bool) (*GhostVoiceClient, error) {
 	model := findVoiceModel(modelName)
 	if model == nil {
 		return nil, fmt.Errorf("ghost-voice: unknown model %q", modelName)
@@ -48,17 +69,136 @@ func NewGhostVoiceClient(modelName, modelsDir string) (*GhostVoiceClient, error)
 		return nil, err
 	}
 
-	slog.Info("[ghost-voice] client ready", "model", modelName, "helper", cliPath)
+	mode := "daemon"
+	if !keepAlive {
+		mode = "on-demand"
+	}
+	slog.Info("[ghost-voice] client ready", "model", modelName, "helper", cliPath, "mode", mode)
 	return &GhostVoiceClient{
 		modelPath: modelPath,
 		modelName: modelName,
 		cliPath:   cliPath,
+		keepAlive: keepAlive,
 	}, nil
 }
 
 func (c *GhostVoiceClient) Name() string           { return "Ghost Voice" }
 func (c *GhostVoiceClient) SupportsStreaming() bool { return false }
-func (c *GhostVoiceClient) Close()                  {}
+
+func (c *GhostVoiceClient) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stopDaemonLocked()
+}
+
+// ensureDaemon starts the ghostvoice daemon if not running, and resets the idle timer.
+func (c *GhostVoiceClient) ensureDaemon() error {
+	if c.running {
+		// Reset idle timer on each use.
+		if c.idleTimer != nil {
+			c.idleTimer.Reset(voiceIdleTimeout)
+		}
+		return nil
+	}
+
+	slog.Info("[ghost-voice] starting daemon", "model", c.modelName)
+	cmd := exec.Command(c.cliPath, "--daemon", "-m", c.modelPath, "-t", "4")
+	cmd.Stderr = os.Stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("ghost-voice: stdin pipe: %w", err)
+	}
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		stdin.Close()
+		return fmt.Errorf("ghost-voice: stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		stdin.Close()
+		return fmt.Errorf("ghost-voice: start daemon: %w", err)
+	}
+
+	scanner := bufio.NewScanner(stdoutPipe)
+	scanner.Buffer(make([]byte, 256*1024), 256*1024) // 256KB line buffer
+
+	// Wait for {"ready":true} response.
+	if !scanner.Scan() {
+		cmd.Process.Kill()
+		return fmt.Errorf("ghost-voice: daemon failed to start (no ready response)")
+	}
+	ready := scanner.Text()
+	if !strings.Contains(ready, `"ready":true`) {
+		cmd.Process.Kill()
+		return fmt.Errorf("ghost-voice: daemon failed: %s", ready)
+	}
+
+	c.proc = cmd
+	c.stdin = stdin
+	c.stdout = scanner
+	c.running = true
+
+	// Start idle timer (unless keep-alive).
+	if !c.keepAlive {
+		c.idleTimer = time.AfterFunc(voiceIdleTimeout, func() {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			if c.running {
+				slog.Info("[ghost-voice] idle timeout — stopping daemon")
+				c.stopDaemonLocked()
+			}
+		})
+	}
+
+	slog.Info("[ghost-voice] daemon started (model loaded)", "model", c.modelName)
+	return nil
+}
+
+func (c *GhostVoiceClient) stopDaemonLocked() {
+	if !c.running {
+		return
+	}
+
+	if c.idleTimer != nil {
+		c.idleTimer.Stop()
+		c.idleTimer = nil
+	}
+
+	// Send quit command.
+	fmt.Fprintf(c.stdin, "{\"quit\":true}\n")
+	c.stdin.Close()
+
+	// Wait for process to exit (with timeout).
+	done := make(chan struct{})
+	go func() {
+		c.proc.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		c.proc.Process.Kill()
+	}
+
+	c.running = false
+	c.proc = nil
+	c.stdin = nil
+	c.stdout = nil
+	slog.Info("[ghost-voice] daemon stopped")
+}
+
+// daemonRequest is the JSON command sent to ghostvoice stdin.
+type daemonRequest struct {
+	File string `json:"file"`
+	Lang string `json:"lang,omitempty"`
+}
+
+// daemonResponse is the JSON response from ghostvoice stdout.
+type daemonResponse struct {
+	Text  string `json:"text,omitempty"`
+	Error string `json:"error,omitempty"`
+}
 
 func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, language string) (string, error) {
 	// Write WAV to temp file.
@@ -75,39 +215,67 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 	}
 	tmp.Close()
 
-	// Build ghostvoice command: -m model -f file [-l lang] [-t threads]
-	args := []string{
-		"-m", c.modelPath,
-		"-f", tmpPath,
-		"-t", "4",
-	}
-	if language != "" {
-		args = append(args, "-l", language)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if err := c.ensureDaemon(); err != nil {
+		return "", err
 	}
 
-	slog.Info("[ghost-voice] spawning ghostvoice", "path", c.cliPath, "model", c.modelName, "wav_bytes", len(wavData))
+	slog.Info("[ghost-voice] transcribing via daemon", "model", c.modelName, "wav_bytes", len(wavData))
 
-	cmd := exec.CommandContext(ctx, c.cliPath, args...)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-
-	output, err := cmd.Output()
-
-	errOut := strings.TrimSpace(stderr.String())
-	if errOut != "" {
-		slog.Debug("[ghost-voice] ghostvoice stderr", "output", errOut)
-	}
-
-	if err != nil {
-		if ctx.Err() != nil {
-			return "", ctx.Err()
+	// Send transcribe command.
+	req := daemonRequest{File: tmpPath, Lang: language}
+	reqBytes, _ := json.Marshal(req)
+	if _, err := fmt.Fprintf(c.stdin, "%s\n", reqBytes); err != nil {
+		// Daemon died — stop and retry once.
+		slog.Warn("[ghost-voice] daemon write failed, restarting", "error", err)
+		c.stopDaemonLocked()
+		if err := c.ensureDaemon(); err != nil {
+			return "", err
 		}
-		return "", fmt.Errorf("ghost-voice: %w: %s", err, errOut)
+		if _, err := fmt.Fprintf(c.stdin, "%s\n", reqBytes); err != nil {
+			c.stopDaemonLocked()
+			return "", fmt.Errorf("ghost-voice: daemon write: %w", err)
+		}
 	}
 
-	text := strings.TrimSpace(string(output))
-	slog.Info("[ghost-voice] transcription complete", "text_len", len(text), "text", text)
-	return text, nil
+	// Read response (with context cancellation).
+	type result struct {
+		resp daemonResponse
+		err  error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		if c.stdout.Scan() {
+			var resp daemonResponse
+			if err := json.Unmarshal([]byte(c.stdout.Text()), &resp); err != nil {
+				ch <- result{err: fmt.Errorf("ghost-voice: parse response: %w", err)}
+			} else {
+				ch <- result{resp: resp}
+			}
+		} else {
+			ch <- result{err: fmt.Errorf("ghost-voice: daemon closed unexpectedly")}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Context cancelled — kill daemon to abort transcription.
+		c.stopDaemonLocked()
+		return "", ctx.Err()
+	case r := <-ch:
+		if r.err != nil {
+			c.stopDaemonLocked()
+			return "", r.err
+		}
+		if r.resp.Error != "" {
+			return "", fmt.Errorf("ghost-voice: %s", r.resp.Error)
+		}
+		text := strings.TrimSpace(r.resp.Text)
+		slog.Info("[ghost-voice] transcription complete", "text_len", len(text), "text", text)
+		return text, nil
+	}
 }
 
 // findGhostVoice locates the ghostvoice helper binary.
@@ -117,7 +285,6 @@ func findGhostVoice() (string, error) {
 		name = "ghostvoice.exe"
 	}
 
-	// Look next to the main executable.
 	if exe, err := os.Executable(); err == nil {
 		path := filepath.Join(filepath.Dir(exe), name)
 		if _, err := os.Stat(path); err == nil {
@@ -125,7 +292,6 @@ func findGhostVoice() (string, error) {
 		}
 	}
 
-	// Look in PATH.
 	if path, err := exec.LookPath(name); err == nil {
 		return path, nil
 	}

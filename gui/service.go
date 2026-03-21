@@ -79,6 +79,7 @@ type SettingsService struct {
 	// Stats callbacks.
 	GetStatsFn    func() string
 	ClearStatsFn  func()
+	GetHistoryFn  func(n int) string
 	RecordStatFn  func(prompt, promptIcon, provider, model, label, status, errMsg, output string, inputChars, durationMs int)
 
 	// Permission callbacks — set by app.go for macOS permission checks.
@@ -426,6 +427,14 @@ func (s *SettingsService) GetStats() string {
 		return s.GetStatsFn()
 	}
 	return "{}"
+}
+
+// GetHistory returns the last 100 action records as JSON (most recent first).
+func (s *SettingsService) GetHistory() string {
+	if s.GetHistoryFn != nil {
+		return s.GetHistoryFn(100)
+	}
+	return "[]"
 }
 
 // ClearStats resets all usage statistics.

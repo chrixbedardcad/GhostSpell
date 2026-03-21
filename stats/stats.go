@@ -129,6 +129,27 @@ func (s *Stats) GetSummary() string {
 	return string(data)
 }
 
+// GetHistory returns the last N entries as JSON, most recent first.
+func (s *Stats) GetHistory(n int) string {
+	s.mu.Lock()
+	entries := make([]Entry, len(s.entries))
+	copy(entries, s.entries)
+	s.mu.Unlock()
+
+	if n <= 0 || n > len(entries) {
+		n = len(entries)
+	}
+
+	// Return most recent first.
+	recent := make([]Entry, n)
+	for i := 0; i < n; i++ {
+		recent[i] = entries[len(entries)-1-i]
+	}
+
+	data, _ := json.Marshal(recent)
+	return string(data)
+}
+
 // Clear removes all stats.
 func (s *Stats) Clear() {
 	s.mu.Lock()
