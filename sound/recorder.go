@@ -156,6 +156,24 @@ func (r *Recorder) Record(ctx context.Context, stop <-chan struct{}) ([]byte, ti
 		return nil, duration, fmt.Errorf("recording too short (%d bytes, %.1fs)", len(rawPCM), duration.Seconds())
 	}
 
+	// Log audio level of the recorded data — detect silence.
+	nSamples := len(rawPCM) / 2
+	var sumSq float64
+	var maxSample int16
+	for i := 0; i < nSamples; i++ {
+		s := int16(binary.LittleEndian.Uint16(rawPCM[i*2 : i*2+2]))
+		f := float64(s) / float64(math.MaxInt16)
+		sumSq += f * f
+		if s > maxSample {
+			maxSample = s
+		}
+		if -s > maxSample {
+			maxSample = -s
+		}
+	}
+	rms := math.Sqrt(sumSq / float64(nSamples))
+	slog.Info("[mic] Audio analysis", "rms", fmt.Sprintf("%.6f", rms), "max_sample", maxSample, "samples", nSamples, "is_silence", rms < 0.001)
+
 	wav := EncodeWAV(rawPCM, 16000, 1)
 
 	slog.Info("[mic] Recording complete", "duration", duration, "pcm_bytes", len(rawPCM), "wav_bytes", len(wav))
