@@ -56,23 +56,26 @@ func main() {
 	}
 
 	engine := ghostvoice.New(0)
+	fmt.Fprintf(os.Stderr, "[ghostvoice] loading model: %s\n", modelPath)
 	if err := engine.Load(modelPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading model: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[ghostvoice] Error loading model: %v\n", err)
 		os.Exit(1)
 	}
 	defer engine.Close()
 
 	wavData, err := os.ReadFile(wavPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading WAV: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[ghostvoice] Error reading WAV: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Fprintf(os.Stderr, "[ghostvoice] WAV size: %d bytes\n", len(wavData))
 
 	text, err := engine.Transcribe(context.Background(), wavData, language)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[ghostvoice] Error: %v\n", err)
 		os.Exit(1)
 	}
 
+	fmt.Fprintf(os.Stderr, "[ghostvoice] Result: %q (%d chars)\n", text, len(text))
 	fmt.Print(text)
 }
