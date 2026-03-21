@@ -291,12 +291,11 @@ set WHISPER_VERSION=v1.7.5
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
-:: Skip if whisper libs AND ghostvoice are already built.
-:: Check ghostvoice.exe size — the C++ binary is under 3MB; the old Go binary was 6MB+.
+:: Skip if ghostvoice.exe supports daemon mode (has the --daemon flag compiled in).
 set SKIP_WHISPER=0
 if exist "%~dp0ghostvoice.exe" (
-    for %%A in ("%~dp0ghostvoice.exe") do set GVSIZE=%%~zA
-    if !GVSIZE! lss 4000000 set SKIP_WHISPER=1
+    findstr /m "daemon" "%~dp0ghostvoice.exe" >nul 2>&1
+    if !errorlevel!==0 set SKIP_WHISPER=1
 )
 if !SKIP_WHISPER!==1 (
     echo [1.5] Ghost Voice already built ^(ghostvoice.exe found^) — skipping.
