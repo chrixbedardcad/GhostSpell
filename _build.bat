@@ -402,6 +402,15 @@ for %%f in ("%WHISPER_OUT%\lib\*.a") do (
     )
 )
 
+:: Remove whisper's ggml libraries to avoid symbol collision with Ghost-AI's ggml.
+:: Both whisper.cpp and llama.cpp build their own libggml/libggml-cpu/libggml-base.
+:: When linked into the same binary, duplicate ggml_* symbols collide silently.
+:: Fix: whisper uses llama's ggml (linked via -L paths in engine_cgo.go).
+echo   Removing whisper ggml libs (using Ghost-AI ggml instead)...
+if exist "%WHISPER_OUT%\lib\libggml.a" del /q "%WHISPER_OUT%\lib\libggml.a"
+if exist "%WHISPER_OUT%\lib\libggml-cpu.a" del /q "%WHISPER_OUT%\lib\libggml-cpu.a"
+if exist "%WHISPER_OUT%\lib\libggml-base.a" del /q "%WHISPER_OUT%\lib\libggml-base.a"
+
 :: Verify we got libraries
 set /a WCOUNT=0
 for %%f in ("%WHISPER_OUT%\lib\*.a") do set /a WCOUNT+=1
