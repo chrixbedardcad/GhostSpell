@@ -609,11 +609,10 @@ func (s *SettingsService) CyclePromptFromIndicator() string {
 		slog.Warn("[GUI] CyclePromptFromIndicator: all prompts disabled")
 		return "error: all prompts disabled"
 	}
-	// Use the app.go callback for proper mutex + router sync.
+	// Update the config we're reading from AND the live config via callback.
+	cfg.ActivePrompt = next
 	if s.SetActivePromptFn != nil {
 		s.SetActivePromptFn(next)
-	} else {
-		cfg.ActivePrompt = next
 	}
 	p := cfg.Prompts[next]
 	slog.Info("[GUI] CyclePromptFromIndicator: cycled", "index", next, "name", p.Name)
@@ -698,11 +697,10 @@ func (s *SettingsService) SetActivePromptFromIndicator(idx int) string {
 		slog.Warn("[GUI] SetActivePromptFromIndicator: invalid", "cfg_nil", cfg == nil, "idx", idx)
 		return "error: invalid index"
 	}
-	// Use the app.go callback for proper mutex + router sync.
+	// Update the config we're reading from AND the live config via callback.
+	cfg.ActivePrompt = idx
 	if s.SetActivePromptFn != nil {
 		s.SetActivePromptFn(idx)
-	} else {
-		cfg.ActivePrompt = idx
 	}
 	p := cfg.Prompts[idx]
 	slog.Info("[GUI] SetActivePromptFromIndicator: set", "index", idx, "name", p.Name)
