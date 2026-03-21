@@ -291,8 +291,14 @@ set WHISPER_VERSION=v1.7.5
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
-:: Skip if ghostvoice already built
+:: Skip if whisper libs AND ghostvoice are already built.
+:: Check ghostvoice.exe size — the C++ binary is under 3MB; the old Go binary was 6MB+.
+set SKIP_WHISPER=0
 if exist "%~dp0ghostvoice.exe" (
+    for %%A in ("%~dp0ghostvoice.exe") do set GVSIZE=%%~zA
+    if !GVSIZE! lss 4000000 set SKIP_WHISPER=1
+)
+if !SKIP_WHISPER!==1 (
     echo [1.5] Ghost Voice already built ^(ghostvoice.exe found^) — skipping.
     echo     To rebuild: delete ghostvoice.exe and the build\whisper folder, then re-run.
     echo.
