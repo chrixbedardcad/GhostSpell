@@ -359,7 +359,7 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
     -DBUILD_SHARED_LIBS=OFF ^
     -DWHISPER_BUILD_TESTS=OFF ^
-    -DWHISPER_BUILD_EXAMPLES=OFF ^
+    -DWHISPER_BUILD_EXAMPLES=ON ^
     -DGGML_STATIC=ON ^
     -DGGML_CUDA=OFF ^
     -DGGML_VULKAN=OFF ^
@@ -398,6 +398,12 @@ echo   Collecting headers...
 copy /y "%WHISPER_SRC%\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
 if exist "%WHISPER_SRC%\ggml\include" (
     copy /y "%WHISPER_SRC%\ggml\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
+)
+
+:: Copy whisper-cli for standalone testing (bypasses all Go/CGo code).
+for /r "%WHISPER_BUILD%" %%f in (whisper-cli.exe) do (
+    copy /y "%%f" "%~dp0whisper-cli.exe" >nul 2>&1
+    echo   whisper-cli.exe copied for standalone testing
 )
 
 :: Static libraries — collect all .a from build tree
