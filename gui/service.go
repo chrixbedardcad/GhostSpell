@@ -73,6 +73,9 @@ type SettingsService struct {
 	// ReloadSTTFn re-initializes the speech-to-text engine after the voice model changes.
 	ReloadSTTFn func()
 
+	// TestVoiceFn runs a transcription test. Set by app.go.
+	TestVoiceFn func(ctx context.Context, wavData []byte) (string, error)
+
 	// Stats callbacks.
 	GetStatsFn    func() string
 	ClearStatsFn  func()

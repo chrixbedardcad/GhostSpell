@@ -1160,6 +1160,10 @@
         <div style="margin-bottom:6px"><strong style="color:#cdd6f4">4.</strong> Press <strong style="color:#89b4fa">Ctrl+G</strong> again to stop</div>
         <div><strong style="color:#cdd6f4">5.</strong> GhostSpell transcribes and pastes the text</div>
       </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary btn-sm" id="voice-test-btn" onclick="onTestVoice()">Test Voice (3s recording)</button>
+        <div id="voice-test-result" style="font-size:0.82em;margin-top:8px;display:none;padding:8px;border-radius:6px;background:#1e1e2e;border:1px solid #45475a"></div>
+      </div>
     </div>
   </div>
 
@@ -3157,6 +3161,31 @@ async function onVoiceLanguageChange(lang) {
 
 async function onVoiceNativeLanguageChange(lang) {
   await goCall('setVoiceNativeLanguage', lang);
+}
+
+async function onTestVoice() {
+  var btn = document.getElementById('voice-test-btn');
+  var result = document.getElementById('voice-test-result');
+  btn.disabled = true;
+  btn.textContent = 'Recording 3s...';
+  result.style.display = 'block';
+  result.style.color = '#a6adc8';
+  result.textContent = 'Recording from microphone for 3 seconds...';
+
+  var res = await goCall('testVoice');
+  btn.disabled = false;
+  btn.textContent = 'Test Voice (3s recording)';
+
+  if (!res || res.startsWith('error')) {
+    result.style.color = '#f38ba8';
+    result.textContent = res || 'Test failed';
+  } else if (res === '') {
+    result.style.color = '#f9e2af';
+    result.textContent = 'No speech detected — speak louder or check your microphone.';
+  } else {
+    result.style.color = '#a6e3a1';
+    result.textContent = 'Transcribed: "' + res + '"';
+  }
 }
 
 // --- Microphone test ---

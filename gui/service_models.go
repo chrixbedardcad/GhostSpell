@@ -1,13 +1,16 @@
 package gui
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/llm"
+	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/chrixbedardcad/GhostSpell/stt"
 )
 
@@ -202,6 +205,49 @@ func (s *SettingsService) SetVoiceLanguage(lang string) string {
 	}
 	return "ok"
 }
+
+// TestVoice records 3 seconds from the microphone and runs ghostvoice transcription.
+// Returns the transcribed text, empty string if no speech, or "error: ..." on failure.
+func (s *SettingsService) TestVoice() string {
+	guiLog("[GUI] JS called: TestVoice")
+
+	// Record 3 seconds.
+	recorder := sound.NewRecorder()
+	if !recorder.MicAvailable() {
+		return "error: no microphone found"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	stopCh := make(chan struct{})
+	go func() {
+		time.Sleep(3 * time.Second)
+		close(stopCh)
+	}()
+
+	wavData, duration, err := recorder.Record(ctx, stopCh)
+	if err != nil {
+		return fmt.Sprintf("error: recording failed — %v", err)
+	}
+
+	guiLog("[GUI] TestVoice: recorded %.1fs (%d bytes)", duration.Seconds(), len(wavData))
+
+	// Transcribe using the configured STT provider.
+	if s.TestVoiceFn == nil {
+		return "error: no voice transcriber configured"
+	}
+
+	text, err := s.TestVoiceFn(ctx, wavData)
+	if err != nil {
+		return fmt.Sprintf("error: transcription failed — %v", err)
+	}
+
+	return text
+}
+
+// TestVoiceFn is set by app.go to call the STT transcriber.
+// Defined as a callback to avoid circular imports.
 
 // SetVoiceNativeLanguage sets the speaker's native language for accent correction.
 func (s *SettingsService) SetVoiceNativeLanguage(lang string) string {

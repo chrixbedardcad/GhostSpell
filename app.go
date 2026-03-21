@@ -329,6 +329,15 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		slog.Info("STT engine reloaded after voice model change", "model", cfg.Voice.Model)
 	}
 
+	// Wire test voice callback.
+	settingsSvc.TestVoiceFn = func(ctx context.Context, wavData []byte) (string, error) {
+		if appSTT == nil {
+			return "", fmt.Errorf("no voice model configured — download one in Settings > Voice")
+		}
+		language := cfg.Voice.Language
+		return appSTT.Transcribe(ctx, wavData, language)
+	}
+
 	// Initialize the shared onSettingsSaved callback now that all dependencies are ready.
 	onSettingsSaved = func() {
 		newCfg, err := config.LoadRaw(configPath)
