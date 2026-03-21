@@ -201,6 +201,14 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			if router != nil {
 				router.SetPrompt(idx)
 			}
+			// Sync indicator with tray selection.
+			mu.Lock()
+			if idx >= 0 && idx < len(cfg.Prompts) {
+				p := cfg.Prompts[idx]
+				gui.SetCurrentPromptFlags(p.Voice, p.Vision)
+				gui.PopIndicator(p.Icon, p.Name)
+			}
+			mu.Unlock()
 			scheduleHotkeyRecovery()
 			slog.Debug("OnPromptSelect callback exiting", "index", idx)
 		},

@@ -41,8 +41,6 @@ export function IndicatorWindow() {
   const [isVision, setIsVision] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [hovered, setHovered] = useState(false);
-  const [hoverInfo, setHoverInfo] = useState({ llm: "", voice: "" });
   const timerRef = useRef<number | null>(null);
   const [eventsReady, setEventsReady] = useState(false);
 
@@ -152,15 +150,23 @@ export function IndicatorWindow() {
     return unsub;
   }, []);
 
-  // Close menu when window loses focus (user clicked elsewhere on screen).
+  // Close menu when window loses focus or Escape is pressed.
   useEffect(() => {
-    function onBlur() {
-      if (menuOpen) {
-        closeMenu();
-      }
-    }
+    function onBlur() { if (menuOpen) closeMenu(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape" && menuOpen) closeMenu(); }
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // Auto-close menu after 10 seconds of inactivity.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const timer = setTimeout(() => closeMenu(), 10000);
+    return () => clearTimeout(timer);
   }, [menuOpen]);
 
   // --- Click handler ---
@@ -266,25 +272,8 @@ export function IndicatorWindow() {
           overflow: "visible",
         } as React.CSSProperties}
         title=""
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "1";
-          setHovered(true);
-          goCall("getIndicatorMenu").then((raw) => {
-            if (raw) {
-              try {
-                const d = JSON.parse(raw);
-                setHoverInfo({ llm: d.activeModel || "", voice: d.voiceModel || "" });
-                // Resize window to show tooltip below the circle.
-                goCall("resizeIndicatorForMenu", 180, 80);
-              } catch { /* ignore */ }
-            }
-          });
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "0.5";
-          setHovered(false);
-          goCall("resizeIndicatorForMenu", 48, 48);
-        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; }}
       >
         <img
           src="/ghostspell-ghost.png"
@@ -304,20 +293,6 @@ export function IndicatorWindow() {
         {/* Bottom-center: mic (voice skill) — hidden if skill icon is already mic-related */}
         {isVoice && icon !== "\uD83C\uDF99\uFE0F" && icon !== "\uD83C\uDF99" && (
           <span style={{ ...badgeBase, bottom: "1px", left: "50%", transform: "translateX(-50%)" }}>{"\uD83C\uDF99\uFE0F"}</span>
-        )}
-        {/* Hover tooltip — shows model info */}
-        {hovered && (hoverInfo.llm || hoverInfo.voice) && (
-          <div style={{
-            position: "absolute", top: "52px", left: "50%", transform: "translateX(-50%)",
-            background: "rgba(24, 24, 37, 0.95)", border: "1px solid rgba(69, 71, 90, 0.5)",
-            borderRadius: "8px", padding: "4px 8px", whiteSpace: "nowrap",
-            fontSize: "9px", color: "#a6adc8", lineHeight: 1.5,
-            pointerEvents: "none",
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          }}>
-            {hoverInfo.llm && <div>LLM: {hoverInfo.llm}</div>}
-            {isVoice && hoverInfo.voice && <div>Voice: {hoverInfo.voice}</div>}
-          </div>
         )}
         <style>{`@keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
       </div>
