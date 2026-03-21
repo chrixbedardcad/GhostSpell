@@ -71,8 +71,6 @@ int ghost_voice_transcribe(ghost_voice_engine *eng,
     params.print_progress = 0;
     params.print_realtime = 0;
     params.print_timestamps = 0;
-    params.single_segment = 0;
-    params.no_timestamps = 1;
 
     if (language && strlen(language) > 0) {
         params.language = language;
