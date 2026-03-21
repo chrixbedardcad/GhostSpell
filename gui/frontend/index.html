@@ -1149,6 +1149,13 @@
         </select>
         <div style="font-size:0.75em;color:#6c7086;margin-top:4px">Your native language. If different from speaking language, the LLM will account for accent-related transcription errors in Voice &rarr; LLM skills.</div>
       </div>
+      <div class="form-group" style="margin-top:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="voice-keep-alive" onchange="onVoiceKeepAliveChange(this.checked)">
+          <span>Keep model loaded</span>
+        </label>
+        <div style="font-size:0.75em;color:#6c7086;margin-top:4px"><strong>ON:</strong> Voice model stays in memory — faster transcription, uses ~150-500MB RAM. <strong>OFF:</strong> Model unloads after 5 min idle — saves memory.</div>
+      </div>
     </div>
 
     <div class="section">
@@ -3074,6 +3081,9 @@ async function renderVoice() {
   var nativeLang = (cfg.voice && cfg.voice.native_language) || '';
   var nativeSel = document.getElementById('voice-native-language');
   if (nativeSel) nativeSel.value = nativeLang;
+  var keepAlive = (cfg.voice && cfg.voice.keep_alive) || false;
+  var keepAliveEl = document.getElementById('voice-keep-alive');
+  if (keepAliveEl) keepAliveEl.checked = keepAlive;
 
   var html = '';
   for (var i = 0; i < models.length; i++) {
@@ -3163,6 +3173,10 @@ async function onVoiceLanguageChange(lang) {
 
 async function onVoiceNativeLanguageChange(lang) {
   await goCall('setVoiceNativeLanguage', lang);
+}
+
+async function onVoiceKeepAliveChange(enabled) {
+  await goCall('setVoiceKeepAlive', enabled);
 }
 
 async function onTestVoiceSample() {

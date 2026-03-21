@@ -286,6 +286,19 @@ func (s *SettingsService) SetVoiceNativeLanguage(lang string) string {
 	return "ok"
 }
 
+// SetVoiceKeepAlive toggles whether the voice model stays loaded in memory.
+func (s *SettingsService) SetVoiceKeepAlive(enabled bool) string {
+	guiLog("[GUI] JS called: SetVoiceKeepAlive(%v)", enabled)
+	s.cfgCopy.Voice.KeepAlive = enabled
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	if s.ReloadSTTFn != nil {
+		s.ReloadSTTFn()
+	}
+	return "ok"
+}
+
 // LocalAvailableModels returns the list of downloadable models as JSON.
 func (s *SettingsService) LocalAvailableModels() string {
 	models := llm.AvailableLocalModels()
