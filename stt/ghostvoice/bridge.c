@@ -95,11 +95,16 @@ int ghost_voice_transcribe(ghost_voice_engine *eng,
 
     /* Collect all segment text. */
     int n_segments = whisper_full_n_segments(eng->ctx);
+    fprintf(stderr, "[whisper] n_segments=%d, n_samples=%d\n", n_segments, n_samples);
     size_t total_len = 0;
     for (int i = 0; i < n_segments; i++) {
         const char *seg = whisper_full_get_segment_text(eng->ctx, i);
-        if (seg) total_len += strlen(seg);
+        if (seg) {
+            fprintf(stderr, "[whisper] segment[%d]: \"%s\" (len=%zu)\n", i, seg, strlen(seg));
+            total_len += strlen(seg);
+        }
     }
+    fprintf(stderr, "[whisper] total_text_len=%zu\n", total_len);
 
     char *text = (char *)malloc(total_len + 1);
     if (!text) {

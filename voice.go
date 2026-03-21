@@ -114,7 +114,7 @@ func processVoice(
 	}
 
 	slog.Info("[voice] Recording complete", "duration", duration, "wav_size", len(wavData))
-	sound.PlayMicStop()
+	// PlayMicStop for timeout/max-duration stop. F7 stop already plays it in process.go.
 
 	// Show transcribing indicator IMMEDIATELY — no gap.
 	voiceModelName := cfg.Voice.Model
