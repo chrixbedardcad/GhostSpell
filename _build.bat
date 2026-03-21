@@ -16,6 +16,19 @@ echo.
 
 cd /d "%~dp0"
 
+:: --clean flag: delete build cache and force full rebuild.
+if "%~1"=="--clean" (
+    echo [clean] Deleting build cache...
+    if exist "build\llama" rmdir /s /q "build\llama"
+    if exist "build\whisper" rmdir /s /q "build\whisper"
+    echo [clean] Done — rebuilding from scratch.
+    echo.
+)
+if "%~2"=="--clean" (
+    if exist "build\llama" rmdir /s /q "build\llama"
+    if exist "build\whisper" rmdir /s /q "build\whisper"
+)
+
 :: Auto-detect MSYS2 MinGW64 toolchain and add to PATH if present.
 if exist "C:\msys64\mingw64\bin\gcc.exe" (
     set "PATH=C:\msys64\mingw64\bin;%PATH%"
@@ -498,11 +511,15 @@ if !GHOSTAI!==0 if !GHOSTVOICE!==0 echo   Mode: API-only
 echo ============================================
 echo.
 
-:: Clear the app log for a fresh testing session.
+:: Clear logs for a fresh testing session.
 set APPDATA_DIR=%APPDATA%\GhostSpell
 if exist "%APPDATA_DIR%\ghostspell.log" (
     del /q "%APPDATA_DIR%\ghostspell.log" 2>nul
     echo Cleared %APPDATA_DIR%\ghostspell.log
+)
+if exist "%APPDATA_DIR%\ghostvoice.log" (
+    del /q "%APPDATA_DIR%\ghostvoice.log" 2>nul
+    echo Cleared %APPDATA_DIR%\ghostvoice.log
 )
 echo.
 echo Starting GhostSpell...

@@ -91,19 +91,25 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 	cmd.Stderr = &stderr
 
 	output, err := cmd.Output()
+
+	// Always log stderr — contains whisper segment info and errors.
+	errOut := strings.TrimSpace(stderr.String())
+	if errOut != "" {
+		slog.Info("[ghost-voice] helper stderr", "output", errOut)
+	}
+
 	if err != nil {
 		if ctx.Err() != nil {
 			return "", ctx.Err()
 		}
-		errMsg := strings.TrimSpace(stderr.String())
-		if errMsg != "" {
-			return "", fmt.Errorf("ghost-voice: %s", errMsg)
+		if errOut != "" {
+			return "", fmt.Errorf("ghost-voice: %s", errOut)
 		}
 		return "", fmt.Errorf("ghost-voice: %w", err)
 	}
 
 	text := strings.TrimSpace(string(output))
-	slog.Info("[ghost-voice] transcription complete", "text_len", len(text))
+	slog.Info("[ghost-voice] transcription complete", "text_len", len(text), "text", text)
 	return text, nil
 }
 

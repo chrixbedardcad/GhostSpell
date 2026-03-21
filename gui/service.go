@@ -73,6 +73,9 @@ type SettingsService struct {
 	// ReloadSTTFn re-initializes the speech-to-text engine after the voice model changes.
 	ReloadSTTFn func()
 
+	// TestVoiceFn runs a transcription test. Set by app.go.
+	TestVoiceFn func(ctx context.Context, wavData []byte) (string, error)
+
 	// Stats callbacks.
 	GetStatsFn    func() string
 	ClearStatsFn  func()
@@ -489,6 +492,18 @@ func (s *SettingsService) OpenLogFile() string {
 	path := s.GetDebugLogPath()
 	if path == "" {
 		return "error: no log path"
+	}
+	OpenFile(path)
+	return "ok"
+}
+
+// OpenVoiceLogFile opens the ghostvoice.log file.
+func (s *SettingsService) OpenVoiceLogFile() string {
+	guiLog("[GUI] JS called: OpenVoiceLogFile")
+	dir := filepath.Dir(s.configPath)
+	path := filepath.Join(dir, "ghostvoice.log")
+	if _, err := os.Stat(path); err != nil {
+		return "error: ghostvoice.log not found"
 	}
 	OpenFile(path)
 	return "ok"
