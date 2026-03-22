@@ -509,7 +509,11 @@ func (s *SettingsService) OpenLogFile() string {
 // OpenLogsFolder opens the app data directory containing all log files.
 func (s *SettingsService) OpenLogsFolder() string {
 	guiLog("[GUI] JS called: OpenLogsFolder")
-	dir := filepath.Dir(s.configPath)
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "error: " + err.Error()
+	}
+	dir := filepath.Join(base, "GhostSpell")
 	OpenFile(dir)
 	return "ok"
 }
