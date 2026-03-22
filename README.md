@@ -207,6 +207,7 @@ Hotkeys are configurable in **Settings > Hotkeys**.
 | **xAI Grok** | Grok 4.1 Fast, Grok 4, Grok 3. Fast inference. |
 | **DeepSeek** | DeepSeek Chat (V3.2) and Reasoner. Affordable and capable. |
 | **Ollama** | Free, private, local. No API key needed. |
+| **LM Studio** | Local inference server. Auto-detects loaded models. |
 
 ---
 
