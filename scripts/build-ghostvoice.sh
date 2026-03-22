@@ -134,7 +134,7 @@ case "$OS" in
     Darwin)
         g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
-            -lwhisper -lggml -lggml-cpu -lggml-base \
+            -lwhisper -lggml -lggml-cpu -lggml-blas -lggml-base \
             -lc++ -lm -lpthread -framework Accelerate
         ;;
     *)
