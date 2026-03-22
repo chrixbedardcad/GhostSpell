@@ -82,6 +82,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <true/>
     <key>NSAccessibilityUsageDescription</key>
     <string>GhostSpell needs Accessibility access to register global hotkeys and simulate keyboard shortcuts for text correction.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>GhostSpell uses the microphone for voice-to-text skills (Voice to Text, Voice Note).</string>
 </dict>
 </plist>
 PLIST
