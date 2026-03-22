@@ -211,32 +211,49 @@ func (s *SettingsService) SetVoiceLanguage(lang string) string {
 func (s *SettingsService) TestVoice() string {
 	guiLog("[GUI] JS called: TestVoice")
 
-	// Record 3 seconds.
-	recorder := sound.NewRecorder()
-	if !recorder.MicAvailable() {
-		return "error: no microphone found"
+	// Check transcriber FIRST — no point recording if we can't transcribe.
+	if s.TestVoiceFn == nil {
+		return "error: no voice model configured — download one in Settings > Voice"
 	}
 
-	recCtx, recCancel := context.WithTimeout(context.Background(), 4*time.Second)
-	defer recCancel()
+	// Record 3 seconds with panic recovery (malgo can panic on macOS if mic denied).
+	var wavData []byte
+	var duration time.Duration
+	var recErr error
 
-	stopCh := make(chan struct{})
-	go func() {
-		time.Sleep(3 * time.Second)
-		close(stopCh)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				recErr = fmt.Errorf("mic access denied or crashed: %v", r)
+				guiLog("[GUI] TestVoice: panic during recording: %v", r)
+			}
+		}()
+
+		recorder := sound.NewRecorder()
+		guiLog("[GUI] TestVoice: checking mic availability...")
+		if !recorder.MicAvailable() {
+			recErr = fmt.Errorf("no microphone found")
+			return
+		}
+
+		guiLog("[GUI] TestVoice: starting 3s recording...")
+		recCtx, recCancel := context.WithTimeout(context.Background(), 4*time.Second)
+		defer recCancel()
+
+		stopCh := make(chan struct{})
+		go func() {
+			time.Sleep(3 * time.Second)
+			close(stopCh)
+		}()
+
+		wavData, duration, recErr = recorder.Record(recCtx, stopCh)
 	}()
 
-	wavData, duration, err := recorder.Record(recCtx, stopCh)
-	if err != nil {
-		return fmt.Sprintf("error: recording failed — %v", err)
+	if recErr != nil {
+		return fmt.Sprintf("error: recording failed — %v", recErr)
 	}
 
 	guiLog("[GUI] TestVoice: recorded %.1fs (%d bytes)", duration.Seconds(), len(wavData))
-
-	// Transcribe using the configured STT provider.
-	if s.TestVoiceFn == nil {
-		return "error: no voice transcriber configured"
-	}
 
 	sttCtx, sttCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer sttCancel()
@@ -255,7 +272,7 @@ func (s *SettingsService) TestVoiceSample() string {
 	guiLog("[GUI] JS called: TestVoiceSample")
 
 	if s.TestVoiceFn == nil {
-		return "error: no voice transcriber configured"
+		return "error: no voice model configured — download one in Settings > Voice"
 	}
 
 	wavData := sound.HumanVoiceTestWAV
