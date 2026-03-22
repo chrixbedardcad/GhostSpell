@@ -22,11 +22,14 @@ Unlike traditional auto-correction tools that constantly interrupt your flow wit
 GhostSpell runs in the background as a system tray app. Select text (or let it select all), press **F7**, and your text is corrected, translated, or rewritten — powered by your choice of LLM. Works in any application: browsers, chat clients, editors, email.
 
 **Check latest version:**
-```bash
-# macOS / Linux
-curl -s https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest | grep tag_name
 
-# Windows (CMD / PowerShell)
+macOS / Linux:
+```bash
+curl -s https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest | grep tag_name
+```
+
+Windows:
+```cmd
 curl -s https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest | findstr tag_name
 ```
 
@@ -75,11 +78,13 @@ Scripts only download from official GitHub releases — inspect them at [`script
 <details>
 <summary>Check latest version</summary>
 
+macOS / Linux:
 ```bash
-# macOS / Linux
 curl -s https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest | grep tag_name
+```
 
-# Windows
+Windows:
+```cmd
 curl -s https://api.github.com/repos/chrixbedardcad/GhostSpell/releases/latest | findstr tag_name
 ```
 
