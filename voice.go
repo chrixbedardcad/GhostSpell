@@ -43,6 +43,14 @@ func processVoice(
 	fmt.Printf("[voice] processVoice called: prompt=%s, transcriber=%v\n", promptName, transcriber != nil)
 	slog.Info("[voice] processVoice called", "prompt", promptName, "has_transcriber", transcriber != nil)
 
+	// Fail fast — no point recording if we can't transcribe.
+	if transcriber == nil {
+		slog.Error("[voice] No STT provider configured")
+		gui.PopIndicator("🎙️❌", "No voice model — download one in Settings > Voice")
+		sound.PlayError()
+		return
+	}
+
 	// Start recording.
 	voiceRecording.Store(true)
 
@@ -126,14 +134,6 @@ func processVoice(
 	sound.PlayClick()
 	sound.StartWorkingLoop()
 	transcribeStart := time.Now()
-
-	if transcriber == nil {
-		slog.Error("[voice] No STT provider configured")
-		gui.HideIndicator()
-		gui.PopIndicator("🎙️❌", "No voice model")
-		sound.PlayError()
-		return
-	}
 
 	// Get language preference.
 	language := ""
