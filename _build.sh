@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# GhostSpell Full Build — macOS
+#
+# Equivalent of _build.bat for Windows.
+# Checks prerequisites, builds Ghost-AI + Ghost Voice + frontend + Go binary,
+# then launches GhostSpell.
+#
+# Usage:
+#   ./_build.sh           # full build + launch
+#   ./_build.sh --clean   # delete build cache and rebuild from scratch
+#
+# All output goes to both console and build.log.
+
+set -uo pipefail
+LOGFILE="$(cd "$(dirname "$0")" && pwd)/build.log"
+exec > >(tee "$LOGFILE") 2>&1
+
+cd "$(dirname "$0")"
+
+info()  { printf '\033[1;34m→ %s\033[0m\n' "$*"; }
+ok()    { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
+warn()  { printf '\033[1;33m⚠ %s\033[0m\n' "$*"; }
+fail()  { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
+
+echo "============================================"
+echo "         GhostSpell Full Build"
+echo "============================================"
+echo ""
+
+# --clean flag: delete build cache and force full rebuild.
+if [[ "${1:-}" == "--clean" ]]; then
+    echo "[clean] Deleting build cache..."
+    rm -rf build/llama build/whisper
+    echo "[clean] Done — rebuilding from scratch."
+    echo ""
+fi
+
+# ============================================================
+# Step 0 — Check prerequisites
+# ============================================================
+info "Checking prerequisites..."
+echo ""
+
+MISSING=0
+
+if command -v go &>/dev/null; then
+    echo "  go ......... OK ($(go version))"
+else
+    echo "  ERROR: 'go' not found. Install: brew install go"
+    MISSING=1
+fi
+
+if command -v node &>/dev/null; then
+    echo "  node ....... OK ($(node --version))"
+else
+    echo "  ERROR: 'node' not found. Install: brew install node"
+    MISSING=1
+fi
+
+if command -v npm &>/dev/null; then
+    echo "  npm ........ OK ($(npm --version))"
+else
+    echo "  ERROR: 'npm' not found. Install: brew install node"
+    MISSING=1
+fi
+
+if [ "$MISSING" -eq 1 ]; then
+    echo ""
+    echo "  Install the missing tools above and try again."
+    exit 1
+fi
+
+# Ghost-AI toolchain (optional — build falls back to API-only mode without these)
+GHOSTAI=0
+HAS_CMAKE=0
+HAS_COMPILER=0
+
+if command -v cmake &>/dev/null; then
+    HAS_CMAKE=1
+fi
+
+# macOS uses clang/clang++ (Xcode CLT), not gcc
+if command -v clang &>/dev/null || command -v gcc &>/dev/null; then
+    HAS_COMPILER=1
+fi
+
+if [ "$HAS_CMAKE" -eq 1 ] && [ "$HAS_COMPILER" -eq 1 ]; then
+    echo "  cmake ...... OK ($(cmake --version | head -1))"
+    if command -v clang &>/dev/null; then
+        echo "  clang ...... OK ($(clang --version | head -1))"
+    else
+        echo "  gcc ........ OK ($(gcc --version | head -1))"
+    fi
+    GHOSTAI=1
+else
+    echo ""
+    echo "  NOTE: Ghost-AI toolchain not found (cmake / Xcode CLT)."
+    echo "        Building WITHOUT local AI — you can still use API providers"
+    echo "        (OpenAI, Anthropic, etc.) via Settings."
+    echo ""
+    echo "        To enable local AI, install Xcode Command Line Tools:"
+    echo "          xcode-select --install"
+    echo "        And CMake:"
+    echo "          brew install cmake"
+    echo "        Then re-run this script."
+fi
+
+echo ""
+
+NPROC=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+# ============================================================
+# Step 1 — Build Ghost-AI static libraries (if toolchain found)
+# ============================================================
+if [ "$GHOSTAI" -eq 1 ]; then
+    # Skip if libraries already built
+    EXISTING_LIBS=$(ls build/llama/lib/*.a 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$EXISTING_LIBS" -ge 3 ]; then
+        echo "[1] Ghost-AI libraries already built ($EXISTING_LIBS libs) — skipping."
+        echo "    To rebuild: delete the build/llama folder and re-run."
+        echo ""
+    else
+        info "[1] Building Ghost-AI (llama.cpp)..."
+        chmod +x scripts/build-ghostai.sh
+        if ! ./scripts/build-ghostai.sh; then
+            warn "Ghost-AI build failed — falling back to API-only build"
+            GHOSTAI=0
+        else
+            ok "Ghost-AI built"
+        fi
+        echo ""
+    fi
+fi
+
+# ============================================================
+# Step 1.5 — Build Ghost Voice (whisper.cpp) if toolchain found
+# ============================================================
+GHOSTVOICE=0
+if [ "$HAS_CMAKE" -eq 1 ] && [ "$HAS_COMPILER" -eq 1 ]; then
+    GHOSTVOICE=1
+fi
+
+if [ "$GHOSTVOICE" -eq 1 ]; then
+    # Skip if ghostvoice binary already exists and supports daemon mode
+    ARCH=$(uname -m)
+    case "$ARCH" in x86_64|amd64) ARCH="amd64" ;; arm64|aarch64) ARCH="arm64" ;; esac
+    GHOSTVOICE_BIN=""
+    for f in ghostvoice-darwin-* ghostvoice_bin ghostvoice; do
+        [ -f "$f" ] && GHOSTVOICE_BIN="$f" && break
+    done
+
+    if [ -n "$GHOSTVOICE_BIN" ] && grep -q "daemon" "$GHOSTVOICE_BIN" 2>/dev/null; then
+        echo "[1.5] Ghost Voice already built ($GHOSTVOICE_BIN) — skipping."
+        echo "     To rebuild: delete $GHOSTVOICE_BIN and the build/whisper folder, then re-run."
+        echo ""
+    else
+        info "[1.5] Building Ghost Voice (whisper.cpp)..."
+        chmod +x scripts/build-ghostvoice.sh
+        if ! ./scripts/build-ghostvoice.sh; then
+            warn "Ghost Voice build failed — skipping"
+            GHOSTVOICE=0
+        else
+            ok "Ghost Voice built"
+        fi
+        echo ""
+    fi
+fi
+
+# ============================================================
+# Step 2 — Build frontend
+# ============================================================
+if [ "$GHOSTAI" -eq 1 ]; then
+    info "[2] Building frontend..."
+else
+    info "[1] Building frontend..."
+fi
+echo ""
+
+cd gui/frontend
+npm install --silent 2>&1 || npm install
+if [ $? -ne 0 ]; then
+    fail "npm install failed"
+fi
+
+echo ""
+npm run build
+if [ $? -ne 0 ]; then
+    fail "frontend build failed"
+fi
+cd ../..
+echo ""
+
+# ============================================================
+# Step 3 — Build Go binary
+# ============================================================
+MAIN_TAGS="production"
+if [ "$GHOSTAI" -eq 1 ]; then
+    MAIN_TAGS="production ghostai"
+    info "[3] Building ghostspell with Ghost-AI..."
+else
+    info "[2] Building ghostspell (API-only mode)..."
+fi
+
+export CGO_ENABLED=1
+if ! go build -tags "$MAIN_TAGS" -o ghostspell .; then
+    if [ "$GHOSTAI" -eq 1 ]; then
+        echo ""
+        warn "Build failed — retrying without Ghost-AI..."
+        GHOSTAI=0
+        go build -tags "production" -o ghostspell . || fail "Go build failed"
+    else
+        fail "Go build failed"
+    fi
+fi
+
+echo ""
+echo "============================================"
+echo "  BUILD COMPLETE: ghostspell"
+[ "$GHOSTAI" -eq 1 ] && echo "  + Ghost-AI (local text AI)"
+[ "$GHOSTVOICE" -eq 1 ] && echo "  + ghostvoice (local speech-to-text)"
+[ "$GHOSTAI" -eq 0 ] && [ "$GHOSTVOICE" -eq 0 ] && echo "  Mode: API-only"
+echo "============================================"
+echo ""
+
+# Clear logs for a fresh testing session.
+APPDATA_DIR="$HOME/Library/Application Support/GhostSpell"
+if [ -f "$APPDATA_DIR/ghostspell.log" ]; then
+    rm -f "$APPDATA_DIR/ghostspell.log"
+    echo "Cleared $APPDATA_DIR/ghostspell.log"
+fi
+if [ -f "$APPDATA_DIR/ghostvoice.log" ]; then
+    rm -f "$APPDATA_DIR/ghostvoice.log"
+    echo "Cleared $APPDATA_DIR/ghostvoice.log"
+fi
+echo ""
+
+echo "Starting GhostSpell..."
+./ghostspell &
+echo ""
+echo "Build log saved to: $LOGFILE"
