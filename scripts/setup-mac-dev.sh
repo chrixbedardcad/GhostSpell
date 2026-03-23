@@ -17,6 +17,12 @@ ok()    { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 warn()  { printf '\033[1;33m⚠ %s\033[0m\n' "$*"; }
 fail()  { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
+# Don't run as root — Homebrew won't allow it.
+if [ "$(id -u)" = "0" ]; then
+    fail "Don't run this script with sudo. Run as your normal user:
+    curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scripts/setup-mac-dev.sh | bash"
+fi
+
 # ============================================================
 # Step 1: Install prerequisites
 # ============================================================
@@ -24,8 +30,15 @@ info "Checking prerequisites..."
 
 # Homebrew
 if ! command -v brew &>/dev/null; then
-    info "Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    info "Installing Homebrew (it will ask for your password)..."
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+    # Add brew to PATH for Apple Silicon Macs.
+    if [ -f "/opt/homebrew/bin/brew" ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+fi
+if ! command -v brew &>/dev/null; then
+    fail "Homebrew installation failed. Install manually: https://brew.sh"
 fi
 ok "Homebrew"
 
