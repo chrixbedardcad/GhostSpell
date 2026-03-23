@@ -1,6 +1,7 @@
 package stt
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +19,8 @@ func VoiceModelsDir() (string, error) {
 }
 
 // DownloadVoiceModel downloads a whisper model by name.
-func DownloadVoiceModel(name string, progressCb func(llm.DownloadProgress)) error {
+// The context can be used to cancel the download.
+func DownloadVoiceModel(ctx context.Context, name string, progressCb func(llm.DownloadProgress)) error {
 	model := findVoiceModel(name)
 	if model == nil {
 		return fmt.Errorf("unknown voice model: %s", name)
@@ -39,8 +41,13 @@ func DownloadVoiceModel(name string, progressCb func(llm.DownloadProgress)) erro
 
 	slog.Info("[ghost-voice] downloading model", "name", name, "url", model.URL, "dest", destPath)
 
+	req, err := http.NewRequestWithContext(ctx, "GET", model.URL, nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
 	client := &http.Client{Timeout: 30 * time.Minute}
-	resp, err := client.Get(model.URL)
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("download: %w", err)
 	}

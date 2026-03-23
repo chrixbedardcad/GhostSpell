@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -278,7 +279,8 @@ const downloadMaxRetries = 3
 
 // DownloadModel downloads a model GGUF file from HuggingFace with
 // resume support, retry logic, and SHA-256 integrity verification.
-func DownloadModel(name string, progressCb func(DownloadProgress)) error {
+// The context can be used to cancel the download.
+func DownloadModel(ctx context.Context, name string, progressCb func(DownloadProgress)) error {
 	var model *LocalModel
 	for _, m := range AvailableLocalModels() {
 		if m.Name == name {
@@ -303,9 +305,15 @@ func DownloadModel(name string, progressCb func(DownloadProgress)) error {
 
 	var lastErr error
 	for attempt := 1; attempt <= downloadMaxRetries; attempt++ {
-		lastErr = downloadWithResume(model, tmpPath, attempt, progressCb)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		lastErr = downloadWithResume(ctx, model, tmpPath, attempt, progressCb)
 		if lastErr == nil {
 			break
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 		slog.Warn("[ghost-ai] download attempt failed, retrying",
 			"name", name, "attempt", attempt, "max", downloadMaxRetries, "error", lastErr)
@@ -350,7 +358,7 @@ func DownloadModel(name string, progressCb func(DownloadProgress)) error {
 }
 
 // downloadWithResume performs a single download attempt with HTTP Range resume.
-func downloadWithResume(model *LocalModel, tmpPath string, attempt int, progressCb func(DownloadProgress)) error {
+func downloadWithResume(ctx context.Context, model *LocalModel, tmpPath string, attempt int, progressCb func(DownloadProgress)) error {
 	// Check how much we already have from a previous partial download.
 	var existingSize int64
 	if info, err := os.Stat(tmpPath); err == nil {
@@ -358,7 +366,7 @@ func downloadWithResume(model *LocalModel, tmpPath string, attempt int, progress
 	}
 
 	// Build request with Range header for resume.
-	req, err := http.NewRequest("GET", model.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", model.URL, nil)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}

@@ -17,6 +17,9 @@ import (
 // downloadActive prevents concurrent model downloads.
 var downloadActive atomic.Bool
 
+// downloadCancel holds the cancel function for the active download.
+var downloadCancel atomic.Pointer[context.CancelFunc]
+
 // --- Local AI management ---------------------------------------------------
 
 // GhostAIStatus returns JSON with Ghost-AI engine availability and status.
@@ -55,16 +58,38 @@ func (s *SettingsService) LocalDownloadModel(name string) string {
 		return "error: a download is already in progress"
 	}
 	defer downloadActive.Store(false)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	downloadCancel.Store(&cancel)
+	defer func() {
+		cancel()
+		downloadCancel.Store(nil)
+	}()
+
 	s.downloadProgress.Store(&llm.DownloadProgress{})
-	if err := llm.DownloadModel(name, func(p llm.DownloadProgress) {
+	if err := llm.DownloadModel(ctx, name, func(p llm.DownloadProgress) {
 		s.downloadProgress.Store(&p)
 	}); err != nil {
 		s.downloadProgress.Store((*llm.DownloadProgress)(nil))
+		if ctx.Err() != nil {
+			guiLog("[GUI] LocalDownloadModel cancelled")
+			return "cancelled"
+		}
 		guiLog("[GUI] LocalDownloadModel error: %v", err)
 		return fmt.Sprintf("error: %v", err)
 	}
 	s.downloadProgress.Store((*llm.DownloadProgress)(nil))
 	return "ok"
+}
+
+// CancelDownload cancels the active model download.
+func (s *SettingsService) CancelDownload() string {
+	guiLog("[GUI] JS called: CancelDownload")
+	if cp := downloadCancel.Load(); cp != nil {
+		(*cp)()
+		return "ok"
+	}
+	return "no download in progress"
 }
 
 // LocalDownloadProgress returns the current download progress as JSON.
@@ -120,11 +145,23 @@ func (s *SettingsService) VoiceDownloadModel(name string) string {
 		return "error: a download is already in progress"
 	}
 	defer downloadActive.Store(false)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	downloadCancel.Store(&cancel)
+	defer func() {
+		cancel()
+		downloadCancel.Store(nil)
+	}()
+
 	s.downloadProgress.Store(&llm.DownloadProgress{})
-	if err := stt.DownloadVoiceModel(name, func(p llm.DownloadProgress) {
+	if err := stt.DownloadVoiceModel(ctx, name, func(p llm.DownloadProgress) {
 		s.downloadProgress.Store(&p)
 	}); err != nil {
 		s.downloadProgress.Store((*llm.DownloadProgress)(nil))
+		if ctx.Err() != nil {
+			guiLog("[GUI] VoiceDownloadModel cancelled")
+			return "cancelled"
+		}
 		return fmt.Sprintf("error: %v", err)
 	}
 	s.downloadProgress.Store((*llm.DownloadProgress)(nil))

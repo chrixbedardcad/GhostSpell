@@ -485,6 +485,10 @@
       <button class="btn btn-primary" id="oneclick-download-btn" onclick="oneclickDownload()" style="width:100%;padding:12px;font-size:1em;font-weight:600">
         &#9729;&#65039; Download &amp; Start
       </button>
+      <div id="oneclick-cancel-row" style="display:none;margin-top:10px;text-align:center">
+        <button class="btn btn-secondary btn-sm" onclick="oneclickCancel()" style="margin-right:12px">Cancel Download</button>
+        <a href="#" onclick="oneclickSkip();return false" style="font-size:0.82em;color:#6c7086;text-decoration:underline">Skip — I'll use a cloud provider</a>
+      </div>
     </div>
 
     <div style="font-size:0.78em;color:#6c7086;line-height:1.5;margin-bottom:14px;text-align:center">
@@ -1453,11 +1457,10 @@ async function localDownloadModel(name) {
   }
 }
 
-function cancelDownload() {
-  // Cancel is handled by closing the download — the Go backend respects context cancellation.
-  // For now, refresh the page to stop polling.
+async function cancelDownload() {
   if (_downloadingModel) {
     setStatus('local-action-status', 'info', 'Cancelling...');
+    await goCall('cancelDownload');
     localRefresh();
   }
 }
@@ -1970,6 +1973,7 @@ async function oneclickDownload() {
   var btn = document.getElementById('oneclick-download-btn');
   btn.disabled = true; btn.textContent = 'Downloading...';
   document.getElementById('oneclick-progress').style.display = 'block';
+  document.getElementById('oneclick-cancel-row').style.display = 'block';
 
   // Poll download progress.
   var pollId = setInterval(async function() {
@@ -1987,6 +1991,8 @@ async function oneclickDownload() {
   var result = await goCall('localDownloadModel', _oneclickModel);
   clearInterval(pollId);
 
+  document.getElementById('oneclick-cancel-row').style.display = 'none';
+
   if (result && result.startsWith('ok')) {
     document.getElementById('oneclick-progress-bar').style.width = '100%';
     document.getElementById('oneclick-progress-text').textContent = 'Download complete!';
@@ -1998,12 +2004,29 @@ async function oneclickDownload() {
 
     // Go to Ready page after a brief pause.
     setTimeout(function() { goToStep(4); }, 800);
+  } else if (result === 'cancelled') {
+    btn.disabled = false; btn.textContent = '⟳ Retry Download';
+    document.getElementById('oneclick-progress-text').textContent = 'Download cancelled.';
+    document.getElementById('oneclick-progress-text').style.color = '#f9e2af';
+    _oneclickDownloading = false;
   } else {
     btn.disabled = false; btn.textContent = '⟳ Retry Download';
     document.getElementById('oneclick-progress-text').textContent = 'Download failed — ' + (result || 'unknown error');
     document.getElementById('oneclick-progress-text').style.color = '#f38ba8';
     _oneclickDownloading = false;
   }
+}
+
+async function oneclickCancel() {
+  await goCall('cancelDownload');
+}
+
+function oneclickSkip() {
+  if (_oneclickDownloading) {
+    goCall('cancelDownload');
+  }
+  _oneclickDownloading = false;
+  goToStep('1-advanced');
 }
 
 // ==================== INIT ====================
