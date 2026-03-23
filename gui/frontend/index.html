@@ -2014,13 +2014,19 @@ async function onProvLocalRefresh() {
       for (var lbl in cfgModels) { if (cfgModels[lbl].provider === 'local' && cfgModels[lbl].model === m.name) { isEnabled = true; break; } }
       html += '<label class="toggle" style="flex-shrink:0" title="Enable/disable this model"><input type="checkbox" ' + (isEnabled ? 'checked' : '') + ' onchange="toggleLocalModel(\'' + escJS(m.name) + '\',this.checked)"><span class="slider"></span></label>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="provLocalDownloadModel(\'' + escJS(m.name) + '\')" id="prov-dl-btn-' + esc(m.name) + '" style="font-size:0.75em">Download</button>';
+      var isDownloading = _provDownloadingModel === m.name;
+      if (isDownloading) {
+        html += '<button class="btn btn-sm" onclick="provCancelDownload()" style="font-size:0.7em;background:#45475a;color:#f38ba8;border:1px solid #f38ba8">Cancel</button>';
+      } else {
+        html += '<button class="btn btn-primary btn-sm" onclick="provLocalDownloadModel(\'' + escJS(m.name) + '\')" id="prov-dl-btn-' + esc(m.name) + '" style="font-size:0.75em">Download</button>';
+      }
     }
     html += '</div>';
-    // Per-model download progress bar (hidden until download starts)
-    html += '<div id="prov-dl-wrap-' + esc(m.name) + '" style="display:none;grid-column:1/-1;margin-top:4px">';
+    // Per-model download progress bar (shown when downloading)
+    var dlVisible = _provDownloadingModel === m.name;
+    html += '<div id="prov-dl-wrap-' + esc(m.name) + '" style="display:' + (dlVisible ? 'block' : 'none') + ';grid-column:1/-1;margin-top:4px">';
     html += '<div style="width:100%;background:#313244;border-radius:4px;height:14px;overflow:hidden"><div id="prov-dl-bar-' + esc(m.name) + '" style="width:0%;height:100%;background:linear-gradient(90deg,#89b4fa,#a6e3a1);border-radius:4px;transition:width 0.3s"></div></div>';
-    html += '<div id="prov-dl-text-' + esc(m.name) + '" style="font-size:0.7em;color:#6c7086;margin-top:2px">Starting...</div>';
+    html += '<div id="prov-dl-text-' + esc(m.name) + '" style="font-size:0.7em;color:#6c7086;margin-top:2px">Downloading...</div>';
     html += '</div>';
     html += '</div>';
   }
@@ -2051,7 +2057,10 @@ async function provLocalSelectModel(name) {
   onProvLocalRefresh();
 }
 
+var _provDownloadingModel = '';
+
 async function provLocalDownloadModel(name) {
+  _provDownloadingModel = name;
   var btn = document.getElementById('prov-dl-btn-' + name);
   var wrap = document.getElementById('prov-dl-wrap-' + name);
   var bar = document.getElementById('prov-dl-bar-' + name);
@@ -2067,23 +2076,39 @@ async function provLocalDownloadModel(name) {
       var pRaw = await goCall('localDownloadProgress');
       if (pRaw) {
         var p = JSON.parse(pRaw);
-        if (bar && p.percent > 0) bar.style.width = Math.max(2, Math.min(p.percent, 100)).toFixed(1) + '%';
-        if (text && p.total > 0) text.textContent = Math.round(p.downloaded / 1024 / 1024) + ' / ' + Math.round(p.total / 1024 / 1024) + ' MB (' + p.percent.toFixed(0) + '%)';
+        // Re-grab elements in case the list was re-rendered.
+        var b = document.getElementById('prov-dl-bar-' + name);
+        var t = document.getElementById('prov-dl-text-' + name);
+        var w = document.getElementById('prov-dl-wrap-' + name);
+        if (w) w.style.display = 'block';
+        if (b && p.percent > 0) b.style.width = Math.max(2, Math.min(p.percent, 100)).toFixed(1) + '%';
+        if (t && p.total > 0) t.textContent = Math.round(p.downloaded / 1024 / 1024) + ' / ' + Math.round(p.total / 1024 / 1024) + ' MB (' + p.percent.toFixed(0) + '%)';
       }
     } catch(e) {}
   }, 500);
   try {
     var result = await downloadPromise;
   } finally {
-    clearInterval(pollInterval); // guaranteed cleanup
+    clearInterval(pollInterval);
+    _provDownloadingModel = '';
   }
-  if (wrap) wrap.style.display = 'none';
+  var w2 = document.getElementById('prov-dl-wrap-' + name);
+  if (w2) w2.style.display = 'none';
   if (result && result.startsWith('ok')) {
     provLocalSelectModel(name);
+  } else if (result === 'cancelled') {
+    var statusEl = document.getElementById('prov-local-action-status');
+    if (statusEl) { statusEl.className = 'status info'; statusEl.textContent = 'Download cancelled.'; }
+    onProvLocalRefresh();
   } else {
     var statusEl = document.getElementById('prov-local-action-status');
     if (statusEl) { statusEl.className = 'status error'; statusEl.textContent = 'Failed: ' + (result || 'unknown'); }
+    onProvLocalRefresh();
   }
+}
+
+async function provCancelDownload() {
+  await goCall('cancelDownload');
 }
 
 var _deleteConfirming = {};
@@ -3120,32 +3145,47 @@ async function renderVoice() {
   container.innerHTML = html;
 }
 
+var _voiceDownloadingModel = '';
+
 async function voiceDownloadModel(name, btn) {
+  _voiceDownloadingModel = name;
   if (btn) { btn.disabled = true; btn.textContent = 'Downloading...'; }
   var statusEl = document.getElementById('voice-status');
-  statusEl.className = 'status info'; statusEl.textContent = 'Downloading ' + name + '...';
+  statusEl.className = 'status info'; statusEl.textContent = 'Downloading ' + name + '... ';
+  statusEl.innerHTML += '<a href="#" onclick="voiceCancelDownload();return false" style="color:#f38ba8;font-size:0.9em;margin-left:8px">Cancel</a>';
 
   var pollId = setInterval(async function() {
     var raw = await goCall('localDownloadProgress');
     if (raw) {
       try {
         var p = JSON.parse(raw);
-        statusEl.textContent = 'Downloading... ' + Math.round(p.percent || 0) + '%';
+        var el = document.getElementById('voice-status');
+        if (el) {
+          el.className = 'status info';
+          el.innerHTML = 'Downloading... ' + Math.round(p.percent || 0) + '% <a href="#" onclick="voiceCancelDownload();return false" style="color:#f38ba8;font-size:0.9em;margin-left:8px">Cancel</a>';
+        }
       } catch(e) {}
     }
   }, 500);
 
   var result = await goCall('voiceDownloadModel', name);
   clearInterval(pollId);
+  _voiceDownloadingModel = '';
   if (result && result.startsWith('ok')) {
     statusEl.className = 'status success'; statusEl.textContent = name + ' downloaded!';
-    // Auto-select as active model.
     await voiceSelectModel(name);
+  } else if (result === 'cancelled') {
+    statusEl.className = 'status info'; statusEl.textContent = 'Download cancelled.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Download'; }
   } else {
     statusEl.className = 'status error'; statusEl.textContent = 'Failed: ' + (result || 'unknown');
     if (btn) { btn.disabled = false; btn.textContent = 'Download'; }
   }
   renderVoice();
+}
+
+async function voiceCancelDownload() {
+  await goCall('cancelDownload');
 }
 
 async function voiceSelectModel(name) {
