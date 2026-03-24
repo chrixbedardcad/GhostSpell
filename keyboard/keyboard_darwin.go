@@ -347,6 +347,24 @@ int sendSingleKey(CGKeyCode key) {
 	CFRelease(keyUp);
 	return 0;
 }
+
+// getFrontmostPID returns the PID of the frontmost application.
+pid_t getFrontmostPID() {
+	ProcessSerialNumber psn;
+	pid_t pid = 0;
+	if (GetFrontProcess(&psn) == noErr) {
+		GetProcessPID(&psn, &pid);
+	}
+	return pid;
+}
+
+// activatePID brings the application with the given PID to the foreground.
+void activatePID(pid_t pid) {
+	ProcessSerialNumber psn;
+	if (GetProcessForPID(pid, &psn) == noErr) {
+		SetFrontProcessWithOptions(&psn, kSetFrontProcessFrontWindowOnly);
+	}
+}
 */
 import "C"
 
@@ -427,14 +445,29 @@ func resolveChar(ch rune, fallback int) C.CGKeyCode {
 // Requires Accessibility permission (System Settings > Privacy > Accessibility).
 // Key codes are resolved from the current keyboard layout so that Cmd+A/C/V
 // work correctly on AZERTY, QWERTZ, Dvorak, and other non-QWERTY layouts.
-type DarwinSimulator struct{}
+type DarwinSimulator struct {
+	savedPID int32 // PID of the frontmost app at SaveForegroundWindow time
+}
 
-// SaveForegroundWindow is a no-op on macOS — the indicator uses
-// IgnoreMouseEvents + MacWindowLevelFloating which doesn't steal focus.
-func (s *DarwinSimulator) SaveForegroundWindow() {}
+// SaveForegroundWindow saves the PID of the current frontmost application
+// so RestoreForegroundWindow can reactivate it before pasting.
+func (s *DarwinSimulator) SaveForegroundWindow() {
+	pid := int32(C.getFrontmostPID())
+	s.savedPID = pid
+	slog.Debug("[keyboard] SaveForegroundWindow", "pid", pid)
+}
 
-// RestoreForegroundWindow is a no-op on macOS.
-func (s *DarwinSimulator) RestoreForegroundWindow() {}
+// RestoreForegroundWindow reactivates the app that was frontmost when
+// SaveForegroundWindow was called. Needed for voice recording where the
+// indicator window may take focus.
+func (s *DarwinSimulator) RestoreForegroundWindow() {
+	if s.savedPID == 0 {
+		return
+	}
+	C.activatePID(C.pid_t(s.savedPID))
+	slog.Debug("[keyboard] RestoreForegroundWindow", "pid", s.savedPID)
+	time.Sleep(100 * time.Millisecond) // give macOS time to switch focus
+}
 
 func NewDarwinSimulator() *DarwinSimulator {
 	return &DarwinSimulator{}
