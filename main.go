@@ -303,6 +303,22 @@ func main() {
 	// Create the core engine — pure business logic, no UI dependencies.
 	appEngine = core.NewEngine(cfg, router, appSTT, appStats)
 
+	// Optionally start the HTTP API server for local integrations (#284).
+	if cfg.APIEnabled {
+		apiAddr := cfg.APIAddr
+		if apiAddr == "" {
+			apiAddr = "127.0.0.1:7878"
+		}
+		apiSrv := core.NewAPIServer(appEngine)
+		listenAddr, err := apiSrv.Start(apiAddr)
+		if err != nil {
+			slog.Error("API server failed to start", "addr", apiAddr, "error", err)
+			fmt.Fprintf(os.Stderr, "Warning: API server failed to start: %v\n", err)
+		} else {
+			fmt.Printf("API server: http://%s\n", listenAddr)
+		}
+	}
+
 	runApp(cfg, router, configPath, needsSetup, initError)
 }
 

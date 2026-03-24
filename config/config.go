@@ -127,6 +127,10 @@ type Config struct {
 
 	Voice VoiceConfig `json:"voice,omitempty"` // voice input settings (#236)
 
+	// API server settings (#284 Phase 2).
+	APIEnabled bool   `json:"api_enabled,omitempty"` // start HTTP API server alongside desktop app
+	APIAddr    string `json:"api_addr,omitempty"`     // listen address (default "127.0.0.1:7878")
+
 	LogLevel          string `json:"log_level"`
 	LogFile           string `json:"log_file"`
 	LastSeenVersion   string `json:"last_seen_version,omitempty"`
