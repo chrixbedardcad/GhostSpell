@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,8 +22,11 @@ import (
 // downloadActive prevents concurrent model downloads.
 var downloadActive atomic.Bool
 
-// downloadCancel holds the cancel function for the active download.
-var downloadCancel atomic.Pointer[context.CancelFunc]
+// downloadMu protects downloadCancelFn from concurrent access.
+var downloadMu sync.Mutex
+
+// downloadCancelFn holds the cancel function for the active download.
+var downloadCancelFn context.CancelFunc
 
 // --- Local AI management ---------------------------------------------------
 
@@ -64,10 +68,14 @@ func (s *SettingsService) LocalDownloadModel(name string) string {
 	defer downloadActive.Store(false)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	downloadCancel.Store(&cancel)
+	downloadMu.Lock()
+	downloadCancelFn = cancel
+	downloadMu.Unlock()
 	defer func() {
+		downloadMu.Lock()
+		downloadCancelFn = nil
+		downloadMu.Unlock()
 		cancel()
-		downloadCancel.Store(nil)
 	}()
 
 	s.downloadProgress.Store(&llm.DownloadProgress{})
@@ -89,8 +97,11 @@ func (s *SettingsService) LocalDownloadModel(name string) string {
 // CancelDownload cancels the active model download.
 func (s *SettingsService) CancelDownload() string {
 	guiLog("[GUI] JS called: CancelDownload")
-	if cp := downloadCancel.Load(); cp != nil {
-		(*cp)()
+	downloadMu.Lock()
+	fn := downloadCancelFn
+	downloadMu.Unlock()
+	if fn != nil {
+		fn()
 		return "ok"
 	}
 	return "no download in progress"
@@ -151,10 +162,14 @@ func (s *SettingsService) VoiceDownloadModel(name string) string {
 	defer downloadActive.Store(false)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	downloadCancel.Store(&cancel)
+	downloadMu.Lock()
+	downloadCancelFn = cancel
+	downloadMu.Unlock()
 	defer func() {
+		downloadMu.Lock()
+		downloadCancelFn = nil
+		downloadMu.Unlock()
 		cancel()
-		downloadCancel.Store(nil)
 	}()
 
 	s.downloadProgress.Store(&llm.DownloadProgress{})

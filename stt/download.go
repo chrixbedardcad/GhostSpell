@@ -93,7 +93,10 @@ func DownloadVoiceModel(ctx context.Context, name string, progressCb func(llm.Do
 			return fmt.Errorf("read: %w", readErr)
 		}
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("close file: %w", err)
+	}
 
 	if err := os.Rename(tmpPath, destPath); err != nil {
 		return fmt.Errorf("rename: %w", err)
