@@ -302,29 +302,42 @@ func processVoice(
 
 	if displayMode == "append" {
 		// Append: paste result at cursor (no selection to deselect in voice mode).
+		kb.RestoreForegroundWindow()
+		time.Sleep(50 * time.Millisecond)
+		if kb.WriteSelectedText(result) {
+			slog.Info("[voice] Append: wrote via AX API", "prompt", promptName, "result_len", len(result))
+		} else {
+			slog.Info("[voice] Append: AX API failed, falling back to clipboard paste")
+			if err := cb.Write(result); err != nil {
+				slog.Error("[voice] Clipboard write failed (append)", "error", err)
+				sound.PlayError()
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+			kb.Paste()
+			time.Sleep(150 * time.Millisecond)
+		}
+		sound.PlaySuccess()
+		fmt.Printf("[%s] Voice append complete (%d chars)\n", promptName, len(result))
+		return
+	}
+
+	// Default: paste result.
+	kb.RestoreForegroundWindow()
+	time.Sleep(50 * time.Millisecond)
+	if kb.WriteSelectedText(result) {
+		slog.Info("[voice] Wrote result via AX API", "prompt", promptName, "result_len", len(result))
+	} else {
+		slog.Info("[voice] AX API failed, falling back to clipboard paste")
 		if err := cb.Write(result); err != nil {
-			slog.Error("[voice] Clipboard write failed (append)", "error", err)
+			slog.Error("[voice] Clipboard write failed", "error", err)
 			sound.PlayError()
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 		kb.Paste()
 		time.Sleep(150 * time.Millisecond)
-		sound.PlaySuccess()
-		slog.Info("[voice] Append complete", "prompt", promptName, "result_len", len(result))
-		fmt.Printf("[%s] Voice append complete (%d chars)\n", promptName, len(result))
-		return
 	}
-
-	// Default: paste result.
-	if err := cb.Write(result); err != nil {
-		slog.Error("[voice] Clipboard write failed", "error", err)
-		sound.PlayError()
-		return
-	}
-	time.Sleep(50 * time.Millisecond)
-	kb.Paste()
-	time.Sleep(150 * time.Millisecond)
 	sound.PlaySuccess()
 
 	slog.Info("[voice] Complete", "prompt", promptName, "transcript_len", len(transcript), "result_len", len(result))
