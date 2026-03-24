@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -12,6 +13,10 @@ import (
 
 	"github.com/gen2brain/malgo"
 )
+
+// ErrMicPermissionDenied is returned when the microphone device is visible
+// but delivers no audio data — typically macOS blocking access.
+var ErrMicPermissionDenied = errors.New("microphone permission denied — device found but no audio received")
 
 // Recorder captures audio from the system microphone using miniaudio.
 // Zero external dependencies — works on Windows, macOS, and Linux.
@@ -152,6 +157,9 @@ func (r *Recorder) Record(ctx context.Context, stop <-chan struct{}) ([]byte, ti
 	copy(rawPCM, r.pcm.Bytes())
 	r.pcmMu.Unlock()
 
+	if len(rawPCM) == 0 {
+		return nil, duration, ErrMicPermissionDenied
+	}
 	if len(rawPCM) < 100 {
 		return nil, duration, fmt.Errorf("recording too short (%d bytes, %.1fs)", len(rawPCM), duration.Seconds())
 	}

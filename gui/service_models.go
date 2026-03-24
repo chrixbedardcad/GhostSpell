@@ -3,10 +3,13 @@ package gui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -292,6 +295,11 @@ func (s *SettingsService) TestVoice() string {
 
 	if recErr != nil {
 		slog.Error("[GUI] TestVoice: recording failed", "error", recErr)
+		if errors.Is(recErr, sound.ErrMicPermissionDenied) && runtime.GOOS == "darwin" {
+			slog.Warn("[GUI] TestVoice: macOS mic permission denied — opening settings")
+			exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone").Start()
+			return "error: microphone access denied — grant permission in the Settings window that just opened, then restart GhostSpell"
+		}
 		return fmt.Sprintf("error: recording failed — %v", recErr)
 	}
 

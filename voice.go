@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -110,7 +113,14 @@ func processVoice(
 	if err != nil {
 		slog.Error("[voice] Recording failed", "error", err)
 		gui.HideIndicator()
-		gui.PopIndicator("🎙️❌", "Recording failed")
+		if errors.Is(err, sound.ErrMicPermissionDenied) {
+			gui.PopIndicator("🎙️🔒", "Mic access denied — open Settings")
+			if runtime.GOOS == "darwin" {
+				exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone").Start()
+			}
+		} else {
+			gui.PopIndicator("🎙️❌", "Recording failed")
+		}
 		sound.PlayError()
 		return
 	}
