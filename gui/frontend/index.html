@@ -1931,6 +1931,17 @@ async function onProvLocalRefresh() {
   var body = document.getElementById('prov-local-models');
   bar.className = 'ollama-status-bar checking'; text.textContent = 'Checking...'; body.innerHTML = '';
 
+  // Restore _provDownloadingModel from backend before rendering.
+  if (!_provDownloadingModel) {
+    try {
+      var pRaw = await goCall('localDownloadProgress');
+      if (pRaw) {
+        var p = JSON.parse(pRaw);
+        if (p.type === 'local' && p.model_name) _provDownloadingModel = p.model_name;
+      }
+    } catch(e) {}
+  }
+
   var raw = await goCall('localStatus');
   if (!raw) { bar.className = 'ollama-status-bar not-installed'; text.textContent = 'Status check failed'; return; }
 
@@ -2039,18 +2050,9 @@ async function onProvLocalRefresh() {
   body.innerHTML = html;
   if (!selectedModel && models.length > 0) provLocalSelectModel(models[0].name);
 
-  // Restore download progress if a local download is active in the backend.
-  if (!_provDownloadingModel) {
-    try {
-      var pRaw = await goCall('localDownloadProgress');
-      if (pRaw) {
-        var p = JSON.parse(pRaw);
-        if (p.type === 'local' && p.model_name) {
-          _provDownloadingModel = p.model_name;
-          provLocalDownloadResume(p.model_name);
-        }
-      }
-    } catch(e) {}
+  // If a download is active, resume polling on the model card.
+  if (_provDownloadingModel) {
+    provLocalDownloadResume(_provDownloadingModel);
   }
 }
 
@@ -3135,6 +3137,17 @@ async function renderVoice() {
   var raw = await goCall('voiceStatus');
   var container = document.getElementById('voice-model-list');
   if (!raw || !container) return;
+
+  // Restore _voiceDownloadingModel from backend before rendering.
+  if (!_voiceDownloadingModel) {
+    try {
+      var pRaw = await goCall('localDownloadProgress');
+      if (pRaw) {
+        var p = JSON.parse(pRaw);
+        if (p.type === 'voice' && p.model_name) _voiceDownloadingModel = p.model_name;
+      }
+    } catch(e) {}
+  }
   var models;
   try { models = JSON.parse(raw); } catch(e) { return; }
 
@@ -3178,24 +3191,19 @@ async function renderVoice() {
       if (!isActive) html += '<button class="btn btn-primary btn-sm" onclick="voiceSelectModel(\'' + escJS(m.name) + '\')" style="font-size:0.75em">Use</button>';
       html += '<button class="btn btn-secondary btn-sm" onclick="voiceDeleteModel(\'' + escJS(m.name) + '\')" style="font-size:0.7em;color:#f38ba8">Remove</button>';
     } else {
-      html += '<button class="btn btn-primary btn-sm" onclick="voiceDownloadModel(\'' + escJS(m.name) + '\',this)" style="font-size:0.75em">Download</button>';
+      if (_voiceDownloadingModel === m.name) {
+        html += '<button class="btn btn-sm" onclick="voiceCancelDownload()" style="font-size:0.7em;background:#45475a;color:#f38ba8;border:1px solid #f38ba8">Cancel</button>';
+      } else {
+        html += '<button class="btn btn-primary btn-sm" onclick="voiceDownloadModel(\'' + escJS(m.name) + '\',this)" style="font-size:0.75em">Download</button>';
+      }
     }
     html += '</div></div>';
   }
   container.innerHTML = html;
 
-  // Restore download progress if a voice download is active in the backend.
-  if (!_voiceDownloadingModel) {
-    try {
-      var pRaw = await goCall('localDownloadProgress');
-      if (pRaw) {
-        var p = JSON.parse(pRaw);
-        if (p.type === 'voice' && p.model_name) {
-          _voiceDownloadingModel = p.model_name;
-          voiceDownloadResume(p.model_name);
-        }
-      }
-    } catch(e) {}
+  // If a voice download is active, resume polling on the status bar.
+  if (_voiceDownloadingModel) {
+    voiceDownloadResume(_voiceDownloadingModel);
   }
 }
 
