@@ -371,6 +371,7 @@ import "C"
 import (
 	"fmt"
 	"log/slog"
+	"os/exec"
 	"sync"
 	"time"
 	"unsafe"
@@ -464,9 +465,16 @@ func (s *DarwinSimulator) RestoreForegroundWindow() {
 	if s.savedPID == 0 {
 		return
 	}
-	C.activatePID(C.pid_t(s.savedPID))
+	// Use osascript — the modern way to activate an app by PID on macOS.
+	// SetFrontProcessWithOptions is deprecated and unreliable on macOS 13+.
+	cmd := exec.Command("osascript", "-e",
+		fmt.Sprintf(`tell application "System Events" to set frontmost of (first process whose unix id is %d) to true`, s.savedPID))
+	if err := cmd.Run(); err != nil {
+		slog.Warn("[keyboard] RestoreForegroundWindow failed, falling back to C API", "pid", s.savedPID, "error", err)
+		C.activatePID(C.pid_t(s.savedPID))
+	}
 	slog.Debug("[keyboard] RestoreForegroundWindow", "pid", s.savedPID)
-	time.Sleep(100 * time.Millisecond) // give macOS time to switch focus
+	time.Sleep(150 * time.Millisecond) // give macOS time to switch focus
 }
 
 func NewDarwinSimulator() *DarwinSimulator {
