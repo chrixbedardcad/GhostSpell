@@ -1170,6 +1170,11 @@
       <div style="margin-top:12px">
         <button class="btn btn-primary btn-sm" id="voice-test-btn" onclick="onTestVoice()">Test Voice (3s recording)</button>
         <button class="btn btn-secondary btn-sm" id="voice-test-sample-btn" onclick="onTestVoiceSample()">Test with sample</button>
+        <div id="voice-mic-permission" style="display:none;margin-top:8px;padding:8px;border-radius:6px;background:#1e1e2e;border:1px solid #f9e2af;font-size:0.82em;color:#f9e2af">
+          🎙️ Microphone access required.
+          <button class="btn btn-primary btn-sm" onclick="goCall('openMicrophonePane')" style="margin-left:8px;font-size:0.9em">Open Microphone Settings</button>
+          <div style="font-size:0.85em;color:#6c7086;margin-top:4px">After granting access, restart GhostSpell for changes to take effect.</div>
+        </div>
         <div id="voice-test-result" style="font-size:0.82em;margin-top:8px;display:none;padding:8px;border-radius:6px;background:#1e1e2e;border:1px solid #45475a"></div>
       </div>
     </div>
@@ -3257,15 +3262,21 @@ async function onTestVoice() {
   btn.disabled = false;
   btn.textContent = 'Test Voice (3s recording)';
 
+  var permDiv = document.getElementById('voice-mic-permission');
   if (!res || res.startsWith('error')) {
     result.style.color = '#f38ba8';
     result.textContent = res || 'Test failed';
+    // Show mic permission helper on macOS if it's a mic access issue.
+    if (_keycapIsMac && res && (res.includes('microphone') || res.includes('mic') || res.includes('no mic') || res.includes('denied') || res.includes('crashed'))) {
+      permDiv.style.display = 'block';
+    }
   } else if (res === '') {
     result.style.color = '#f9e2af';
     result.textContent = 'No speech detected — speak louder or check your microphone.';
   } else {
     result.style.color = '#a6e3a1';
     result.textContent = 'Transcribed: "' + res + '"';
+    permDiv.style.display = 'none';
   }
 }
 

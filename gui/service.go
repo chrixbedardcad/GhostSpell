@@ -906,6 +906,17 @@ func (s *SettingsService) OpenInputMonitoringPane() string {
 	return "ok"
 }
 
+// OpenMicrophonePane opens the OS microphone privacy settings.
+// Only meaningful on macOS; no-op on other platforms.
+func (s *SettingsService) OpenMicrophonePane() string {
+	guiLog("[GUI] JS called: OpenMicrophonePane")
+	if runtime.GOOS == "darwin" {
+		// #nosec G204 — hardcoded URL, no user input
+		exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone").Start()
+	}
+	return "ok"
+}
+
 // QuitForRestart closes the app and relaunches it so macOS permissions take effect.
 func (s *SettingsService) QuitForRestart() string {
 	guiLog("[GUI] JS called: QuitForRestart")
