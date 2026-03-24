@@ -2038,6 +2038,41 @@ async function onProvLocalRefresh() {
 
   body.innerHTML = html;
   if (!selectedModel && models.length > 0) provLocalSelectModel(models[0].name);
+
+  // Restore download progress if a local download is active in the backend.
+  if (!_provDownloadingModel) {
+    try {
+      var pRaw = await goCall('localDownloadProgress');
+      if (pRaw) {
+        var p = JSON.parse(pRaw);
+        if (p.type === 'local' && p.model_name) {
+          _provDownloadingModel = p.model_name;
+          provLocalDownloadResume(p.model_name);
+        }
+      }
+    } catch(e) {}
+  }
+}
+
+// Resume polling for an active download detected on re-render.
+function provLocalDownloadResume(name) {
+  var wrap = document.getElementById('prov-dl-wrap-' + name);
+  var btn = document.getElementById('prov-dl-btn-' + name);
+  if (wrap) wrap.style.display = 'block';
+  if (btn) { btn.textContent = 'Downloading...'; btn.disabled = true; }
+  var pollInterval = setInterval(async function() {
+    try {
+      var pRaw = await goCall('localDownloadProgress');
+      if (!pRaw) { clearInterval(pollInterval); _provDownloadingModel = ''; onProvLocalRefresh(); return; }
+      var p = JSON.parse(pRaw);
+      var b = document.getElementById('prov-dl-bar-' + name);
+      var t = document.getElementById('prov-dl-text-' + name);
+      var w = document.getElementById('prov-dl-wrap-' + name);
+      if (w) w.style.display = 'block';
+      if (b && p.percent > 0) b.style.width = Math.max(2, Math.min(p.percent, 100)).toFixed(1) + '%';
+      if (t && p.total > 0) t.textContent = Math.round(p.downloaded / 1024 / 1024) + ' / ' + Math.round(p.total / 1024 / 1024) + ' MB (' + p.percent.toFixed(0) + '%)';
+    } catch(e) {}
+  }, 500);
 }
 
 async function toggleLocalModel(model, enabled) {
@@ -3148,6 +3183,41 @@ async function renderVoice() {
     html += '</div></div>';
   }
   container.innerHTML = html;
+
+  // Restore download progress if a voice download is active in the backend.
+  if (!_voiceDownloadingModel) {
+    try {
+      var pRaw = await goCall('localDownloadProgress');
+      if (pRaw) {
+        var p = JSON.parse(pRaw);
+        if (p.type === 'voice' && p.model_name) {
+          _voiceDownloadingModel = p.model_name;
+          voiceDownloadResume(p.model_name);
+        }
+      }
+    } catch(e) {}
+  }
+}
+
+// Resume polling for an active voice download detected on re-render.
+function voiceDownloadResume(name) {
+  var statusEl = document.getElementById('voice-status');
+  if (statusEl) {
+    statusEl.className = 'status info';
+    statusEl.innerHTML = 'Downloading ' + name + '... <a href="#" onclick="voiceCancelDownload();return false" style="color:#f38ba8;font-size:0.9em;margin-left:8px">Cancel</a>';
+  }
+  var pollId = setInterval(async function() {
+    var raw = await goCall('localDownloadProgress');
+    if (!raw) { clearInterval(pollId); _voiceDownloadingModel = ''; renderVoice(); return; }
+    try {
+      var p = JSON.parse(raw);
+      var el = document.getElementById('voice-status');
+      if (el) {
+        el.className = 'status info';
+        el.innerHTML = 'Downloading... ' + Math.round(p.percent || 0) + '% <a href="#" onclick="voiceCancelDownload();return false" style="color:#f38ba8;font-size:0.9em;margin-left:8px">Cancel</a>';
+      }
+    } catch(e) {}
+  }, 500);
 }
 
 var _voiceDownloadingModel = '';

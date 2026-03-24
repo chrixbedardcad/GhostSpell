@@ -78,8 +78,10 @@ func (s *SettingsService) LocalDownloadModel(name string) string {
 		cancel()
 	}()
 
-	s.downloadProgress.Store(&llm.DownloadProgress{})
+	s.downloadProgress.Store(&llm.DownloadProgress{ModelName: name, Type: "local"})
 	if err := llm.DownloadModel(ctx, name, func(p llm.DownloadProgress) {
+		p.ModelName = name
+		p.Type = "local"
 		s.downloadProgress.Store(&p)
 	}); err != nil {
 		s.downloadProgress.Store((*llm.DownloadProgress)(nil))
@@ -172,8 +174,10 @@ func (s *SettingsService) VoiceDownloadModel(name string) string {
 		cancel()
 	}()
 
-	s.downloadProgress.Store(&llm.DownloadProgress{})
+	s.downloadProgress.Store(&llm.DownloadProgress{ModelName: name, Type: "voice"})
 	if err := stt.DownloadVoiceModel(ctx, name, func(p llm.DownloadProgress) {
+		p.ModelName = name
+		p.Type = "voice"
 		s.downloadProgress.Store(&p)
 	}); err != nil {
 		s.downloadProgress.Store((*llm.DownloadProgress)(nil))

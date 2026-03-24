@@ -62,6 +62,8 @@ type LocalModel struct {
 // DownloadProgress reports download progress.
 type DownloadProgress struct {
 	FileName   string  `json:"file_name"`
+	ModelName  string  `json:"model_name,omitempty"`
+	Type       string  `json:"type,omitempty"` // "local" or "voice"
 	Downloaded int64   `json:"downloaded"`
 	Total      int64   `json:"total"`
 	Percent    float64 `json:"percent"`
