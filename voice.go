@@ -145,13 +145,8 @@ func processVoice(
 	sound.StartWorkingLoop()
 	transcribeStart := time.Now()
 
-	// Get language preference.
-	language := ""
-	if cfg.Voice.Language != "" {
-		language = cfg.Voice.Language
-	}
-
-	transcript, err := transcriber.Transcribe(cancelCtx, wavData, language)
+	// Transcribe via core Engine (pure logic, no UI).
+	transcript, err := appEngine.Transcribe(cancelCtx, wavData, appEngine.VoiceLanguage())
 	if err != nil {
 		slog.Error("[voice] Transcription failed", "error", err)
 		gui.HideIndicator()
@@ -160,7 +155,6 @@ func processVoice(
 		return
 	}
 
-	transcript = strings.TrimSpace(transcript)
 	if transcript == "" {
 		slog.Warn("[voice] Empty transcription")
 		gui.HideIndicator()

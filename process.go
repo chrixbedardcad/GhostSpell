@@ -11,6 +11,7 @@ import (
 
 	"github.com/chrixbedardcad/GhostSpell/clipboard"
 	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/core"
 	"github.com/chrixbedardcad/GhostSpell/stt"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
@@ -25,6 +26,10 @@ var appStats *stats.Stats
 
 // appSTT is the global speech-to-text transcriber, set from app.go.
 var appSTT stt.Transcriber
+
+// appEngine is the core Engine, set from main.go.
+// Provides pure business logic (Process, Transcribe) without UI dependencies.
+var appEngine *core.Engine
 
 // processingGuard prevents concurrent processMode execution.
 // macOS Carbon RegisterEventHotKey can send multiple Keydown events for a
