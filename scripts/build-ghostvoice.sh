@@ -141,7 +141,7 @@ case "$OS" in
         ;;
     Darwin)
         GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-darwin-${ARCH}"
-        g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+        g++ -std=c++17 -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
             -lwhisper -lggml -lggml-cpu -lggml-blas -lggml-base \
             -lc++ -lm -lpthread -framework Accelerate
