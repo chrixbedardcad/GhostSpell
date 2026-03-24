@@ -70,21 +70,31 @@ if [ "$MISSING" -eq 1 ]; then
     exit 1
 fi
 
-# Ghost-AI toolchain (optional — build falls back to API-only mode without these)
+# Ghost-AI toolchain — auto-install missing pieces on macOS
 GHOSTAI=0
-HAS_CMAKE=0
-HAS_COMPILER=0
 
-if command -v cmake &>/dev/null; then
-    HAS_CMAKE=1
+# Xcode Command Line Tools (provides clang/clang++)
+if ! command -v clang &>/dev/null && ! command -v gcc &>/dev/null; then
+    info "Installing Xcode Command Line Tools (may prompt for password)..."
+    xcode-select --install 2>/dev/null || true
+    # Wait for installation to complete (user must click Install in the dialog).
+    until command -v clang &>/dev/null || command -v gcc &>/dev/null; do
+        sleep 5
+    done
+    ok "Xcode CLT installed"
 fi
 
-# macOS uses clang/clang++ (Xcode CLT), not gcc
-if command -v clang &>/dev/null || command -v gcc &>/dev/null; then
-    HAS_COMPILER=1
+# CMake (auto-install via Homebrew if missing)
+if ! command -v cmake &>/dev/null; then
+    if command -v brew &>/dev/null; then
+        info "Installing CMake via Homebrew..."
+        brew install cmake
+    else
+        warn "CMake not found and Homebrew not available — skipping Ghost-AI/Ghost Voice"
+    fi
 fi
 
-if [ "$HAS_CMAKE" -eq 1 ] && [ "$HAS_COMPILER" -eq 1 ]; then
+if command -v cmake &>/dev/null && (command -v clang &>/dev/null || command -v gcc &>/dev/null); then
     echo "  cmake ...... OK ($(cmake --version | head -1))"
     if command -v clang &>/dev/null; then
         echo "  clang ...... OK ($(clang --version | head -1))"
@@ -94,15 +104,8 @@ if [ "$HAS_CMAKE" -eq 1 ] && [ "$HAS_COMPILER" -eq 1 ]; then
     GHOSTAI=1
 else
     echo ""
-    echo "  NOTE: Ghost-AI toolchain not found (cmake / Xcode CLT)."
-    echo "        Building WITHOUT local AI — you can still use API providers"
-    echo "        (OpenAI, Anthropic, etc.) via Settings."
-    echo ""
-    echo "        To enable local AI, install Xcode Command Line Tools:"
-    echo "          xcode-select --install"
-    echo "        And CMake:"
-    echo "          brew install cmake"
-    echo "        Then re-run this script."
+    warn "Ghost-AI toolchain not fully available — building in API-only mode."
+    echo "        You can still use cloud providers (OpenAI, Anthropic, etc.)."
 fi
 
 echo ""
@@ -136,7 +139,7 @@ fi
 # Step 1.5 — Build Ghost Voice (whisper.cpp) if toolchain found
 # ============================================================
 GHOSTVOICE=0
-if [ "$HAS_CMAKE" -eq 1 ] && [ "$HAS_COMPILER" -eq 1 ]; then
+if command -v cmake &>/dev/null && (command -v clang &>/dev/null || command -v gcc &>/dev/null); then
     GHOSTVOICE=1
 fi
 

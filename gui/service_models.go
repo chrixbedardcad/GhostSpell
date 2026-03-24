@@ -247,9 +247,11 @@ func (s *SettingsService) SetVoiceLanguage(lang string) string {
 // Returns the transcribed text, empty string if no speech, or "error: ..." on failure.
 func (s *SettingsService) TestVoice() string {
 	guiLog("[GUI] JS called: TestVoice")
+	slog.Info("[GUI] TestVoice called")
 
 	// Check transcriber FIRST — no point recording if we can't transcribe.
 	if s.TestVoiceFn == nil {
+		slog.Warn("[GUI] TestVoice: no TestVoiceFn — voice model not configured")
 		return "error: no voice model configured — download one in Settings > Voice"
 	}
 
@@ -262,18 +264,19 @@ func (s *SettingsService) TestVoice() string {
 		defer func() {
 			if r := recover(); r != nil {
 				recErr = fmt.Errorf("mic access denied or crashed: %v", r)
-				guiLog("[GUI] TestVoice: panic during recording: %v", r)
+				slog.Error("[GUI] TestVoice: panic during recording", "error", r)
 			}
 		}()
 
 		recorder := sound.NewRecorder()
-		guiLog("[GUI] TestVoice: checking mic availability...")
+		slog.Info("[GUI] TestVoice: checking mic availability...")
 		if !recorder.MicAvailable() {
+			slog.Warn("[GUI] TestVoice: no microphone found")
 			recErr = fmt.Errorf("no microphone found")
 			return
 		}
 
-		guiLog("[GUI] TestVoice: starting 3s recording...")
+		slog.Info("[GUI] TestVoice: starting 3s recording...")
 		recCtx, recCancel := context.WithTimeout(context.Background(), 4*time.Second)
 		defer recCancel()
 
@@ -287,19 +290,23 @@ func (s *SettingsService) TestVoice() string {
 	}()
 
 	if recErr != nil {
+		slog.Error("[GUI] TestVoice: recording failed", "error", recErr)
 		return fmt.Sprintf("error: recording failed — %v", recErr)
 	}
 
-	guiLog("[GUI] TestVoice: recorded %.1fs (%d bytes)", duration.Seconds(), len(wavData))
+	slog.Info("[GUI] TestVoice: recording complete", "duration", duration.Seconds(), "wav_bytes", len(wavData))
 
+	slog.Info("[GUI] TestVoice: starting transcription...")
 	sttCtx, sttCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer sttCancel()
 
 	text, err := s.TestVoiceFn(sttCtx, wavData)
 	if err != nil {
+		slog.Error("[GUI] TestVoice: transcription failed", "error", err)
 		return fmt.Sprintf("error: transcription failed — %v", err)
 	}
 
+	slog.Info("[GUI] TestVoice: success", "text_len", len(text), "text", text)
 	return text
 }
 
