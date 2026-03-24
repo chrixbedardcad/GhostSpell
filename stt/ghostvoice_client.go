@@ -286,16 +286,18 @@ func findGhostVoice() (string, error) {
 	}
 
 	// Check multiple possible names next to the main executable.
+	// Platform-specific name first (unambiguous), then generic fallback
+	// (used in bundled .app where the binary is renamed).
 	names := []string{
-		"ghostvoice" + ext,
 		fmt.Sprintf("ghostvoice-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext),
+		"ghostvoice" + ext,
 	}
 
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		for _, name := range names {
 			path := filepath.Join(dir, name)
-			if _, err := os.Stat(path); err == nil {
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
 				return path, nil
 			}
 		}
