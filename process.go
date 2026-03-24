@@ -31,6 +31,10 @@ var appSTT stt.Transcriber
 // Provides pure business logic (Process, Transcribe) without UI dependencies.
 var appEngine *core.Engine
 
+// appAPISrv is the HTTP API server, set from main.go.
+// Can be nil if the API server is disabled. Managed at runtime via Settings toggle.
+var appAPISrv *core.APIServer
+
 // processingGuard prevents concurrent processMode execution.
 // macOS Carbon RegisterEventHotKey can send multiple Keydown events for a
 // single press, launching parallel goroutines that corrupt clipboard state.

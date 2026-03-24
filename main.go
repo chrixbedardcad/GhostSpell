@@ -304,16 +304,18 @@ func main() {
 	appEngine = core.NewEngine(cfg, router, appSTT, appStats)
 
 	// Optionally start the HTTP API server for local integrations (#284).
+	// The server is managed via appAPISrv so it can be toggled from Settings.
 	if cfg.APIEnabled {
 		apiAddr := cfg.APIAddr
 		if apiAddr == "" {
 			apiAddr = "127.0.0.1:7878"
 		}
-		apiSrv := core.NewAPIServer(appEngine)
-		listenAddr, err := apiSrv.Start(apiAddr)
+		appAPISrv = core.NewAPIServer(appEngine)
+		listenAddr, err := appAPISrv.Start(apiAddr)
 		if err != nil {
 			slog.Error("API server failed to start", "addr", apiAddr, "error", err)
 			fmt.Fprintf(os.Stderr, "Warning: API server failed to start: %v\n", err)
+			appAPISrv = nil
 		} else {
 			fmt.Printf("API server: http://%s\n", listenAddr)
 		}

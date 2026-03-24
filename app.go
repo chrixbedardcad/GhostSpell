@@ -14,6 +14,7 @@ import (
 
 	"github.com/chrixbedardcad/GhostSpell/assets"
 	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/core"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/hotkey"
 	"github.com/chrixbedardcad/GhostSpell/internal/version"
@@ -340,6 +341,47 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		language := cfg.Voice.Language
 		return appSTT.Transcribe(ctx, wavData, language)
+	}
+
+	// Wire API server callbacks for runtime start/stop from Settings (#284).
+	settingsSvc.StartAPIFn = func(addr string) (string, error) {
+		if appAPISrv != nil {
+			// Already running — stop first.
+			appAPISrv.Shutdown(context.Background())
+		}
+		appAPISrv = core.NewAPIServer(appEngine)
+		listenAddr, err := appAPISrv.Start(addr)
+		if err != nil {
+			appAPISrv = nil
+			return "", err
+		}
+		return listenAddr, nil
+	}
+	settingsSvc.StopAPIFn = func() error {
+		if appAPISrv == nil {
+			return nil
+		}
+		err := appAPISrv.Shutdown(context.Background())
+		appAPISrv = nil
+		return err
+	}
+	settingsSvc.APIStatusFn = func() (bool, string) {
+		if appAPISrv == nil {
+			return false, ""
+		}
+		return true, appAPISrv.Addr()
+	}
+	settingsSvc.TestAPIFn = func(text string) (string, error) {
+		if appEngine == nil {
+			return "", fmt.Errorf("engine not initialized")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		result, err := appEngine.Process(ctx, 0, text)
+		if err != nil {
+			return "", err
+		}
+		return result.Text, nil
 	}
 
 	// Initialize the shared onSettingsSaved callback now that all dependencies are ready.

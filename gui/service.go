@@ -94,6 +94,12 @@ type SettingsService struct {
 	Restarting bool
 
 	downloadProgress atomic.Value // stores *llm.DownloadProgress
+
+	// API server callbacks — set by app.go for runtime start/stop.
+	StartAPIFn func(addr string) (string, error) // start API server, returns listen address
+	StopAPIFn  func() error                      // stop API server
+	APIStatusFn func() (running bool, addr string) // get current API server status
+	TestAPIFn  func(text string) (string, error)  // test API by processing text through Engine
 }
 
 // Reset reinitializes the service for a new settings session. Called each time

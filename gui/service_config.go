@@ -796,3 +796,84 @@ func (s *SettingsService) OpenConfigFile() string {
 	OpenFile(s.configPath)
 	return "ok"
 }
+
+// --- API Server settings (#284 Phase 2) ---
+
+// SetAPIEnabled toggles the API server on or off at runtime.
+// When enabled, starts the server immediately. When disabled, stops it.
+func (s *SettingsService) SetAPIEnabled(enabled bool) string {
+	guiLog("[GUI] JS called: SetAPIEnabled(%v)", enabled)
+	s.cfgCopy.APIEnabled = enabled
+
+	if enabled {
+		addr := s.cfgCopy.APIAddr
+		if addr == "" {
+			addr = "127.0.0.1:7878"
+		}
+		if s.StartAPIFn != nil {
+			listenAddr, err := s.StartAPIFn(addr)
+			if err != nil {
+				slog.Error("[api] Failed to start API server", "addr", addr, "error", err)
+				return fmt.Sprintf("error: %v", err)
+			}
+			slog.Info("[api] Server started from Settings", "addr", listenAddr)
+		}
+	} else {
+		if s.StopAPIFn != nil {
+			if err := s.StopAPIFn(); err != nil {
+				slog.Error("[api] Failed to stop API server", "error", err)
+			} else {
+				slog.Info("[api] Server stopped from Settings")
+			}
+		}
+	}
+
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+// SetAPIAddr updates the API server listen address.
+func (s *SettingsService) SetAPIAddr(addr string) string {
+	guiLog("[GUI] JS called: SetAPIAddr(%s)", addr)
+	s.cfgCopy.APIAddr = addr
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
+// GetAPIStatus returns the API server status as JSON.
+func (s *SettingsService) GetAPIStatus() string {
+	running := false
+	addr := ""
+	if s.APIStatusFn != nil {
+		running, addr = s.APIStatusFn()
+	}
+	result := map[string]any{
+		"running": running,
+		"addr":    addr,
+		"enabled": s.cfgCopy.APIEnabled,
+		"configured_addr": s.cfgCopy.APIAddr,
+	}
+	data, _ := json.Marshal(result)
+	return string(data)
+}
+
+// TestAPI sends a test text through the core Engine and returns the result.
+// This tests the full LLM pipeline without needing curl or a terminal.
+func (s *SettingsService) TestAPI() string {
+	guiLog("[GUI] JS called: TestAPI")
+	if s.TestAPIFn == nil {
+		return "error: API test not available"
+	}
+
+	result, err := s.TestAPIFn("helo wrld, this is a tset of the API")
+	if err != nil {
+		slog.Error("[api] Test failed", "error", err)
+		return fmt.Sprintf("error: %v", err)
+	}
+	slog.Info("[api] Test succeeded", "result", result)
+	return result
+}

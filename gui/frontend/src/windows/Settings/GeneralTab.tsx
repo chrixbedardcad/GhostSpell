@@ -118,6 +118,27 @@ export function GeneralTab() {
   const [indicatorMode, setIndicatorMode] = useState("processing");
   const [hotkey, setHotkey] = useState("Ctrl+G");
 
+  // API server state
+  const [apiEnabled, setApiEnabled] = useState(false);
+  const [apiAddr, setApiAddr] = useState("127.0.0.1:7878");
+  const [apiRunning, setApiRunning] = useState(false);
+  const [apiListenAddr, setApiListenAddr] = useState("");
+  const [apiTesting, setApiTesting] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState("");
+
+  function refreshAPIStatus() {
+    goCall("getAPIStatus").then((raw) => {
+      if (!raw) return;
+      try {
+        const st = JSON.parse(raw);
+        setApiRunning(st.running);
+        setApiListenAddr(st.addr || "");
+        setApiEnabled(st.enabled);
+        if (st.configured_addr) setApiAddr(st.configured_addr || "127.0.0.1:7878");
+      } catch { /* ignore */ }
+    });
+  }
+
   useEffect(() => {
     goCall("getConfig").then((raw) => {
       if (!raw) return;
@@ -130,8 +151,11 @@ export function GeneralTab() {
         setIndicatorMode(cfg.indicator_mode || "processing");
         const hk = cfg.hotkeys?.action || "Ctrl+G";
         setHotkey(platform === "darwin" ? hk.replace("Ctrl", "⌘") : hk);
+        setApiEnabled(cfg.api_enabled ?? false);
+        setApiAddr(cfg.api_addr || "127.0.0.1:7878");
       } catch { /* ignore */ }
     });
+    refreshAPIStatus();
   }, [platform]);
 
   async function saveField(method: string, ...args: unknown[]) {
@@ -253,6 +277,102 @@ export function GeneralTab() {
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* API Server */}
+      <section>
+        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+          API Server
+        </h2>
+        <div className="bg-surface-0/30 rounded-xl p-5 space-y-3">
+          <ToggleRow
+            label="Enable API Server"
+            description="Expose GhostSpell over HTTP for CLI, Telegram, and integrations"
+            checked={apiEnabled}
+            onChange={async (v) => {
+              setApiEnabled(v);
+              const result = await goCall("setAPIEnabled", v);
+              if (result?.startsWith("error")) {
+                setApiEnabled(!v);
+                setApiTestResult(result);
+              }
+              refreshAPIStatus();
+            }}
+          />
+
+          {apiEnabled && (
+            <>
+              <div className="h-px bg-surface-0/50" />
+
+              {/* Status indicator */}
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm text-text">Status</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${apiRunning ? "bg-green-400" : "bg-overlay-0"}`} />
+                  <span className="text-sm text-subtext-0">
+                    {apiRunning ? `Running on ${apiListenAddr}` : "Stopped"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-px bg-surface-0/50" />
+
+              {/* Address field */}
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm text-text">Listen Address</p>
+                  <p className="text-xs text-overlay-0 mt-0.5">Restart toggle to apply changes</p>
+                </div>
+                <input
+                  type="text"
+                  value={apiAddr}
+                  onChange={(e) => setApiAddr(e.target.value)}
+                  onBlur={() => saveField("setAPIAddr", apiAddr)}
+                  className="w-44 px-3 py-1.5 bg-crust border border-surface-0 rounded-lg text-sm text-text
+                             font-mono focus:border-accent-blue/50 focus:outline-none transition-colors"
+                  placeholder="127.0.0.1:7878"
+                />
+              </div>
+
+              <div className="h-px bg-surface-0/50" />
+
+              {/* Test button */}
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm text-text">Quick Test</p>
+                  <p className="text-xs text-overlay-0 mt-0.5">Send "helo wrld" through Correct skill</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setApiTesting(true);
+                    setApiTestResult("");
+                    const result = await goCall("testAPI");
+                    setApiTestResult(result || "");
+                    setApiTesting(false);
+                  }}
+                  disabled={apiTesting}
+                  className="px-3 py-1.5 bg-accent-blue/15 text-accent-blue text-sm rounded-lg
+                             hover:bg-accent-blue/25 transition-colors disabled:opacity-50"
+                >
+                  {apiTesting ? "Testing..." : "Test"}
+                </button>
+              </div>
+
+              {/* Test result */}
+              {apiTestResult && (
+                <div className={`px-3 py-2 rounded-lg text-sm font-mono break-all ${
+                  apiTestResult.startsWith("error")
+                    ? "bg-red-500/10 text-red-400"
+                    : "bg-green-500/10 text-green-400"
+                }`}>
+                  {apiTestResult}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </section>
     </div>
