@@ -183,16 +183,25 @@ func processVoice(
 	if voiceMode == "dictation" {
 		// Direct paste — no LLM processing.
 		slog.Info("[voice] Dictation mode — pasting transcript directly")
-		kb.RestoreForegroundWindow() // ensure paste goes to target app, not indicator
-		if err := cb.Write(transcript); err != nil {
-			slog.Error("[voice] Clipboard write failed", "error", err)
-			gui.HideIndicator()
-			sound.PlayError()
-			return
-		}
+		kb.RestoreForegroundWindow()
 		time.Sleep(50 * time.Millisecond)
-		kb.Paste()
-		time.Sleep(150 * time.Millisecond)
+
+		// Try AX API first (inserts at cursor, no clipboard needed).
+		// Falls back to clipboard + Cmd+V if AX isn't available.
+		if kb.WriteSelectedText(transcript) {
+			slog.Info("[voice] Dictation: wrote via AX API")
+		} else {
+			slog.Info("[voice] Dictation: AX API failed, falling back to clipboard paste")
+			if err := cb.Write(transcript); err != nil {
+				slog.Error("[voice] Clipboard write failed", "error", err)
+				gui.HideIndicator()
+				sound.PlayError()
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+			kb.Paste()
+			time.Sleep(150 * time.Millisecond)
+		}
 		gui.HideIndicator()
 		sound.PlaySuccess()
 		if appStats != nil {
