@@ -11,6 +11,7 @@ import (
 
 	"github.com/chrixbedardcad/GhostSpell/clipboard"
 	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/core"
 	"github.com/chrixbedardcad/GhostSpell/stt"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
@@ -25,6 +26,10 @@ var appStats *stats.Stats
 
 // appSTT is the global speech-to-text transcriber, set from app.go.
 var appSTT stt.Transcriber
+
+// appEngine is the core Engine, set from main.go.
+// Provides pure business logic (Process, Transcribe) without UI dependencies.
+var appEngine *core.Engine
 
 // processingGuard prevents concurrent processMode execution.
 // macOS Carbon RegisterEventHotKey can send multiple Keydown events for a
@@ -259,7 +264,7 @@ func processMode(
 
 	// Create timeout context as child of cancelCtx — inherits cancel from
 	// second Ctrl+G press, plus its own per-provider deadline.
-	timeout := time.Duration(router.TimeoutForPrompt(promptIdx)) * time.Millisecond
+	timeout := appEngine.TimeoutForSkill(promptIdx)
 	ctx, cancel := context.WithTimeout(cancelCtx, timeout)
 	defer cancel()
 
@@ -324,11 +329,13 @@ func processMode(
 		}
 	}
 
-	// Send to LLM via mode router.
+	// Send to LLM via core Engine.
 	slog.Debug("Sending to LLM...", "prompt", promptName, "text_len", len(textToSend))
-	llmStart := time.Now()
-	resp, err := router.Process(ctx, promptIdx, textToSend)
-	llmElapsed := time.Since(llmStart)
+	coreResult, err := appEngine.Process(ctx, promptIdx, textToSend)
+	llmElapsed := time.Duration(0)
+	if coreResult != nil {
+		llmElapsed = coreResult.Duration
+	}
 
 	// LLM call complete — show a "done" summary on the indicator so
 	// the user can see which prompt ran, the model used, and how long it took.
@@ -339,9 +346,9 @@ func processMode(
 
 	// Extract provider/model metadata from response (if available).
 	respProvider, respModel := "", ""
-	if resp != nil {
-		respProvider = resp.Provider
-		respModel = resp.Model
+	if coreResult != nil {
+		respProvider = coreResult.Provider
+		respModel = coreResult.Model
 	}
 
 	// Resolve the model label for this prompt (per-prompt LLM override or default).
@@ -413,7 +420,7 @@ func processMode(
 	}
 
 	// Result received — stop working loop.
-	result := resp.Text
+	result := coreResult.Text
 	sound.StopWorkingLoop()
 
 	// If the LLM returned identical text, signal "no changes needed"
@@ -642,22 +649,24 @@ func processVision(
 	gui.ShowIndicator(promptIcon, promptName, indicatorModel)
 
 	// Create timeout context.
-	timeout := time.Duration(router.TimeoutForPrompt(promptIdx)) * time.Millisecond
+	timeout := appEngine.TimeoutForSkill(promptIdx)
 	ctx, cancel := context.WithTimeout(cancelCtx, timeout)
 	defer cancel()
 
-	// Send screenshot + prompt to LLM.
-	llmStart := time.Now()
-	resp, err := router.ProcessWithImages(ctx, promptIdx, "", [][]byte{imgData})
-	llmElapsed := time.Since(llmStart)
+	// Send screenshot + prompt to LLM via core Engine.
+	coreResult, err := appEngine.ProcessWithImages(ctx, promptIdx, "", [][]byte{imgData})
+	llmElapsed := time.Duration(0)
+	if coreResult != nil {
+		llmElapsed = coreResult.Duration
+	}
 
 	gui.HideIndicator()
 
 	// Record stats.
 	respProvider, respModel := "", ""
-	if resp != nil {
-		respProvider = resp.Provider
-		respModel = resp.Model
+	if coreResult != nil {
+		respProvider = coreResult.Provider
+		respModel = coreResult.Model
 	}
 	llmLabel := cfg.DefaultModel
 	if promptIdx >= 0 && promptIdx < len(cfg.Prompts) && cfg.Prompts[promptIdx].LLM != "" {
@@ -704,7 +713,7 @@ func processVision(
 		return
 	}
 
-	result := resp.Text
+	result := coreResult.Text
 	sound.StopWorkingLoop()
 	sound.PlaySuccess()
 	recordVisionStat("success", "", result)

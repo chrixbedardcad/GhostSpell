@@ -327,6 +327,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		cfg.Voice = newCfg.Voice
 		mu.Unlock()
 		initSTT(cfg)
+		if appEngine != nil {
+			appEngine.SetSTT(appSTT)
+		}
 		slog.Info("STT engine reloaded after voice model change", "model", cfg.Voice.Model)
 	}
 

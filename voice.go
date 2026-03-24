@@ -145,13 +145,8 @@ func processVoice(
 	sound.StartWorkingLoop()
 	transcribeStart := time.Now()
 
-	// Get language preference.
-	language := ""
-	if cfg.Voice.Language != "" {
-		language = cfg.Voice.Language
-	}
-
-	transcript, err := transcriber.Transcribe(cancelCtx, wavData, language)
+	// Transcribe via core Engine (pure logic, no UI).
+	transcript, err := appEngine.Transcribe(cancelCtx, wavData, appEngine.VoiceLanguage())
 	if err != nil {
 		slog.Error("[voice] Transcription failed", "error", err)
 		gui.HideIndicator()
@@ -160,7 +155,6 @@ func processVoice(
 		return
 	}
 
-	transcript = strings.TrimSpace(transcript)
 	if transcript == "" {
 		slog.Warn("[voice] Empty transcription")
 		gui.HideIndicator()
@@ -252,16 +246,16 @@ func processVoice(
 	// Add native language context so the LLM can correct accent-related
 	// transcription errors (e.g., French speaker saying English words).
 	textToSend := transcript
-	if cfg.Voice.NativeLanguage != "" {
-		textToSend = "[Speaker's native language: " + cfg.Voice.NativeLanguage +
+	if native := appEngine.VoiceNativeLanguage(); native != "" {
+		textToSend = "[Speaker's native language: " + native +
 			". The transcription may contain errors due to accent. Correct accordingly.]\n\n" + transcript
 	}
 
-	timeout := time.Duration(router.TimeoutForPrompt(promptIdx)) * time.Millisecond
+	timeout := appEngine.TimeoutForSkill(promptIdx)
 	ctx, cancel := context.WithTimeout(cancelCtx, timeout)
 	defer cancel()
 
-	resp, err := router.Process(ctx, promptIdx, textToSend)
+	coreResult, err := appEngine.Process(ctx, promptIdx, textToSend)
 	gui.HideIndicator()
 
 	if err != nil {
@@ -277,7 +271,7 @@ func processVoice(
 		return
 	}
 
-	result := strings.TrimSpace(resp.Text)
+	result := coreResult.Text
 	if result == "" {
 		slog.Warn("[voice] LLM returned empty result")
 		gui.HideIndicator()

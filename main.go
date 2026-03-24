@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/chrixbedardcad/GhostSpell/config"
+	"github.com/chrixbedardcad/GhostSpell/core"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/internal/debuglog"
 	"github.com/chrixbedardcad/GhostSpell/internal/sysinfo"
@@ -298,6 +299,9 @@ func main() {
 		"version", Version,
 		"needs_setup", needsSetup,
 	)
+
+	// Create the core engine — pure business logic, no UI dependencies.
+	appEngine = core.NewEngine(cfg, router, appSTT, appStats)
 
 	runApp(cfg, router, configPath, needsSetup, initError)
 }
