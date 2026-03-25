@@ -402,7 +402,37 @@ func (s *SettingsService) UpdateNow() string {
 			}
 		}
 
-		// 5. Relaunch and exit.
+		// 5. Update companion binaries (ghostai, ghost CLI).
+		// Best-effort: failure here doesn't block the main update.
+		execDir := filepath.Dir(execPath)
+		for _, comp := range companionAssets() {
+			var compURL string
+			var compSize int64
+			for _, a := range rel.Assets {
+				if a.Name == comp.assetName {
+					compURL = a.BrowserDownloadURL
+					compSize = a.Size
+					break
+				}
+			}
+			if compURL == "" {
+				continue
+			}
+			compDest := filepath.Join(execDir, comp.localName)
+			compTmp := compDest + ".tmp"
+			guiLog("[GUI] UpdateNow: downloading companion %s", comp.assetName)
+			if err := downloadToFile(ctx, compURL, compTmp, compSize, nil); err != nil {
+				guiLog("[GUI] UpdateNow: companion %s download failed: %v", comp.assetName, err)
+				os.Remove(compTmp)
+				continue
+			}
+			if err := swapBinary(compDest, compTmp); err != nil {
+				guiLog("[GUI] UpdateNow: companion %s swap failed: %v", comp.assetName, err)
+				os.Remove(compTmp)
+			}
+		}
+
+		// 6. Relaunch and exit.
 		setProgress(UpdateProgress{Phase: "restarting", Percent: 100})
 		guiLog("[GUI] UpdateNow: update complete, relaunching...")
 		launchAndExit(execPath)

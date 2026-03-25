@@ -53,6 +53,29 @@ func updateAssetName() string {
 	}
 }
 
+// companionAssets returns release asset names for companion binaries
+// (ghostai, ghost CLI) that should be updated alongside the main binary.
+// On macOS DMG, companions are inside the .app bundle — no separate download.
+type companionAsset struct {
+	assetName string // release filename (e.g. "ghostai-windows-amd64.exe")
+	localName string // local filename (e.g. "ghostai.exe")
+}
+
+func companionAssets() []companionAsset {
+	if runtime.GOOS == "darwin" {
+		return nil // bundled in .app via DMG
+	}
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	arch := runtime.GOARCH
+	return []companionAsset{
+		{fmt.Sprintf("ghostai-%s-%s%s", runtime.GOOS, arch, ext), "ghostai" + ext},
+		{fmt.Sprintf("ghost-%s-%s%s", runtime.GOOS, arch, ext), "ghost" + ext},
+	}
+}
+
 // installFromDMG mounts the downloaded DMG, copies the signed .app bundle
 // to replace the current one, and unmounts. This preserves the code signature
 // so macOS TCC keeps Accessibility and Input Monitoring permissions (#193).
