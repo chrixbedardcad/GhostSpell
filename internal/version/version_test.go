@@ -11,11 +11,12 @@ func TestVersionNonEmpty(t *testing.T) {
 	}
 }
 
-func TestVersionSemverFormat(t *testing.T) {
-	// Expect X.Y.Z where X, Y, Z are non-negative integers.
-	semver := regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-	if !semver.MatchString(Version) {
-		t.Fatalf("Version %q does not match semver format X.Y.Z", Version)
+func TestVersionFormat(t *testing.T) {
+	// Expect X.Y.Z.W where X, Y, Z, W are non-negative integers.
+	// W is the PR number (0 if no PR).
+	format := regexp.MustCompile(`^\d+\.\d+\.\d+\.\d+$`)
+	if !format.MatchString(Version) {
+		t.Fatalf("Version %q does not match format X.Y.Z.PR", Version)
 	}
 }
 
