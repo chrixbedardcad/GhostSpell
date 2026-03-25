@@ -125,7 +125,7 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "GhostSpell Settings",
 		Width:     760,
-		Height:    660,
+		Height:    780,
 		URL:       "/index.html",
 		Frameless: runtime.GOOS == "windows",
 		Mac: application.MacWindow{
