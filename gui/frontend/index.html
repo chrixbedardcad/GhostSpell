@@ -1030,6 +1030,56 @@
 
     <hr class="section-divider">
 
+    <!-- API Server section (#284) -->
+    <div class="section" style="background:#252537;border:1px solid #45475a;border-radius:10px;padding:16px;margin-top:8px">
+      <h2 style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        &#127760; API Server
+      </h2>
+      <div class="sublabel" style="margin-bottom:12px">Expose GhostSpell over HTTP for CLI tools, Telegram bot, and external integrations.</div>
+
+      <!-- Toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:0.85em;font-weight:600;color:#cdd6f4">Enable API Server</div>
+          <div style="font-size:0.72em;color:#6c7086;margin-top:2px">Start/stop the HTTP server at runtime</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer">
+          <input type="checkbox" id="api-enabled" onchange="toggleAPIServer(this.checked)" style="opacity:0;width:0;height:0">
+          <span style="position:absolute;inset:0;background:#585b70;border-radius:20px;transition:background 0.2s"></span>
+          <span id="api-toggle-knob" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#cdd6f4;border-radius:50%;transition:transform 0.2s"></span>
+        </label>
+      </div>
+
+      <!-- Status + details (hidden when disabled) -->
+      <div id="api-details" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:8px 12px;background:#1e1e2e;border-radius:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="api-status-dot" style="width:8px;height:8px;border-radius:50%;background:#585b70"></span>
+            <span id="api-status-text" style="font-size:0.82em;color:#a6adc8">Stopped</span>
+          </div>
+        </div>
+
+        <!-- Address -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="font-size:0.82em;font-weight:600;color:#cdd6f4;flex-shrink:0">Listen Address</div>
+          <input type="text" id="api-addr" value="127.0.0.1:7878" onchange="saveAPIAddr(this.value)"
+            style="padding:5px 10px;background:#313244;border:1px solid #45475a;border-radius:4px;color:#cdd6f4;font-size:0.82em;font-family:monospace;flex:1;max-width:200px">
+          <div style="font-size:0.68em;color:#6c7086">Toggle off/on to apply</div>
+        </div>
+
+        <!-- Test button -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <button class="btn btn-secondary btn-sm" id="api-test-btn" onclick="testAPI()" style="background:#89b4fa22;color:#89b4fa;border-color:#89b4fa44">
+            &#9889; Test
+          </button>
+          <span style="font-size:0.72em;color:#6c7086">Send "helo wrld" through Correct skill</span>
+        </div>
+        <div id="api-test-result" style="display:none;padding:8px 12px;border-radius:8px;font-size:0.82em;font-family:monospace;word-break:break-all;margin-top:4px"></div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
     <div class="section">
       <button class="btn btn-secondary btn-sm" onclick="onOpenConfigFile()">Open config.json</button>
     </div>
@@ -1523,6 +1573,7 @@ async function init() {
 
   // Populate General tab values on first load (it's the default active tab).
   renderGeneral();
+  initAPISection();
 
   // Refresh header when window regains focus (e.g. after cycling prompt via tray/indicator).
   window.addEventListener('focus', async function() {
@@ -2812,6 +2863,98 @@ const PROVIDER_KEY_URLS = {
 };
 
 async function onOpenConfigFile() { await goCall('openConfigFile'); }
+
+// ===========================================================================
+// API SERVER (General tab)
+// ===========================================================================
+
+async function initAPISection() {
+  const raw = await goCall('getAPIStatus');
+  if (!raw) return;
+  try {
+    const st = JSON.parse(raw);
+    const cb = document.getElementById('api-enabled');
+    const knob = document.getElementById('api-toggle-knob');
+    const details = document.getElementById('api-details');
+    cb.checked = st.enabled;
+    knob.style.transform = st.enabled ? 'translateX(16px)' : 'translateX(0)';
+    knob.parentElement.previousElementSibling.style.background = st.enabled ? '#89b4fa' : '#585b70';
+    details.style.display = st.enabled ? 'block' : 'none';
+    if (st.configured_addr) document.getElementById('api-addr').value = st.configured_addr;
+    updateAPIStatus(st.running, st.addr);
+  } catch(e) { console.error('initAPISection:', e); }
+}
+
+function updateAPIStatus(running, addr) {
+  const dot = document.getElementById('api-status-dot');
+  const text = document.getElementById('api-status-text');
+  if (running) {
+    dot.style.background = '#a6e3a1';
+    text.textContent = 'Running on ' + addr;
+    text.style.color = '#a6e3a1';
+  } else {
+    dot.style.background = '#585b70';
+    text.textContent = 'Stopped';
+    text.style.color = '#a6adc8';
+  }
+}
+
+async function toggleAPIServer(enabled) {
+  const knob = document.getElementById('api-toggle-knob');
+  const details = document.getElementById('api-details');
+  knob.style.transform = enabled ? 'translateX(16px)' : 'translateX(0)';
+  knob.parentElement.previousElementSibling.style.background = enabled ? '#89b4fa' : '#585b70';
+  details.style.display = enabled ? 'block' : 'none';
+
+  const result = await goCall('setAPIEnabled', enabled);
+  if (result && result.startsWith('error')) {
+    document.getElementById('api-enabled').checked = !enabled;
+    knob.style.transform = !enabled ? 'translateX(16px)' : 'translateX(0)';
+    knob.parentElement.previousElementSibling.style.background = !enabled ? '#89b4fa' : '#585b70';
+    details.style.display = !enabled ? 'block' : 'none';
+    showAPITestResult(result, true);
+    return;
+  }
+
+  // Refresh status
+  const raw = await goCall('getAPIStatus');
+  if (raw) {
+    try {
+      const st = JSON.parse(raw);
+      updateAPIStatus(st.running, st.addr);
+    } catch(e) {}
+  }
+}
+
+async function saveAPIAddr(addr) {
+  await goCall('setAPIAddr', addr);
+}
+
+async function testAPI() {
+  const btn = document.getElementById('api-test-btn');
+  btn.disabled = true;
+  btn.textContent = 'Testing...';
+  showAPITestResult('', false);
+
+  const result = await goCall('testAPI');
+  btn.disabled = false;
+  btn.textContent = '\u26A1 Test';
+
+  if (result && result.startsWith('error')) {
+    showAPITestResult(result, true);
+  } else {
+    showAPITestResult(result || 'No response', false);
+  }
+}
+
+function showAPITestResult(text, isError) {
+  const el = document.getElementById('api-test-result');
+  if (!text) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = text;
+  el.style.background = isError ? 'rgba(243,139,168,0.1)' : 'rgba(166,227,161,0.1)';
+  el.style.color = isError ? '#f38ba8' : '#a6e3a1';
+}
 
 // ===========================================================================
 // PROMPTS TAB
