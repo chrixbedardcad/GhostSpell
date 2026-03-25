@@ -198,21 +198,24 @@ echo ""
 # ============================================================
 MAIN_TAGS="production"
 if [ "$GHOSTAI" -eq 1 ]; then
-    MAIN_TAGS="production ghostai"
-    info "[3] Building ghostspell with Ghost-AI..."
+    info "[3] Building ghostspell + ghostai..."
 else
     info "[2] Building ghostspell (API-only mode)..."
 fi
 
 export CGO_ENABLED=1
 if ! go build -tags "$MAIN_TAGS" -o ghostspell .; then
-    if [ "$GHOSTAI" -eq 1 ]; then
-        echo ""
-        warn "Build failed — retrying without Ghost-AI..."
-        GHOSTAI=0
-        go build -tags "production" -o ghostspell . || fail "Go build failed"
+    fail "Go build failed"
+fi
+
+# Build ghostai binary (CGo — links llama.cpp, separate LLM server process).
+if [ "$GHOSTAI" -eq 1 ]; then
+    echo "  Building ghostai (LLM server)..."
+    if go build -tags "production ghostai" -o ghostai ./cmd/ghostai; then
+        echo "  ghostai built OK"
     else
-        fail "Go build failed"
+        warn "ghostai build failed — local AI will not be available"
+        GHOSTAI=0
     fi
 fi
 
@@ -227,7 +230,7 @@ fi
 echo ""
 echo "============================================"
 echo "  BUILD COMPLETE: ghostspell + ghost"
-[ "$GHOSTAI" -eq 1 ] && echo "  + Ghost-AI (local text AI)"
+[ "$GHOSTAI" -eq 1 ] && echo "  + ghostai (local LLM server)"
 [ "$GHOSTVOICE" -eq 1 ] && echo "  + ghostvoice (local speech-to-text)"
 [ "$GHOSTAI" -eq 0 ] && [ "$GHOSTVOICE" -eq 0 ] && echo "  Mode: API-only"
 echo "============================================"
@@ -250,6 +253,10 @@ fi
 if [ -f "$APPDATA_DIR/ghost-server.log" ]; then
     rm -f "$APPDATA_DIR/ghost-server.log"
     echo "Cleared $APPDATA_DIR/ghost-server.log"
+fi
+if [ -f "$APPDATA_DIR/ghostai.log" ]; then
+    rm -f "$APPDATA_DIR/ghostai.log"
+    echo "Cleared $APPDATA_DIR/ghostai.log"
 fi
 echo ""
 

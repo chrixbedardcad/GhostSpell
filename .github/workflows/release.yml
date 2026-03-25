@@ -110,20 +110,32 @@ jobs:
             [ -f "$f" ] && [[ ! "$f" == *.exe ]] && cp "$f" voicebin/ghostvoice && break
           done
           ls -lh voicebin/
-      - name: Build
+      - name: Build main binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: ${{ matrix.cgo }}
         run: |
-          TAGS="production ghostai ghostvoice"
+          # Main binary: no ghostai tag (ghostai is a separate process now).
+          TAGS="production ghostvoice"
           if [ "${{ matrix.goos }}" = "linux" ]; then
-            TAGS="webkit2_41 production ghostai ghostvoice"
+            TAGS="webkit2_41 production ghostvoice"
           fi
           if [ "${{ matrix.goos }}" = "windows" ]; then
             go build -tags "$TAGS" -ldflags "-H=windowsgui -extldflags '-static'" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           else
             go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          fi
+      - name: Build ghostai (LLM server)
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            go build -tags "production ghostai" -ldflags "-extldflags '-static'" -o ghostai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/ghostai
+          else
+            go build -tags "production ghostai" -o ghostai-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/ghostai
           fi
       - name: Build ghost CLI
         env:
@@ -209,6 +221,7 @@ jobs:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             ghostspell-*
+            ghostai-*
             ghostvoice*
             ghost-*
       - uses: actions/upload-artifact@v4
@@ -218,6 +231,7 @@ jobs:
           path: |
             GhostSpell-darwin-*.dmg
             ghostspell-darwin-*
+            ghostai-darwin-*
             ghost-darwin-*
 
   publish:

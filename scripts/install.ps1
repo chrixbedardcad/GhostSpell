@@ -55,15 +55,21 @@ $Dest = Join-Path $InstallDir "ghostspell.exe"
 Write-Info "Downloading ghostspell-windows-amd64.exe..."
 Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing
 
-# Download ghost CLI (optional — may not exist in older releases).
+# Download ghostai LLM server (optional).
+$GhostAIUrl = "https://github.com/$Repo/releases/download/$Version/ghostai-windows-amd64.exe"
+$GhostAIDest = Join-Path $InstallDir "ghostai.exe"
+try {
+    Invoke-WebRequest -Uri $GhostAIUrl -OutFile $GhostAIDest -UseBasicParsing -ErrorAction Stop
+    Write-Info "ghostai installed to $GhostAIDest"
+} catch {}
+
+# Download ghost CLI (optional).
 $GhostUrl = "https://github.com/$Repo/releases/download/$Version/ghost-windows-amd64.exe"
 $GhostDest = Join-Path $InstallDir "ghost.exe"
 try {
     Invoke-WebRequest -Uri $GhostUrl -OutFile $GhostDest -UseBasicParsing -ErrorAction Stop
     Write-Info "ghost CLI installed to $GhostDest"
-} catch {
-    # ghost CLI not available in this release — skip silently.
-}
+} catch {}
 
 # --- Add to PATH ------------------------------------------------------------
 

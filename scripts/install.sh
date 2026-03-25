@@ -184,6 +184,19 @@ install_linux() {
         sudo mv "${tmpdir}/ghostspell" "${INSTALL_DIR}/ghostspell"
     fi
 
+    # Also install ghostai LLM server if available.
+    local ghostai_asset="ghostai-linux-${arch}"
+    local ghostai_url="https://github.com/${REPO}/releases/download/${version}/${ghostai_asset}"
+    if curl -fsSL -o "${tmpdir}/ghostai" "$ghostai_url" 2>/dev/null; then
+        chmod +x "${tmpdir}/ghostai"
+        if [ -w "$INSTALL_DIR" ]; then
+            mv "${tmpdir}/ghostai" "${INSTALL_DIR}/ghostai"
+        else
+            sudo mv "${tmpdir}/ghostai" "${INSTALL_DIR}/ghostai"
+        fi
+        info "ghostai installed to ${INSTALL_DIR}/ghostai"
+    fi
+
     # Also install ghost CLI if available in the release.
     local ghost_asset="ghost-linux-${arch}"
     local ghost_url="https://github.com/${REPO}/releases/download/${version}/${ghost_asset}"

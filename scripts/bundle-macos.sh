@@ -41,6 +41,17 @@ else
     echo "Warning: ghostvoice helper not found — voice skills will not work"
 fi
 
+# Copy ghostai LLM server if built.
+GHOSTAI_BIN=""
+for f in ghostai-darwin-* ghostai; do
+    [ -f "$f" ] && GHOSTAI_BIN="$f" && break
+done
+if [ -n "$GHOSTAI_BIN" ]; then
+    cp "$GHOSTAI_BIN" "${MACOS_DIR}/ghostai"
+    chmod +x "${MACOS_DIR}/ghostai"
+    echo "ghostai bundled ($GHOSTAI_BIN)"
+fi
+
 # Copy ghost CLI if built.
 GHOST_BIN=""
 for f in ghost-darwin-* ghost; do

@@ -480,7 +480,6 @@ echo.
 :: Voice (whisper.cpp) runs via whisper-cli.exe subprocess — no CGo needed.
 
 set MAIN_TAGS=production
-if !GHOSTAI!==1 set MAIN_TAGS=!MAIN_TAGS! ghostai
 if !GHOSTVOICE!==1 if exist "%~dp0voicebin\ghostvoice.exe" set MAIN_TAGS=!MAIN_TAGS! ghostvoice
 
 if !GHOSTAI!==1 (
@@ -505,6 +504,18 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+:: Build ghostai.exe (CGo — links llama.cpp, separate process).
+if !GHOSTAI!==1 (
+    echo   Building ghostai.exe ^(LLM server^)...
+    go build -tags "production ghostai" -o ghostai.exe ./cmd/ghostai
+    if !errorlevel! neq 0 (
+        echo   WARNING: ghostai.exe build failed — local AI will not be available
+        set GHOSTAI=0
+    ) else (
+        echo   ghostai.exe built OK
+    )
+)
+
 :: Build ghost CLI (pure Go, no CGo needed).
 echo   Building ghost.exe ^(CLI^)...
 go build -tags "production" -o ghost.exe ./cmd/ghost
@@ -517,7 +528,7 @@ if !errorlevel! neq 0 (
 echo.
 echo ============================================
 echo   BUILD COMPLETE: ghostspell.exe + ghost.exe
-if !GHOSTAI!==1 echo   + Ghost-AI ^(local text AI^)
+if !GHOSTAI!==1 echo   + ghostai.exe ^(local LLM server^)
 if !GHOSTVOICE!==1 echo   + Ghost Voice ^(local speech-to-text, embedded^)
 if !GHOSTAI!==0 if !GHOSTVOICE!==0 echo   Mode: API-only
 echo ============================================
@@ -540,6 +551,10 @@ if exist "%APPDATA_DIR%\ghostspell_crash.log" (
 if exist "%APPDATA_DIR%\ghost-server.log" (
     del /q "%APPDATA_DIR%\ghost-server.log" 2>nul
     echo Cleared %APPDATA_DIR%\ghost-server.log
+)
+if exist "%APPDATA_DIR%\ghostai.log" (
+    del /q "%APPDATA_DIR%\ghostai.log" 2>nul
+    echo Cleared %APPDATA_DIR%\ghostai.log
 )
 echo.
 echo Starting GhostSpell...
