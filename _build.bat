@@ -409,6 +409,9 @@ if !errorlevel! neq 0 (
     set GHOSTVOICE=0
 ) else (
     echo   ghostvoice.exe built OK
+    :: Stage for go:embed
+    if not exist "%~dp0voicebin" mkdir "%~dp0voicebin"
+    copy /y "%~dp0ghostvoice.exe" "%~dp0voicebin\ghostvoice.exe" >nul 2>&1
 )
 
 :: Static libraries — collect all .a from build tree
@@ -478,6 +481,7 @@ echo.
 
 set MAIN_TAGS=production
 if !GHOSTAI!==1 set MAIN_TAGS=!MAIN_TAGS! ghostai
+if !GHOSTVOICE!==1 if exist "%~dp0voicebin\ghostvoice.exe" set MAIN_TAGS=!MAIN_TAGS! ghostvoice
 
 if !GHOSTAI!==1 (
     echo [3] Building ghostspell.exe with Ghost-AI...
@@ -505,7 +509,7 @@ echo.
 echo ============================================
 echo   BUILD COMPLETE: ghostspell.exe
 if !GHOSTAI!==1 echo   + Ghost-AI ^(local text AI^)
-if !GHOSTVOICE!==1 echo   + whisper-cli.exe ^(local speech-to-text^)
+if !GHOSTVOICE!==1 echo   + Ghost Voice ^(local speech-to-text, embedded^)
 if !GHOSTAI!==0 if !GHOSTVOICE!==0 echo   Mode: API-only
 echo ============================================
 echo.

@@ -99,16 +99,26 @@ jobs:
         run: |
           chmod +x scripts/build-ghostvoice.sh
           ./scripts/build-ghostvoice.sh
+      - name: Stage ghostvoice for embedding
+        run: |
+          mkdir -p voicebin
+          # Copy platform-specific binary to generic name for go:embed
+          for f in ghostvoice-*.exe ghostvoice.exe; do
+            [ -f "$f" ] && cp "$f" voicebin/ghostvoice.exe && break
+          done
+          for f in ghostvoice-${{ matrix.goos }}-* ghostvoice_bin; do
+            [ -f "$f" ] && [[ ! "$f" == *.exe ]] && cp "$f" voicebin/ghostvoice && break
+          done
+          ls -lh voicebin/
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: ${{ matrix.cgo }}
         run: |
-          # Main binary: ghostai only (no ghostvoice CGo — whisper runs as separate process).
-          TAGS="production ghostai"
+          TAGS="production ghostai ghostvoice"
           if [ "${{ matrix.goos }}" = "linux" ]; then
-            TAGS="webkit2_41 production ghostai"
+            TAGS="webkit2_41 production ghostai ghostvoice"
           fi
           if [ "${{ matrix.goos }}" = "windows" ]; then
             go build -tags "$TAGS" -ldflags "-H=windowsgui -extldflags '-static'" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}

@@ -143,6 +143,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Pass embedded ghostvoice binary to the STT package (nil when built without ghostvoice tag).
+	stt.SetEmbeddedGhostVoice(embeddedGhostVoice)
+
 	// Single-instance check — exit if another GhostSpell is already running.
 	removeLock := acquireSingleInstance(appDir)
 	defer removeLock()

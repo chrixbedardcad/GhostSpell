@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/chrixbedardcad/GhostSpell/internal/version"
 )
 
 const (
@@ -278,7 +280,25 @@ func (c *GhostVoiceClient) Transcribe(ctx context.Context, wavData []byte, langu
 	}
 }
 
+// embeddedBinary holds the ghostvoice binary embedded at build time (set by main).
+// nil when built without the ghostvoice tag or when not yet initialized.
+var embeddedBinary []byte
+
+// SetEmbeddedGhostVoice passes the embedded ghostvoice binary from the main package.
+func SetEmbeddedGhostVoice(data []byte) {
+	embeddedBinary = data
+}
+
+// ghostVoiceBinaryName returns the platform-specific binary name.
+func ghostVoiceBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "ghostvoice.exe"
+	}
+	return "ghostvoice"
+}
+
 // findGhostVoice locates the ghostvoice helper binary.
+// Search order: next to executable, PATH, AppData extraction from embedded bytes.
 func findGhostVoice() (string, error) {
 	ext := ""
 	if runtime.GOOS == "windows" {
@@ -293,6 +313,7 @@ func findGhostVoice() (string, error) {
 		"ghostvoice" + ext,
 	}
 
+	// 1. Check next to the main executable.
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		for _, name := range names {
@@ -303,14 +324,74 @@ func findGhostVoice() (string, error) {
 		}
 	}
 
-	// Check PATH.
+	// 2. Check PATH.
 	for _, name := range names {
 		if path, err := exec.LookPath(name); err == nil {
 			return path, nil
 		}
 	}
 
+	// 3. Check AppData dir (extraction target).
+	name := ghostVoiceBinaryName()
+	if dir, err := ghostVoiceDir(); err == nil {
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); err == nil {
+			if isGhostVoiceCurrent(dir) {
+				return path, nil
+			}
+		}
+	}
+
+	// 4. Try extracting from embedded bytes.
+	if len(embeddedBinary) > 0 {
+		if path, err := extractGhostVoice(); err == nil {
+			return path, nil
+		} else {
+			slog.Warn("[ghost-voice] extraction failed", "error", err)
+		}
+	}
+
 	return "", fmt.Errorf("ghost-voice: ghostvoice%s not found — run _build.bat to build it", ext)
+}
+
+// ghostVoiceDir returns the directory where the extracted ghostvoice binary lives.
+func ghostVoiceDir() (string, error) {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "GhostSpell"), nil
+}
+
+// isGhostVoiceCurrent returns true if the extracted ghostvoice matches the current app version.
+func isGhostVoiceCurrent(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, ".ghostvoice.version"))
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(data)) == version.Version
+}
+
+// extractGhostVoice writes the embedded binary to AppData and marks it with the current version.
+func extractGhostVoice() (string, error) {
+	dir, err := ghostVoiceDir()
+	if err != nil {
+		return "", err
+	}
+	os.MkdirAll(dir, 0755)
+
+	name := ghostVoiceBinaryName()
+	path := filepath.Join(dir, name)
+
+	if err := os.WriteFile(path, embeddedBinary, 0755); err != nil {
+		return "", fmt.Errorf("ghost-voice: extract: %w", err)
+	}
+
+	// Write version marker so we know when to re-extract.
+	os.WriteFile(filepath.Join(dir, ".ghostvoice.version"), []byte(version.Version), 0644)
+
+	slog.Info("[ghost-voice] extracted embedded binary", "path", path, "version", version.Version, "size", len(embeddedBinary))
+	return path, nil
 }
 
 // VoiceModel describes a downloadable whisper model.

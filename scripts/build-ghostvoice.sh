@@ -154,6 +154,17 @@ case "$OS" in
         ;;
 esac
 
+# Stage for go:embed — copy to voicebin/ with the platform-correct name.
+mkdir -p "$PROJECT_ROOT/voicebin"
+case "$OS" in
+    MINGW*|MSYS*|CYGWIN*)
+        cp "$GHOSTVOICE_OUT" "$PROJECT_ROOT/voicebin/ghostvoice.exe"
+        ;;
+    *)
+        cp "$GHOSTVOICE_OUT" "$PROJECT_ROOT/voicebin/ghostvoice"
+        ;;
+esac
+
 echo ""
 echo "=== Ghost Voice Build Complete ==="
 echo "Headers: $WHISPER_OUT/include/"
@@ -161,5 +172,5 @@ ls "$WHISPER_OUT/include/" 2>/dev/null
 echo "Libraries: $WHISPER_OUT/lib/"
 ls "$WHISPER_OUT/lib/" 2>/dev/null
 echo "ghostvoice: $GHOSTVOICE_OUT"
-echo ""
-echo "Place ghostvoice next to ghostspell, then run GhostSpell."
+echo "Staged for embedding: $PROJECT_ROOT/voicebin/"
+ls -lh "$PROJECT_ROOT/voicebin/" 2>/dev/null

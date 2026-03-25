@@ -47,6 +47,10 @@ Debug/
 GhostType
 GhostSpell
 
+# Embedded ghostvoice binary (staged by build scripts)
+voicebin/*
+!voicebin/.gitkeep
+
 # React frontend build
 gui/frontend/node_modules/
 gui/frontend/dist/*
