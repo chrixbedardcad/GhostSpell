@@ -37,6 +37,7 @@ export function IndicatorWindow() {
   const [menuModel, setMenuModel] = useState("");
   const [menuVoiceModel, setMenuVoiceModel] = useState("");
   const [menuMode, setMenuMode] = useState("processing");
+  const [menuPrompts, setMenuPrompts] = useState<{ name: string; icon: string; active: boolean; index: number }[]>([]);
   const [isVoice, setIsVoice] = useState(false);
   const [isVision, setIsVision] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -212,9 +213,15 @@ export function IndicatorWindow() {
         if (data.activeModel) setMenuModel(data.activeModel);
         if (data.voiceModel) setMenuVoiceModel(data.voiceModel);
         if (data.indicatorMode) setMenuMode(data.indicatorMode);
+        const prompts = data.prompts || [];
+        setMenuPrompts(prompts);
         setMenuOpen(true);
-        // Height: version(20) + LLM(18) + voice(18) + gap(4) + "Display" label(22) + 3 modes(28 each) + divider(5) + settings(34) + quit(34) + padding(16)
-        const menuH = 20 + 18 + 18 + 4 + 22 + 3 * 28 + 5 + 34 + 34 + 16;
+        // Height: version(20) + LLM(18) + voice(18) + divider(5)
+        //   + prompts(28 each) + divider(5)
+        //   + "Display" label(22) + 3 modes(28 each) + divider(5)
+        //   + settings(34) + quit(34) + padding(16)
+        const promptsH = prompts.length > 0 ? prompts.length * 28 + 5 : 0;
+        const menuH = 20 + 18 + 18 + 5 + promptsH + 22 + 3 * 28 + 5 + 34 + 34 + 16;
         goCall("resizeIndicatorForMenu", 220, menuH);
       } catch (err) { console.error("[Indicator] onContextMenu: parse error", err); }
     }
@@ -418,7 +425,27 @@ export function IndicatorWindow() {
         {menuModel && <div style={{ color: "#6c7086" }}>LLM: {menuModel}</div>}
         {menuVoiceModel && <div style={{ color: "#6c7086" }}>Voice: {menuVoiceModel}</div>}
       </div>
+      {/* Skill list */}
+      {menuPrompts.length > 0 && (
+        <>
+          <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
+          {menuPrompts.map((p) => (
+            <button
+              key={p.index}
+              onClick={() => { closeMenu(); goCall("setActivePromptFromIndicator", p.index); }}
+              style={{ ...mBtn, padding: "6px 12px", fontSize: "11px", color: p.active ? "#89b4fa" : "#a6adc8" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(49, 50, 68, 0.5)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+            >
+              <span style={{ width: "18px", textAlign: "center", flexShrink: 0 }}>{p.icon || "\uD83D\uDCDD"}</span>
+              <span style={{ flex: 1 }}>{p.name}</span>
+              {p.active && <span style={{ fontSize: "8px", color: "#89b4fa" }}>{"\u25cf"}</span>}
+            </button>
+          ))}
+        </>
+      )}
       {/* Display mode section */}
+      <div style={{ height: "1px", background: "rgba(69, 71, 90, 0.4)", margin: "2px 0" }} />
       <div style={{ padding: "4px 12px 2px", fontSize: "10px", color: "#585b70", letterSpacing: "0.5px" }}>
         Display
       </div>
