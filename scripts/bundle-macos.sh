@@ -41,6 +41,17 @@ else
     echo "Warning: ghostvoice helper not found — voice skills will not work"
 fi
 
+# Copy ghost CLI if built.
+GHOST_BIN=""
+for f in ghost-darwin-* ghost; do
+    [ -f "$f" ] && [[ ! "$f" == *.dmg ]] && GHOST_BIN="$f" && break
+done
+if [ -n "$GHOST_BIN" ]; then
+    cp "$GHOST_BIN" "${MACOS_DIR}/ghost"
+    chmod +x "${MACOS_DIR}/ghost"
+    echo "ghost CLI bundled ($GHOST_BIN)"
+fi
+
 # Generate .icns from the 1024px PNG icon using macOS built-in tools.
 ICONSET_DIR="GhostSpell.iconset"
 rm -rf "${ICONSET_DIR}"

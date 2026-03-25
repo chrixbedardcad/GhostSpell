@@ -113,6 +113,18 @@ install_macos() {
     touch /Applications/GhostSpell.app
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/GhostSpell.app 2>/dev/null || true
 
+    # Symlink ghost CLI to /usr/local/bin if it exists in the .app bundle.
+    local ghost_in_app="/Applications/GhostSpell.app/Contents/MacOS/ghost"
+    if [ -f "$ghost_in_app" ]; then
+        mkdir -p /usr/local/bin 2>/dev/null || true
+        if [ -w /usr/local/bin ]; then
+            ln -sf "$ghost_in_app" /usr/local/bin/ghost
+        else
+            sudo ln -sf "$ghost_in_app" /usr/local/bin/ghost
+        fi
+        info "ghost CLI available at /usr/local/bin/ghost"
+    fi
+
     rm -rf "$tmpdir"
 
     echo ""
@@ -170,6 +182,19 @@ install_linux() {
         mv "${tmpdir}/ghostspell" "${INSTALL_DIR}/ghostspell"
     else
         sudo mv "${tmpdir}/ghostspell" "${INSTALL_DIR}/ghostspell"
+    fi
+
+    # Also install ghost CLI if available in the release.
+    local ghost_asset="ghost-linux-${arch}"
+    local ghost_url="https://github.com/${REPO}/releases/download/${version}/${ghost_asset}"
+    if curl -fsSL -o "${tmpdir}/ghost" "$ghost_url" 2>/dev/null; then
+        chmod +x "${tmpdir}/ghost"
+        if [ -w "$INSTALL_DIR" ]; then
+            mv "${tmpdir}/ghost" "${INSTALL_DIR}/ghost"
+        else
+            sudo mv "${tmpdir}/ghost" "${INSTALL_DIR}/ghost"
+        fi
+        info "ghost CLI installed to ${INSTALL_DIR}/ghost"
     fi
 
     rm -rf "$tmpdir"

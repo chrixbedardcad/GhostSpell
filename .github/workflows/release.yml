@@ -125,6 +125,13 @@ jobs:
           else
             go build -tags "$TAGS" -o ghostspell-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
           fi
+      - name: Build ghost CLI
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build -tags "production" -o ghost-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/ghost
       - name: Import signing certificate
         if: matrix.goos == 'darwin' && env.APPLE_CERTIFICATE_BASE64 != ''
         env:
@@ -203,6 +210,7 @@ jobs:
           path: |
             ghostspell-*
             ghostvoice*
+            ghost-*
       - uses: actions/upload-artifact@v4
         if: matrix.goos == 'darwin'
         with:
@@ -210,6 +218,7 @@ jobs:
           path: |
             GhostSpell-darwin-*.dmg
             ghostspell-darwin-*
+            ghost-darwin-*
 
   publish:
     needs: release

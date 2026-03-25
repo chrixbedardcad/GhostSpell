@@ -216,9 +216,17 @@ if ! go build -tags "$MAIN_TAGS" -o ghostspell .; then
     fi
 fi
 
+# Build ghost CLI (pure Go, no CGo needed).
+echo "  Building ghost (CLI)..."
+if go build -tags "production" -o ghost ./cmd/ghost; then
+    echo "  ghost built OK"
+else
+    echo "  WARNING: ghost build failed — CLI will not be available"
+fi
+
 echo ""
 echo "============================================"
-echo "  BUILD COMPLETE: ghostspell"
+echo "  BUILD COMPLETE: ghostspell + ghost"
 [ "$GHOSTAI" -eq 1 ] && echo "  + Ghost-AI (local text AI)"
 [ "$GHOSTVOICE" -eq 1 ] && echo "  + ghostvoice (local speech-to-text)"
 [ "$GHOSTAI" -eq 0 ] && [ "$GHOSTVOICE" -eq 0 ] && echo "  Mode: API-only"
@@ -238,6 +246,10 @@ fi
 if [ -f "$APPDATA_DIR/ghostspell_crash.log" ]; then
     rm -f "$APPDATA_DIR/ghostspell_crash.log"
     echo "Cleared $APPDATA_DIR/ghostspell_crash.log"
+fi
+if [ -f "$APPDATA_DIR/ghost-server.log" ]; then
+    rm -f "$APPDATA_DIR/ghost-server.log"
+    echo "Cleared $APPDATA_DIR/ghost-server.log"
 fi
 echo ""
 

@@ -505,9 +505,18 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
+:: Build ghost CLI (pure Go, no CGo needed).
+echo   Building ghost.exe ^(CLI^)...
+go build -tags "production" -o ghost.exe ./cmd/ghost
+if !errorlevel! neq 0 (
+    echo   WARNING: ghost.exe build failed — CLI will not be available
+) else (
+    echo   ghost.exe built OK
+)
+
 echo.
 echo ============================================
-echo   BUILD COMPLETE: ghostspell.exe
+echo   BUILD COMPLETE: ghostspell.exe + ghost.exe
 if !GHOSTAI!==1 echo   + Ghost-AI ^(local text AI^)
 if !GHOSTVOICE!==1 echo   + Ghost Voice ^(local speech-to-text, embedded^)
 if !GHOSTAI!==0 if !GHOSTVOICE!==0 echo   Mode: API-only
@@ -527,6 +536,10 @@ if exist "%APPDATA_DIR%\ghostvoice.log" (
 if exist "%APPDATA_DIR%\ghostspell_crash.log" (
     del /q "%APPDATA_DIR%\ghostspell_crash.log" 2>nul
     echo Cleared %APPDATA_DIR%\ghostspell_crash.log
+)
+if exist "%APPDATA_DIR%\ghost-server.log" (
+    del /q "%APPDATA_DIR%\ghost-server.log" 2>nul
+    echo Cleared %APPDATA_DIR%\ghost-server.log
 )
 echo.
 echo Starting GhostSpell...
