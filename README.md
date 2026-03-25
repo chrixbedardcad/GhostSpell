@@ -546,6 +546,31 @@ gh issue comment --repo chrixbedardcad/GhostSpell ISSUE_NUMBER `
 
 ---
 
+## Versioning
+
+GhostSpell uses a four-part version scheme: **`A.B.C.D`**
+
+| Part | Meaning | Who bumps it |
+|------|---------|--------------|
+| **A** | Major version | Maintainer only |
+| **B** | Minor version | Maintainer only |
+| **C** | Patch / incremental | Incremented by 1 for each change |
+| **D** | Issue or PR number | Set to the issue/PR that prompted the change (0 if none) |
+
+Examples:
+- `0.93.4.0` — patch 4, no specific issue
+- `0.93.5.287` — patch 5, fixing issue #287
+- `0.93.6.300` — patch 6, for PR #300
+- `1.0.0.0` — major milestone (maintainer decision)
+
+Sub-components pin upstream library versions (not this scheme):
+- **Ghost-AI** (llama.cpp): `b8281` — set in `scripts/build-ghostai.sh`
+- **Ghost Voice** (whisper.cpp): `v1.7.5` — set in `scripts/build-ghostvoice.sh`
+
+The version source of truth is `internal/version/version.go`.
+
+---
+
 ## License
 
 MIT
