@@ -185,15 +185,33 @@ Create custom skills in **Settings > Skills**. Use `{{language}}` in any skill p
 
 ### Architecture
 
-GhostSpell uses separate processes for AI engines — no conflicts, clean isolation:
+GhostSpell uses a **dispatcher + agents** model. The main app is a thin orchestrator; AI engines run as separate processes with their own libraries:
 
-| Binary | Engine | What it does |
-|--------|--------|-------------|
-| **ghostspell** | — | Main app: hotkeys, clipboard, UI, orchestration |
-| **ghostai** | llama.cpp | LLM text processing (Correct, Polish, Ask, etc.) |
-| **ghostvoice** | whisper.cpp | Speech-to-text transcription (Voice skills) |
+```
+ghost(.exe)              — dispatcher (hotkeys, clipboard, UI, routing)
+  ├── ghostai(.exe)      — LLM agent (llama.cpp, HTTP server)
+  ├── ghostvoice(.exe)   — STT agent (whisper.cpp, daemon)
+  └── ghost bridge       — messaging bots (Telegram, Discord) — planned
+```
 
-Each binary links its own AI libraries. If one crashes, the main app stays alive. Each can be tested independently from the command line.
+| Binary | Engine | Protocol | What it does |
+|--------|--------|----------|-------------|
+| **ghost** | — | — | Main app + CLI: hotkeys, clipboard, UI, orchestration |
+| **ghostai** | llama.cpp | HTTP (OpenAI-compatible) | LLM text processing (Correct, Polish, Ask, etc.) |
+| **ghostvoice** | whisper.cpp | stdin/stdout JSON | Speech-to-text transcription (Voice skills) |
+
+**Why separate processes?** llama.cpp and whisper.cpp both use libggml with conflicting symbols. Linking both into one binary causes silent corruption. Every major project (Ollama, LocalAI, Chrome) uses process separation for this reason.
+
+**Process lifecycle:** Children are managed by OS-level Job Objects (Windows) / process groups (Unix), parent PID monitoring, and a PID file. If the main app crashes, all agents are cleaned up automatically.
+
+**ghost CLI** — the main binary doubles as a CLI tool:
+
+```bash
+ghost correct "teh quik brown fox"    # process text via API
+ghost serve                           # start headless API server
+ghost prompts                         # list available skills
+ghost health                          # check API status
+```
 
 ### Local AI
 
