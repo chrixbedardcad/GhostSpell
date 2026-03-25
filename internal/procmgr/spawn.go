@@ -10,8 +10,43 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// globalJob is the process-wide Job Object. Set once at startup via Init().
+var (
+	globalJob  *JobObject
+	globalOnce sync.Once
+)
+
+// Init creates the global Job Object and cleans up stale processes from a
+// previous session. Call once at app startup.
+func Init(appDir string) {
+	globalOnce.Do(func() {
+		// Clean stale processes from previous run.
+		if killed := CleanupStale(appDir); len(killed) > 0 {
+			slog.Info("[procmgr] cleaned stale processes", "killed", killed)
+		}
+
+		// Create Job Object (Windows) or process group root (Unix).
+		job, err := NewJobObject()
+		if err != nil {
+			slog.Warn("[procmgr] failed to create Job Object", "error", err)
+			return
+		}
+		globalJob = job
+		slog.Info("[procmgr] initialized")
+	})
+}
+
+// Shutdown closes the global Job Object, killing all child processes.
+func Shutdown() {
+	if globalJob != nil {
+		globalJob.Close()
+		globalJob = nil
+	}
+}
 
 // AgentProcess represents a running child agent process (ghostai, ghostvoice, etc.).
 type AgentProcess struct {
@@ -22,10 +57,14 @@ type AgentProcess struct {
 
 // SpawnHTTPAgent starts a child process that is expected to print "READY port=N"
 // on stdout once it's ready to accept HTTP requests. The child is assigned to the
-// provided Job Object (Windows) or started in its own process group (Unix).
+// global Job Object (Windows) or started in its own process group (Unix).
 //
 // The parent PID is passed via --parent-pid so the child can self-exit if orphaned.
 func SpawnHTTPAgent(name, binPath string, args []string, job *JobObject) (*AgentProcess, error) {
+	// Use global job if none provided.
+	if job == nil {
+		job = globalJob
+	}
 	parentPID := os.Getpid()
 
 	// Append --parent-pid to args.

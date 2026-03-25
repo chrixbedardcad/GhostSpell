@@ -14,6 +14,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/core"
 	"github.com/chrixbedardcad/GhostSpell/gui"
 	"github.com/chrixbedardcad/GhostSpell/internal/debuglog"
+	"github.com/chrixbedardcad/GhostSpell/internal/procmgr"
 	"github.com/chrixbedardcad/GhostSpell/internal/sysinfo"
 	"github.com/chrixbedardcad/GhostSpell/llm"
 	"github.com/chrixbedardcad/GhostSpell/mode"
@@ -145,6 +146,10 @@ func main() {
 
 	// Pass embedded ghostvoice binary to the STT package (nil when built without ghostvoice tag).
 	stt.SetEmbeddedGhostVoice(embeddedGhostVoice)
+
+	// Initialize process manager: create Job Object, clean stale child processes.
+	procmgr.Init(appDir)
+	defer procmgr.Shutdown()
 
 	// Single-instance check — exit if another GhostSpell is already running.
 	removeLock := acquireSingleInstance(appDir)
@@ -305,6 +310,10 @@ func main() {
 
 	// Create the core engine — pure business logic, no UI dependencies.
 	appEngine = core.NewEngine(cfg, router, appSTT, appStats)
+
+	// Write PID file so restart/update can clean up child processes.
+	procmgr.WritePIDFile(appDir, procmgr.PIDFile{Ghost: os.Getpid()})
+	defer procmgr.RemovePIDFile(appDir)
 
 	// Optionally start the HTTP API server for local integrations (#284).
 	// The server is managed via appAPISrv so it can be toggled from Settings.
