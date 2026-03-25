@@ -235,6 +235,10 @@ if [ -f "$APPDATA_DIR/ghostvoice.log" ]; then
     rm -f "$APPDATA_DIR/ghostvoice.log"
     echo "Cleared $APPDATA_DIR/ghostvoice.log"
 fi
+if [ -f "$APPDATA_DIR/ghostspell_crash.log" ]; then
+    rm -f "$APPDATA_DIR/ghostspell_crash.log"
+    echo "Cleared $APPDATA_DIR/ghostspell_crash.log"
+fi
 echo ""
 
 echo "Starting GhostSpell..."

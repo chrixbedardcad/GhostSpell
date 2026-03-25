@@ -42,6 +42,7 @@ type GhostVoiceClient struct {
 	stdout    *bufio.Scanner
 	running   bool
 	idleTimer *time.Timer
+	logFile   *os.File
 }
 
 // NewGhostVoiceClient creates a local STT client.
@@ -105,7 +106,14 @@ func (c *GhostVoiceClient) ensureDaemon() error {
 
 	slog.Info("[ghost-voice] starting daemon", "model", c.modelName)
 	cmd := exec.Command(c.cliPath, "--daemon", "-m", c.modelPath, "-t", "4")
-	cmd.Stderr = os.Stderr
+
+	// Redirect daemon stderr to ghostvoice.log.
+	if logFile, err := openVoiceLog(); err == nil {
+		cmd.Stderr = logFile
+		c.logFile = logFile
+	} else {
+		cmd.Stderr = os.Stderr
+	}
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -187,6 +195,10 @@ func (c *GhostVoiceClient) stopDaemonLocked() {
 	c.proc = nil
 	c.stdin = nil
 	c.stdout = nil
+	if c.logFile != nil {
+		c.logFile.Close()
+		c.logFile = nil
+	}
 	slog.Info("[ghost-voice] daemon stopped")
 }
 
@@ -392,6 +404,31 @@ func extractGhostVoice() (string, error) {
 
 	slog.Info("[ghost-voice] extracted embedded binary", "path", path, "version", version.Version, "size", len(embeddedBinary))
 	return path, nil
+}
+
+// VoiceLogPath returns the path to the ghostvoice log file.
+func VoiceLogPath() (string, error) {
+	dir, err := ghostVoiceDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "ghostvoice.log"), nil
+}
+
+// openVoiceLog opens (or creates) the ghostvoice.log file for append writing.
+func openVoiceLog() (*os.File, error) {
+	path, err := VoiceLogPath()
+	if err != nil {
+		return nil, err
+	}
+	os.MkdirAll(filepath.Dir(path), 0755)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	// Write session header.
+	fmt.Fprintf(f, "\n=== ghostvoice daemon started at %s ===\n", time.Now().Format(time.RFC3339))
+	return f, nil
 }
 
 // VoiceModel describes a downloadable whisper model.

@@ -524,6 +524,10 @@ if exist "%APPDATA_DIR%\ghostvoice.log" (
     del /q "%APPDATA_DIR%\ghostvoice.log" 2>nul
     echo Cleared %APPDATA_DIR%\ghostvoice.log
 )
+if exist "%APPDATA_DIR%\ghostspell_crash.log" (
+    del /q "%APPDATA_DIR%\ghostspell_crash.log" 2>nul
+    echo Cleared %APPDATA_DIR%\ghostspell_crash.log
+)
 echo.
 echo Starting GhostSpell...
 start "" ghostspell.exe

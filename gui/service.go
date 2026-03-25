@@ -20,6 +20,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/config"
 	"github.com/chrixbedardcad/GhostSpell/internal/version"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/stt"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -527,12 +528,30 @@ func (s *SettingsService) OpenLogsFolder() string {
 // OpenVoiceLogFile opens the ghostvoice.log file.
 func (s *SettingsService) OpenVoiceLogFile() string {
 	guiLog("[GUI] JS called: OpenVoiceLogFile")
-	dir := filepath.Dir(s.configPath)
-	path := filepath.Join(dir, "ghostvoice.log")
+	path, err := stt.VoiceLogPath()
+	if err != nil {
+		return "error: " + err.Error()
+	}
 	if _, err := os.Stat(path); err != nil {
-		return "error: ghostvoice.log not found"
+		return "error: ghostvoice.log not found — voice has not been used yet"
 	}
 	OpenFile(path)
+	return "ok"
+}
+
+// ClearVoiceLog truncates the ghostvoice.log file.
+func (s *SettingsService) ClearVoiceLog() string {
+	guiLog("[GUI] JS called: ClearVoiceLog")
+	path, err := stt.VoiceLogPath()
+	if err != nil {
+		return "error: " + err.Error()
+	}
+	if err := os.Truncate(path, 0); err != nil {
+		if os.IsNotExist(err) {
+			return "ok"
+		}
+		return fmt.Sprintf("error: %v", err)
+	}
 	return "ok"
 }
 
@@ -968,13 +987,17 @@ func (s *SettingsService) QuitForRestart() string {
 	return "ok"
 }
 
-// OpenFile opens a file using the platform's default handler.
+// OpenFile opens a file or directory using the platform's default handler.
 func OpenFile(path string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		// Use rundll32 to open files without flashing a cmd.exe console window.
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
+		// Use explorer.exe for directories (rundll32 doesn't handle them).
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			cmd = exec.Command("explorer", path)
+		} else {
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
+		}
 	case "darwin":
 		cmd = exec.Command("open", path)
 	default:

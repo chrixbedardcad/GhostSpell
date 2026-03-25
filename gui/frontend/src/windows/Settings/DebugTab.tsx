@@ -76,7 +76,7 @@ export function DebugTab() {
             <p className="text-[11px] text-overlay-0 font-mono truncate">{logPath}</p>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button onClick={() => goCall("openLogFile")}
               className="px-3 py-1.5 rounded-lg text-xs bg-surface-0 text-subtext-0
                          hover:bg-surface-1 transition-colors">
@@ -101,6 +101,28 @@ export function DebugTab() {
               Clear
             </button>
             {status && <span className="text-xs text-accent-green self-center">{status}</span>}
+          </div>
+
+          <div className="flex gap-2 flex-wrap pt-2 border-t border-surface-0/50">
+            <button onClick={() => goCall("openVoiceLogFile")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-surface-0 text-subtext-0
+                         hover:bg-surface-1 transition-colors">
+              ghostvoice.log
+            </button>
+            <button onClick={async () => {
+              await goCall("clearVoiceLog");
+              setStatus("Voice log cleared.");
+              setTimeout(() => setStatus(""), 2000);
+            }}
+              className="px-3 py-1.5 rounded-lg text-xs bg-surface-0 text-subtext-0
+                         hover:bg-surface-1 transition-colors">
+              Clear Voice Log
+            </button>
+            <button onClick={() => goCall("openLogsFolder")}
+              className="px-3 py-1.5 rounded-lg text-xs bg-surface-0 text-subtext-0
+                         hover:bg-surface-1 transition-colors">
+              Open Logs Folder
+            </button>
           </div>
         </div>
       </section>
