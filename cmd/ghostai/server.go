@@ -185,10 +185,15 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log raw output for debugging.
+	slog.Info("[ghostai] raw output", "len", len(text), "preview", truncate(text, 500))
+
 	// Clean model output.
 	raw := text
 	text = cleanLocalModelResponse(text)
+	slog.Info("[ghostai] cleaned output", "len", len(text), "preview", truncate(text, 200))
 	if strings.TrimSpace(text) == "" {
+		slog.Warn("[ghostai] cleaned output is empty, trying extractFromThinking")
 		text = extractFromThinking(raw)
 		if strings.TrimSpace(text) == "" {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "model returned empty content"})
@@ -314,6 +319,13 @@ func (s *server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 }
 
 // --- Helpers ---
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
