@@ -202,57 +202,104 @@ if not exist "%LLAMA_BUILD%" mkdir "%LLAMA_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
 
-:: Auto-detect GPU: CUDA needs MSVC (not MinGW), so prefer Vulkan with MinGW.
-:: Vulkan works with any GPU (NVIDIA, AMD, Intel) via MinGW.
-set GPU_BACKEND=OFF
+:: Auto-detect GPU backend.
+:: Priority: CUDA (fastest, needs MSVC + nvcc) > Vulkan (MinGW) > CPU.
+set HAS_CUDA=0
 set HAS_VULKAN=0
+set USE_MSVC=0
 
-:: Check for Vulkan SDK (works with MinGW).
-if defined VULKAN_SDK (
-    set HAS_VULKAN=1
-    set GPU_BACKEND=VULKAN
-    echo   Vulkan SDK detected — enabling GPU acceleration
+:: Check for CUDA + MSVC. CUDA's nvcc requires cl.exe from Visual Studio.
+:: We look for vcvarsall.bat to set up the MSVC environment.
+set "VCVARS="
+for /f "delims=" %%i in ('where cl 2^>nul') do set "VCVARS=found"
+if "!VCVARS!"=="" (
+    :: Try to find and load vcvars64.bat from known VS Build Tools locations.
+    for %%p in (
+        "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    ) do (
+        if exist %%p (
+            echo   Loading MSVC environment from %%p
+            call %%p >nul 2>&1
+            set "VCVARS=found"
+            goto :vcvars_done
+        )
+    )
+)
+:vcvars_done
+
+where nvcc >nul 2>&1
+if !errorlevel!==0 (
+    where cl >nul 2>&1
+    if !errorlevel!==0 (
+        set HAS_CUDA=1
+        set USE_MSVC=1
+        echo   CUDA + MSVC detected — enabling NVIDIA GPU acceleration
+    ) else (
+        echo   CUDA found but MSVC ^(cl.exe^) missing — install Visual Studio Build Tools
+    )
 )
 
-:: If no Vulkan, check for CUDA + MSVC (nvcc requires cl.exe).
-if !HAS_VULKAN!==0 (
-    where nvcc >nul 2>&1
-    if !errorlevel!==0 (
-        where cl >nul 2>&1
-        if !errorlevel!==0 (
-            set GPU_BACKEND=CUDA
-            echo   CUDA + MSVC detected — enabling GPU acceleration
-        ) else (
-            echo   CUDA found but MSVC missing ^(nvcc requires Visual Studio^) — trying CPU
-        )
+:: Fallback: check for Vulkan SDK (works with MinGW).
+if !HAS_CUDA!==0 (
+    if defined VULKAN_SDK (
+        set HAS_VULKAN=1
+        echo   Vulkan SDK detected — enabling GPU acceleration ^(fallback^)
     ) else (
         echo   No GPU SDK found — building CPU-only
-        echo   For GPU: install Vulkan SDK ^(https://vulkan.lunarg.com^) and re-run
+        echo   For best performance: install Visual Studio Build Tools + CUDA Toolkit
     )
 )
 
 cd /d "%LLAMA_BUILD%"
-cmake .. -G "!GENERATOR_NAME!" ^
-    -DCMAKE_BUILD_TYPE=Release ^
-    -DCMAKE_C_COMPILER=gcc ^
-    -DCMAKE_CXX_COMPILER=g++ ^
-    -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
-    -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
-    -DGGML_STATIC=ON ^
-    -DGGML_CUDA=OFF ^
-    -DGGML_VULKAN=!HAS_VULKAN! ^
-    -DGGML_METAL=OFF ^
-    -DGGML_OPENMP=ON ^
-    -DLLAMA_BUILD_TESTS=OFF ^
-    -DLLAMA_BUILD_EXAMPLES=OFF ^
-    -DLLAMA_BUILD_SERVER=OFF ^
-    -DBUILD_SHARED_LIBS=OFF ^
-    -DGGML_NATIVE=OFF ^
-    -DGGML_AVX=ON ^
-    -DGGML_AVX2=ON ^
-    -DGGML_AVX512=OFF ^
-    -DGGML_FMA=ON ^
-    -DGGML_F16C=ON
+
+:: CUDA builds use MSVC (cl.exe) as the C/C++ compiler.
+:: Non-CUDA builds use MinGW (gcc/g++).
+if !HAS_CUDA!==1 (
+    cmake .. -G "Ninja" ^
+        -DCMAKE_BUILD_TYPE=Release ^
+        -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+        -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+        -DGGML_STATIC=ON ^
+        -DGGML_CUDA=ON ^
+        -DGGML_VULKAN=OFF ^
+        -DGGML_METAL=OFF ^
+        -DGGML_OPENMP=ON ^
+        -DLLAMA_BUILD_TESTS=OFF ^
+        -DLLAMA_BUILD_EXAMPLES=OFF ^
+        -DLLAMA_BUILD_SERVER=OFF ^
+        -DBUILD_SHARED_LIBS=OFF ^
+        -DGGML_NATIVE=OFF ^
+        -DGGML_AVX=ON ^
+        -DGGML_AVX2=ON ^
+        -DGGML_AVX512=OFF ^
+        -DGGML_FMA=ON ^
+        -DGGML_F16C=ON
+) else (
+    cmake .. -G "!GENERATOR_NAME!" ^
+        -DCMAKE_BUILD_TYPE=Release ^
+        -DCMAKE_C_COMPILER=gcc ^
+        -DCMAKE_CXX_COMPILER=g++ ^
+        -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+        -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+        -DGGML_STATIC=ON ^
+        -DGGML_CUDA=OFF ^
+        -DGGML_VULKAN=!HAS_VULKAN! ^
+        -DGGML_METAL=OFF ^
+        -DGGML_OPENMP=ON ^
+        -DLLAMA_BUILD_TESTS=OFF ^
+        -DLLAMA_BUILD_EXAMPLES=OFF ^
+        -DLLAMA_BUILD_SERVER=OFF ^
+        -DBUILD_SHARED_LIBS=OFF ^
+        -DGGML_NATIVE=OFF ^
+        -DGGML_AVX=ON ^
+        -DGGML_AVX2=ON ^
+        -DGGML_AVX512=OFF ^
+        -DGGML_FMA=ON ^
+        -DGGML_F16C=ON
+)
 if !errorlevel! neq 0 (
     echo   ERROR: CMake configure failed — falling back to API-only build
     cd /d "%~dp0"
