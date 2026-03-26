@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -72,6 +73,14 @@ func main() {
 
 	// Start HTTP server.
 	srv := newServer(engine)
+
+	// Set model name from path (for thinking model detection).
+	if *modelPath != "" {
+		name := filepath.Base(*modelPath)
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+		srv.modelName = strings.ToLower(name)
+		slog.Info("[ghostai] model name set", "name", srv.modelName)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", srv.handleHealth)
 	mux.HandleFunc("/v1/chat/completions", srv.handleChatCompletions)
