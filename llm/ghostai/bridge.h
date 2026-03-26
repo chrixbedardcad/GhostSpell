@@ -27,6 +27,7 @@ typedef struct {
     int32_t  context_size;   /* Token context window (default: 2048)        */
     int32_t  threads;        /* CPU threads for inference                    */
     int32_t  batch_size;     /* Batch size for prompt processing             */
+    int32_t  gpu_layers;     /* Layers to offload to GPU (0=CPU, 99=all)    */
     float    temperature;    /* Sampling temperature                         */
     float    top_p;          /* Nucleus sampling top-p                       */
     int32_t  top_k;          /* Top-k sampling                               */

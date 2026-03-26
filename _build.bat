@@ -202,6 +202,16 @@ if not exist "%LLAMA_BUILD%" mkdir "%LLAMA_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
 
+:: Auto-detect CUDA (NVIDIA GPU).
+set HAS_CUDA=0
+where nvcc >nul 2>&1
+if !errorlevel!==0 (
+    set HAS_CUDA=1
+    echo   CUDA detected — enabling GPU acceleration
+) else (
+    echo   CUDA not found — building CPU-only ^(install CUDA Toolkit for GPU^)
+)
+
 cd /d "%LLAMA_BUILD%"
 cmake .. -G "!GENERATOR_NAME!" ^
     -DCMAKE_BUILD_TYPE=Release ^
@@ -210,20 +220,20 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
     -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
     -DGGML_STATIC=ON ^
-    -DGGML_CUDA=OFF ^
+    -DGGML_CUDA=!HAS_CUDA! ^
     -DGGML_VULKAN=OFF ^
     -DGGML_METAL=OFF ^
-    -DGGML_OPENMP=OFF ^
+    -DGGML_OPENMP=ON ^
     -DLLAMA_BUILD_TESTS=OFF ^
     -DLLAMA_BUILD_EXAMPLES=OFF ^
     -DLLAMA_BUILD_SERVER=OFF ^
     -DBUILD_SHARED_LIBS=OFF ^
     -DGGML_NATIVE=OFF ^
     -DGGML_AVX=ON ^
-    -DGGML_AVX2=OFF ^
+    -DGGML_AVX2=ON ^
     -DGGML_AVX512=OFF ^
-    -DGGML_FMA=OFF ^
-    -DGGML_F16C=OFF
+    -DGGML_FMA=ON ^
+    -DGGML_F16C=ON
 if !errorlevel! neq 0 (
     echo   ERROR: CMake configure failed — falling back to API-only build
     cd /d "%~dp0"
@@ -358,15 +368,15 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DWHISPER_BUILD_TESTS=OFF ^
     -DWHISPER_BUILD_EXAMPLES=ON ^
     -DGGML_STATIC=ON ^
-    -DGGML_CUDA=OFF ^
+    -DGGML_CUDA=!HAS_CUDA! ^
     -DGGML_VULKAN=OFF ^
     -DGGML_METAL=OFF ^
-    -DGGML_OPENMP=OFF ^
+    -DGGML_OPENMP=ON ^
     -DGGML_NATIVE=OFF ^
     -DGGML_AVX=ON ^
-    -DGGML_AVX2=OFF ^
+    -DGGML_AVX2=ON ^
     -DGGML_AVX512=OFF ^
-    -DGGML_FMA=OFF ^
+    -DGGML_FMA=ON ^
     -DGGML_F16C=OFF
 if !errorlevel! neq 0 (
     echo   WARNING: CMake failed — skipping Ghost Voice

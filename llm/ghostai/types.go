@@ -12,6 +12,7 @@ type Config struct {
 	ContextSize   int     `json:"context_size"`   // Token context window (default: 2048)
 	Threads       int     `json:"threads"`        // CPU threads (0 = auto-detect)
 	BatchSize     int     `json:"batch_size"`     // Prompt processing batch size (default: 512)
+	GPULayers     int     `json:"gpu_layers"`     // Layers to offload to GPU (0=CPU, 99=all)
 	MaxTokens     int     `json:"max_tokens"`     // Default max generation tokens (default: 256)
 	Temperature   float32 `json:"temperature"`    // Sampling temperature (default: 0.1)
 	TopP          float32 `json:"top_p"`          // Nucleus sampling top-p (default: 0.9)

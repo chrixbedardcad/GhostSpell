@@ -131,6 +131,10 @@ type Config struct {
 	APIEnabled bool   `json:"api_enabled,omitempty"` // start HTTP API server alongside desktop app
 	APIAddr    string `json:"api_addr,omitempty"`     // listen address (default "127.0.0.1:7878")
 
+	// GPU acceleration (#292). Default: true (auto-detect and use GPU).
+	// Set to false to force CPU-only inference.
+	GPUEnabled *bool `json:"gpu_enabled,omitempty"`
+
 	LogLevel          string `json:"log_level"`
 	LogFile           string `json:"log_file"`
 	LastSeenVersion   string `json:"last_seen_version,omitempty"`

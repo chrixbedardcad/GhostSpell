@@ -30,13 +30,14 @@ func main() {
 	port := flag.Int("port", 8391, "listen port")
 	modelPath := flag.String("model", "", "path to GGUF model file")
 	threads := flag.Int("threads", 0, "inference threads (0 = auto)")
+	gpuLayers := flag.Int("gpu-layers", 0, "layers to offload to GPU (0=CPU, 99=all)")
 	contextSize := flag.Int("context-size", 2048, "context window size")
 	parentPID := flag.Int("parent-pid", 0, "parent process PID (auto-exit if parent dies)")
 	flag.Parse()
 
 	// Set up logging: stderr + ghostai.log in AppData.
 	setupLogging()
-	slog.Info("ghostai starting", "version", version.Version, "port", *port, "model", *modelPath)
+	slog.Info("ghostai starting", "version", version.Version, "port", *port, "model", *modelPath, "gpu_layers", *gpuLayers, "threads", *threads)
 
 	// Start parent PID watchdog (if spawned by ghost.exe).
 	ctx, cancel := context.WithCancel(context.Background())
@@ -53,6 +54,7 @@ func main() {
 	cfg := ghostai.Config{
 		ContextSize: *contextSize,
 		Threads:     *threads,
+		GPULayers:   *gpuLayers,
 	}
 	engine := ghostai.New(cfg)
 	defer engine.Close()

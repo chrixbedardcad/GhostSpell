@@ -69,19 +69,20 @@ CMAKE_ARGS=(
     -DGGML_CUDA=OFF
     -DGGML_VULKAN=OFF
     -DGGML_METAL=OFF
-    -DGGML_OPENMP=OFF
+    -DGGML_OPENMP=ON
     -DGGML_NATIVE=OFF
     -DGGML_AVX=ON
-    -DGGML_AVX2=OFF
-    -DGGML_FMA=OFF
-    -DGGML_F16C=OFF
+    -DGGML_AVX2=ON
+    -DGGML_FMA=ON
+    -DGGML_F16C=ON
 )
 
-# Platform-specific flags.
+# Platform-specific GPU acceleration.
 OS="$(uname -s)"
 case "$OS" in
     Darwin)
-        CMAKE_ARGS+=(-DGGML_ACCELERATE=ON)
+        CMAKE_ARGS+=(-DGGML_ACCELERATE=ON -DGGML_METAL=ON)
+        echo "  Metal GPU acceleration enabled"
         ;;
     MINGW*|MSYS*|CYGWIN*)
         CMAKE_ARGS+=(

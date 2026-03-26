@@ -30,11 +30,16 @@ const (
 // LLMProviderDefCompat mirrors config.LLMProviderDef fields needed by local
 // clients, avoiding a circular import.
 type LLMProviderDefCompat struct {
-	Model     string
-	MaxTokens int
-	TimeoutMs int
-	KeepAlive bool
+	Model      string
+	MaxTokens  int
+	TimeoutMs  int
+	KeepAlive  bool
+	GPUEnabled bool
 }
+
+// GPUEnabled is a package-level flag set from the app config.
+// Default: true (use GPU if available). Set to false for CPU-only.
+var GPUEnabled = true
 
 // GhostAIAvailable reports whether the embedded Ghost-AI engine is compiled in.
 // Recovers from panics in case CGo initialization fails (missing DLL, etc.).

@@ -80,10 +80,11 @@ func NewClientFromDef(def config.LLMProviderDef) (Client, error) {
 		return newLMStudioFromDef(def), nil
 	case "local":
 		return newGhostAIFromDef(LLMProviderDefCompat{
-			Model:     def.Model,
-			MaxTokens: def.MaxTokens,
-			TimeoutMs: def.TimeoutMs,
-			KeepAlive: def.KeepAlive,
+			Model:      def.Model,
+			MaxTokens:  def.MaxTokens,
+			TimeoutMs:  def.TimeoutMs,
+			KeepAlive:  def.KeepAlive,
+			GPUEnabled: GPUEnabled,
 		})
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", def.Provider)

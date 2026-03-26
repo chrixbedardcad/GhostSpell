@@ -56,9 +56,28 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 		contextSize = 2048
 	}
 
+	// Auto-detect thread count: use NumCPU, cap at 12.
+	threads := runtime.NumCPU()
+	if threads > 12 {
+		threads = 12
+	}
+	if threads < 1 {
+		threads = 4
+	}
+
+	// GPU layers: 99 = offload all layers (GPU backend decides if available).
+	// When built without CUDA/Metal/Vulkan, this is ignored by llama.cpp.
+	// When GPUEnabled=false, force CPU-only (0 layers).
+	gpuLayers := 99
+	if !def.GPUEnabled {
+		gpuLayers = 0
+	}
+
 	args := []string{
 		"--model", modelPath,
 		"--context-size", fmt.Sprintf("%d", contextSize),
+		"--threads", fmt.Sprintf("%d", threads),
+		"--gpu-layers", fmt.Sprintf("%d", gpuLayers),
 	}
 
 	slog.Info("[ghost-ai] spawning ghostai process", "bin", binPath, "model", def.Model)
@@ -235,9 +254,19 @@ func (c *GhostAIClient) ensureRunning() error {
 		contextSize = 2048
 	}
 
+	threads := runtime.NumCPU()
+	if threads > 12 {
+		threads = 12
+	}
+	if threads < 1 {
+		threads = 4
+	}
+
 	args := []string{
 		"--model", c.modelPath,
 		"--context-size", fmt.Sprintf("%d", contextSize),
+		"--threads", fmt.Sprintf("%d", threads),
+		"--gpu-layers", "99",
 	}
 
 	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil)

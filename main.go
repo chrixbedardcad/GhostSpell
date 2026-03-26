@@ -212,6 +212,14 @@ func main() {
 	appStats = stats.New(configDir)
 	debugState.InitFromConfig(cfg.LogLevel)
 
+	// GPU acceleration: default true, user can disable in Settings > General.
+	if cfg.GPUEnabled != nil && !*cfg.GPUEnabled {
+		llm.GPUEnabled = false
+		slog.Info("GPU acceleration disabled by config")
+	} else {
+		slog.Info("GPU acceleration enabled (auto-detect)")
+	}
+
 	// Initialize speech-to-text provider (Ghost Voice or cloud fallback).
 	initSTT(cfg)
 

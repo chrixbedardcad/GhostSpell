@@ -61,26 +61,27 @@ CMAKE_ARGS=(
     -DGGML_CUDA=OFF
     -DGGML_VULKAN=OFF
     -DGGML_METAL=OFF
-    -DGGML_OPENMP=OFF
+    -DGGML_OPENMP=ON
     -DLLAMA_BUILD_TESTS=OFF
     -DLLAMA_BUILD_EXAMPLES=OFF
     -DLLAMA_BUILD_SERVER=OFF
     -DBUILD_SHARED_LIBS=OFF
-    # CPU compatibility: don't use host CPU features (CI runners have AVX-512).
-    # Keep AVX (available since ~2011) but disable AVX2/FMA/F16C for broad compat.
     -DGGML_NATIVE=OFF
     -DGGML_AVX=ON
-    -DGGML_AVX2=OFF
+    -DGGML_AVX2=ON
     -DGGML_AVX512=OFF
-    -DGGML_FMA=OFF
-    -DGGML_F16C=OFF
+    -DGGML_FMA=ON
+    -DGGML_F16C=ON
 )
 
-# macOS: enable Accelerate framework for faster BLAS operations.
+# Platform-specific GPU acceleration.
 if [ "$(uname)" = "Darwin" ]; then
     CMAKE_ARGS+=(-DGGML_ACCELERATE=ON)
-    # Metal can be enabled for GPU but we keep CPU-only for now.
-    # CMAKE_ARGS+=(-DGGML_METAL=ON)
+    CMAKE_ARGS+=(-DGGML_METAL=ON)
+    echo "  Metal GPU acceleration enabled (Apple Silicon)"
+elif command -v nvcc &>/dev/null; then
+    CMAKE_ARGS+=(-DGGML_CUDA=ON)
+    echo "  CUDA GPU acceleration enabled (NVIDIA)"
 fi
 
 # Windows (MSYS2/MinGW): use Ninja with MinGW GCC.

@@ -73,6 +73,8 @@ ghost_engine* ghost_engine_new(ghost_config cfg) {
     if (cfg.context_size <= 0) cfg.context_size = 2048;
     if (cfg.threads       <= 0) cfg.threads       = 4;
     if (cfg.batch_size    <= 0) cfg.batch_size    = 512;
+    /* gpu_layers: 0 = CPU only, 99 = all layers on GPU. Default: 0 (safe). */
+    if (cfg.gpu_layers     < 0) cfg.gpu_layers    = 0;
     if (cfg.temperature   <= 0) cfg.temperature   = 0.1f;
     if (cfg.top_p         <= 0) cfg.top_p         = 0.9f;
     if (cfg.top_k         <= 0) cfg.top_k         = 40;
@@ -96,7 +98,7 @@ int ghost_engine_load(ghost_engine* e, const char* model_path,
     }
 
     struct llama_model_params params = llama_model_default_params();
-    params.n_gpu_layers = 0; /* CPU only — safe on all platforms */
+    params.n_gpu_layers = e->config.gpu_layers;
 
     e->model = llama_model_load_from_file(model_path, params);
     if (!e->model) {

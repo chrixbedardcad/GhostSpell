@@ -36,6 +36,7 @@ func newBackend(config Config) engineBackend {
 		context_size:   C.int32_t(config.ContextSize),
 		threads:        C.int32_t(config.Threads),
 		batch_size:     C.int32_t(config.BatchSize),
+		gpu_layers:     C.int32_t(config.GPULayers),
 		temperature:    C.float(config.Temperature),
 		top_p:          C.float(config.TopP),
 		top_k:          C.int32_t(config.TopK),
