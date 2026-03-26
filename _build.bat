@@ -257,7 +257,12 @@ cd /d "%LLAMA_BUILD%"
 
 :: CUDA builds use MSVC (cl.exe) as the C/C++ compiler.
 :: Non-CUDA builds use MinGW (gcc/g++).
+:: For CUDA: temporarily remove MinGW from PATH to prevent MSVC from
+:: finding MinGW headers (e.g. winnt.h) which cause "No supported target architecture".
 if !HAS_CUDA!==1 (
+    set "SAVED_PATH=!PATH!"
+    set "PATH=!PATH:C:\msys64\mingw64\bin=!"
+    set "PATH=!PATH:C:\msys64\usr\bin=!"
     cmake .. -G "Ninja" ^
         -DCMAKE_BUILD_TYPE=Release ^
         -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
@@ -311,10 +316,13 @@ cmake --build . --config Release -j %NPROC%
 if !errorlevel! neq 0 (
     echo   ERROR: Compile failed — falling back to API-only build
     cd /d "%~dp0"
+    if defined SAVED_PATH set "PATH=!SAVED_PATH!"
     set GHOSTAI=0
     goto :skip_ghostai
 )
 cd /d "%~dp0"
+:: Restore MinGW PATH after CUDA build.
+if defined SAVED_PATH set "PATH=!SAVED_PATH!"
 
 :: --- Install headers + libraries ---
 if not exist "%LLAMA_OUT%\include" mkdir "%LLAMA_OUT%\include"
@@ -329,12 +337,15 @@ if exist "%LLAMA_SRC%\include\ggml*.h" (
     copy /y "%LLAMA_SRC%\include\ggml*.h" "%LLAMA_OUT%\include\" >nul 2>&1
 )
 
-:: Static libraries — collect all .a from build tree
+:: Static libraries — collect all .a (MinGW) and .lib (MSVC) from build tree
 for /r "%LLAMA_BUILD%" %%f in (*.a) do (
     copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
 )
+for /r "%LLAMA_BUILD%" %%f in (*.lib) do (
+    copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+)
 
-:: Ensure lib* prefix for MinGW linker
+:: Ensure lib* prefix for MinGW linker (only for .a files)
 for %%f in ("%LLAMA_OUT%\lib\*.a") do (
     set "fname=%%~nxf"
     if not "!fname:~0,3!"=="lib" (
@@ -342,14 +353,16 @@ for %%f in ("%LLAMA_OUT%\lib\*.a") do (
     )
 )
 
-:: Verify we got libraries
+:: Verify we got libraries (.a for MinGW, .lib for MSVC)
 set /a LCOUNT=0
 for %%f in ("%LLAMA_OUT%\lib\*.a") do set /a LCOUNT+=1
+for %%f in ("%LLAMA_OUT%\lib\*.lib") do set /a LCOUNT+=1
 if !LCOUNT!==0 (
     echo   WARNING: No static libraries found — falling back to API-only build
     set GHOSTAI=0
 ) else (
     echo   Ghost-AI ready: !LCOUNT! libraries installed
+    if !HAS_CUDA!==1 echo   + CUDA GPU acceleration enabled
 )
 echo.
 
