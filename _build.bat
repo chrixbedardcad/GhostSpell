@@ -202,14 +202,33 @@ if not exist "%LLAMA_BUILD%" mkdir "%LLAMA_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
 
-:: Auto-detect CUDA (NVIDIA GPU).
-set HAS_CUDA=0
-where nvcc >nul 2>&1
-if !errorlevel!==0 (
-    set HAS_CUDA=1
-    echo   CUDA detected — enabling GPU acceleration
-) else (
-    echo   CUDA not found — building CPU-only ^(install CUDA Toolkit for GPU^)
+:: Auto-detect GPU: CUDA needs MSVC (not MinGW), so prefer Vulkan with MinGW.
+:: Vulkan works with any GPU (NVIDIA, AMD, Intel) via MinGW.
+set GPU_BACKEND=OFF
+set HAS_VULKAN=0
+
+:: Check for Vulkan SDK (works with MinGW).
+if defined VULKAN_SDK (
+    set HAS_VULKAN=1
+    set GPU_BACKEND=VULKAN
+    echo   Vulkan SDK detected — enabling GPU acceleration
+)
+
+:: If no Vulkan, check for CUDA + MSVC (nvcc requires cl.exe).
+if !HAS_VULKAN!==0 (
+    where nvcc >nul 2>&1
+    if !errorlevel!==0 (
+        where cl >nul 2>&1
+        if !errorlevel!==0 (
+            set GPU_BACKEND=CUDA
+            echo   CUDA + MSVC detected — enabling GPU acceleration
+        ) else (
+            echo   CUDA found but MSVC missing ^(nvcc requires Visual Studio^) — trying CPU
+        )
+    ) else (
+        echo   No GPU SDK found — building CPU-only
+        echo   For GPU: install Vulkan SDK ^(https://vulkan.lunarg.com^) and re-run
+    )
 )
 
 cd /d "%LLAMA_BUILD%"
@@ -220,8 +239,8 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
     -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
     -DGGML_STATIC=ON ^
-    -DGGML_CUDA=!HAS_CUDA! ^
-    -DGGML_VULKAN=OFF ^
+    -DGGML_CUDA=OFF ^
+    -DGGML_VULKAN=!HAS_VULKAN! ^
     -DGGML_METAL=OFF ^
     -DGGML_OPENMP=ON ^
     -DLLAMA_BUILD_TESTS=OFF ^
@@ -368,8 +387,8 @@ cmake .. -G "!GENERATOR_NAME!" ^
     -DWHISPER_BUILD_TESTS=OFF ^
     -DWHISPER_BUILD_EXAMPLES=ON ^
     -DGGML_STATIC=ON ^
-    -DGGML_CUDA=!HAS_CUDA! ^
-    -DGGML_VULKAN=OFF ^
+    -DGGML_CUDA=OFF ^
+    -DGGML_VULKAN=!HAS_VULKAN! ^
     -DGGML_METAL=OFF ^
     -DGGML_OPENMP=ON ^
     -DGGML_NATIVE=OFF ^
