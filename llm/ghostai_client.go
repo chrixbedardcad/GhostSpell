@@ -36,7 +36,11 @@ type GhostAIClient struct {
 func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
-		maxTokens = 256
+		if isThinkingModel(def.Model) {
+			maxTokens = 2048
+		} else {
+			maxTokens = 256
+		}
 	}
 
 	modelPath, err := resolveLocalModel(def.Model)

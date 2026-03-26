@@ -130,16 +130,27 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Dynamic token cap.
+	// Thinking models (Qwen3/3.5, DeepSeek) use most tokens on <think> blocks,
+	// so they need a much larger budget to produce the actual answer.
 	inputWords := len(strings.Fields(userMsg))
-	dynamicMax := inputWords*3 + 128
-	if dynamicMax < 512 {
-		dynamicMax = 512
-	}
-	if thinking && dynamicMax < 1024 {
-		dynamicMax = 1024
-	}
-	if dynamicMax < maxTokens {
-		maxTokens = dynamicMax
+	if thinking {
+		// Thinking models: generous budget. The <think> block alone can be 500+ tokens.
+		dynamicMax := inputWords*5 + 512
+		if dynamicMax < 2048 {
+			dynamicMax = 2048
+		}
+		if dynamicMax > maxTokens {
+			maxTokens = dynamicMax
+		}
+	} else {
+		// Non-thinking models: tighter budget.
+		dynamicMax := inputWords*3 + 128
+		if dynamicMax < 512 {
+			dynamicMax = 512
+		}
+		if dynamicMax < maxTokens {
+			maxTokens = dynamicMax
+		}
 	}
 	if maxTokens < 64 {
 		maxTokens = 64
