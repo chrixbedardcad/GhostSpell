@@ -255,11 +255,11 @@ if !HAS_CUDA!==0 (
 
 cd /d "%LLAMA_BUILD%"
 
-:: CUDA builds use MSVC (cl.exe) as the C/C++ compiler.
-:: Non-CUDA builds use MinGW (gcc/g++).
-:: For CUDA: temporarily remove MinGW from PATH to prevent MSVC from
-:: finding MinGW headers (e.g. winnt.h) which cause "No supported target architecture".
+:: CUDA + MinGW: build llama.cpp as a shared DLL with MSVC+CUDA,
+:: then CGo links the DLL via import library.
+:: Non-CUDA: build static .a with MinGW as before.
 if !HAS_CUDA!==1 (
+    :: Remove MinGW from PATH so MSVC doesn't pick up MinGW headers.
     set "SAVED_PATH=!PATH!"
     set "PATH=!PATH:C:\msys64\mingw64\bin=!"
     set "PATH=!PATH:C:\msys64\usr\bin=!"
@@ -267,7 +267,6 @@ if !HAS_CUDA!==1 (
         -DCMAKE_BUILD_TYPE=Release ^
         -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
         -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
-        -DGGML_STATIC=ON ^
         -DGGML_CUDA=ON ^
         -DGGML_VULKAN=OFF ^
         -DGGML_METAL=OFF ^
@@ -275,7 +274,7 @@ if !HAS_CUDA!==1 (
         -DLLAMA_BUILD_TESTS=OFF ^
         -DLLAMA_BUILD_EXAMPLES=OFF ^
         -DLLAMA_BUILD_SERVER=OFF ^
-        -DBUILD_SHARED_LIBS=OFF ^
+        -DBUILD_SHARED_LIBS=ON ^
         -DGGML_NATIVE=OFF ^
         -DGGML_AVX=ON ^
         -DGGML_AVX2=ON ^
@@ -337,32 +336,52 @@ if exist "%LLAMA_SRC%\include\ggml*.h" (
     copy /y "%LLAMA_SRC%\include\ggml*.h" "%LLAMA_OUT%\include\" >nul 2>&1
 )
 
-:: Static libraries — collect all .a (MinGW) and .lib (MSVC) from build tree
-for /r "%LLAMA_BUILD%" %%f in (*.a) do (
-    copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
-)
-for /r "%LLAMA_BUILD%" %%f in (*.lib) do (
-    copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
-)
-
-:: Ensure lib* prefix for MinGW linker (only for .a files)
-for %%f in ("%LLAMA_OUT%\lib\*.a") do (
-    set "fname=%%~nxf"
-    if not "!fname:~0,3!"=="lib" (
-        rename "%%f" "lib!fname!"
+:: Collect libraries from build tree.
+:: CUDA (shared DLL) build: collect .dll + .lib, generate MinGW .a import libs.
+:: MinGW (static) build: collect .a files directly.
+if !HAS_CUDA!==1 (
+    :: Collect DLLs and MSVC import libraries.
+    if not exist "%LLAMA_OUT%\bin" mkdir "%LLAMA_OUT%\bin"
+    for /r "%LLAMA_BUILD%" %%f in (*.dll) do (
+        copy /y "%%f" "%LLAMA_OUT%\bin\" >nul 2>&1
+    )
+    for /r "%LLAMA_BUILD%" %%f in (*.lib) do (
+        copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+    )
+    :: Generate MinGW-compatible import libraries from DLLs using gendef + dlltool.
+    echo   Generating MinGW import libraries from DLLs...
+    for %%f in ("%LLAMA_OUT%\bin\*.dll") do (
+        set "dllname=%%~nf"
+        gendef "%%f" >nul 2>&1
+        if exist "!dllname!.def" (
+            dlltool -d "!dllname!.def" -l "%LLAMA_OUT%\lib\lib!dllname!.a" -D "%%~nxf" >nul 2>&1
+            del "!dllname!.def" 2>nul
+        )
+    )
+) else (
+    :: Static MinGW build: collect .a files.
+    for /r "%LLAMA_BUILD%" %%f in (*.a) do (
+        copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+    )
+    :: Ensure lib* prefix for MinGW linker.
+    for %%f in ("%LLAMA_OUT%\lib\*.a") do (
+        set "fname=%%~nxf"
+        if not "!fname:~0,3!"=="lib" (
+            rename "%%f" "lib!fname!"
+        )
     )
 )
 
-:: Verify we got libraries (.a for MinGW, .lib for MSVC)
+:: Verify we got libraries
 set /a LCOUNT=0
 for %%f in ("%LLAMA_OUT%\lib\*.a") do set /a LCOUNT+=1
 for %%f in ("%LLAMA_OUT%\lib\*.lib") do set /a LCOUNT+=1
 if !LCOUNT!==0 (
-    echo   WARNING: No static libraries found — falling back to API-only build
+    echo   WARNING: No libraries found — falling back to API-only build
     set GHOSTAI=0
 ) else (
     echo   Ghost-AI ready: !LCOUNT! libraries installed
-    if !HAS_CUDA!==1 echo   + CUDA GPU acceleration enabled
+    if !HAS_CUDA!==1 echo   + CUDA GPU acceleration ^(shared DLLs^)
 )
 echo.
 
@@ -602,6 +621,11 @@ if !GHOSTAI!==1 (
         set GHOSTAI=0
     ) else (
         echo   ghostai.exe built OK
+        :: For CUDA shared DLL builds: copy DLLs next to ghostai.exe.
+        if exist "%LLAMA_OUT%\bin\*.dll" (
+            echo   Copying CUDA DLLs...
+            copy /y "%LLAMA_OUT%\bin\*.dll" "%~dp0" >nul 2>&1
+        )
     )
 )
 
