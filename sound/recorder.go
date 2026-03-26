@@ -44,6 +44,13 @@ func (r *Recorder) Level() float32 {
 
 // MicAvailable returns true if a microphone is accessible.
 func (r *Recorder) MicAvailable() bool {
+	// Pre-flight: check OS-level mic permission before touching CoreAudio.
+	// On macOS with hardened runtime, calling malgo without permission causes SIGABRT.
+	if err := CheckMicPermission(); err != nil {
+		slog.Warn("[mic] OS denied microphone access", "error", err)
+		return false
+	}
+
 	ctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, nil)
 	if err != nil {
 		slog.Debug("[mic] malgo context init failed", "error", err)
