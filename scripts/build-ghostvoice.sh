@@ -129,14 +129,12 @@ GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-linux-${ARCH}"
 case "$OS" in
     MINGW*|MSYS*|CYGWIN*)
         GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-windows-${ARCH}.exe"
-        # Ensure lib prefix for MinGW linker.
-        for f in "$WHISPER_OUT/lib/"*.a; do
-            bn=$(basename "$f")
-            case "$bn" in lib*) ;; *) mv "$f" "$WHISPER_OUT/lib/lib$bn" ;; esac
-        done
+        # Link from build directory with explicit .a names (matches _build.bat).
+        # Using -l: ensures static linking — -lwhisper may resolve differently.
         g++ -O2 -static -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
-            -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
-            -lwhisper -lggml -lggml-cpu -lggml-base \
+            -I"$WHISPER_SRC/include" -I"$WHISPER_SRC/ggml/include" \
+            -L"$WHISPER_SRC/build-static/src" -L"$WHISPER_SRC/build-static/ggml/src" \
+            -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a \
             -lstdc++ -lm -lpthread -lkernel32
         ;;
     Darwin)
