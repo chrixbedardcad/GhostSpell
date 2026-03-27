@@ -90,7 +90,7 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 	}
 
 	slog.Info("[ghost-ai] spawning ghostai process", "bin", binPath, "model", def.Model)
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, metalSpawnOpts()...)
+	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, )
 	if err != nil {
 		return nil, fmt.Errorf("ghost-ai: failed to start: %w", err)
 	}
@@ -278,7 +278,7 @@ func (c *GhostAIClient) ensureRunning() error {
 		"--gpu-layers", fmt.Sprintf("%d", autoGPULayers(c.modelPath)),
 	}
 
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, metalSpawnOpts()...)
+	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, )
 	if err != nil {
 		return fmt.Errorf("ghost-ai: restart failed: %w", err)
 	}
@@ -367,27 +367,18 @@ func isQwen35(name string) bool {
 	return strings.Contains(strings.ToLower(name), "qwen3.5")
 }
 
-// metalSpawnOpts returns spawn options that work around Metal backend issues.
-// On macOS 13 (Ventura), newBufferWithBytesNoCopy in ggml_metal_get_tensor_async
-// fails because the data pointer isn't page-aligned. Setting
-// GGML_METAL_SHARED_BUFFERS_DISABLE=1 forces private Metal buffers which
-// don't hit this issue. On macOS 14+ or non-macOS, returns no options.
-func metalSpawnOpts() []procmgr.SpawnOptions {
+// isMacOS13 returns true if running on macOS 13 (Ventura).
+// The Metal backend in llama.cpp has page-alignment issues on macOS 13 that
+// cause GGML_ASSERT crashes. GPU must be disabled on this version.
+func isMacOS13() bool {
 	if runtime.GOOS != "darwin" {
-		return nil
+		return false
 	}
-	// Detect macOS version via sysctl.
 	out, err := exec.Command("sw_vers", "-productVersion").Output()
 	if err != nil {
-		return nil
+		return false
 	}
-	ver := strings.TrimSpace(string(out))
-	// macOS 13.x = Ventura — needs workaround.
-	if strings.HasPrefix(ver, "13.") {
-		slog.Info("[ghost-ai] macOS 13 detected — disabling Metal shared buffers", "version", ver)
-		return []procmgr.SpawnOptions{{Env: []string{"GGML_METAL_SHARED_BUFFERS_DISABLE=1"}}}
-	}
-	return nil
+	return strings.HasPrefix(strings.TrimSpace(string(out)), "13.")
 }
 
 // autoGPULayers determines how many layers to offload to GPU based on model
@@ -396,6 +387,13 @@ func metalSpawnOpts() []procmgr.SpawnOptions {
 // model weights. Overcommitting causes GGML_ASSERT(buf_dst) crashes in the
 // Metal tensor copy path (llama.cpp b8281).
 func autoGPULayers(modelPath string) int {
+	// macOS 13 (Ventura): Metal backend has page-alignment bugs that crash
+	// during inference. Force CPU-only. macOS 14+ works fine.
+	if isMacOS13() {
+		slog.Info("[ghost-ai] macOS 13 detected — GPU disabled (Metal alignment bug)")
+		return 0
+	}
+
 	fi, err := os.Stat(modelPath)
 	if err != nil {
 		return 0
