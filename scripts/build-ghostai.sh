@@ -77,8 +77,11 @@ CMAKE_ARGS=(
 # Platform-specific GPU acceleration.
 if [ "$(uname)" = "Darwin" ]; then
     CMAKE_ARGS+=(-DGGML_ACCELERATE=ON)
-    CMAKE_ARGS+=(-DGGML_METAL=ON)
-    echo "  Metal GPU acceleration enabled (Apple Silicon)"
+    # Metal GPU disabled: newBufferWithBytesNoCopy in ggml_metal_get_tensor_async
+    # requires page-aligned memory which llama.cpp doesn't guarantee on macOS 13.
+    # Accelerate (BLAS/SIMD) is still used and is fast on Apple Silicon.
+    CMAKE_ARGS+=(-DGGML_METAL=OFF)
+    echo "  Apple Accelerate enabled (Apple Silicon)"
 elif command -v nvcc &>/dev/null; then
     CMAKE_ARGS+=(-DGGML_CUDA=ON)
     echo "  CUDA GPU acceleration enabled (NVIDIA)"

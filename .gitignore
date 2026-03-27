@@ -47,9 +47,9 @@ Debug/
 GhostType
 GhostSpell
 ghostspell
-ghost
-ghostai
-ghostvoice-darwin-*
+/ghost
+/ghostai
+/ghostvoice-darwin-*
 ghostvoice-linux-*
 ghostvoice-windows-*
 
