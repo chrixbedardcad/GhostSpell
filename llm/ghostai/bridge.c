@@ -112,8 +112,11 @@ int ghost_engine_load(ghost_engine* e, const char* model_path,
         if (probe) {
             int n_layers = llama_model_n_layer(probe);
             llama_model_free(probe);
-            /* Cap to n_layers-1 to avoid the async tensor copy crash. */
-            requested_gpu = n_layers > 1 ? n_layers - 1 : n_layers;
+            /* Cap to n_layers-2 to keep the output layer on CPU.
+             * The output layer triggers ggml_metal_get_tensor_async which
+             * crashes on macOS 13 due to page-alignment issues. Keeping it
+             * on CPU avoids that path while still offloading ~90% to GPU. */
+            requested_gpu = n_layers > 2 ? n_layers - 2 : n_layers;
         }
     }
     params.n_gpu_layers = requested_gpu;
