@@ -46,6 +46,12 @@ Debug/
 # Built binaries
 GhostType
 GhostSpell
+ghostspell
+ghost
+ghostai
+ghostvoice-darwin-*
+ghostvoice-linux-*
+ghostvoice-windows-*
 
 # Embedded ghostvoice binary (staged by build scripts)
 voicebin/*
