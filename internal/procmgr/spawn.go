@@ -60,7 +60,12 @@ type AgentProcess struct {
 // global Job Object (Windows) or started in its own process group (Unix).
 //
 // The parent PID is passed via --parent-pid so the child can self-exit if orphaned.
-func SpawnHTTPAgent(name, binPath string, args []string, job *JobObject) (*AgentProcess, error) {
+// SpawnOptions contains optional configuration for SpawnHTTPAgent.
+type SpawnOptions struct {
+	Env []string // Extra environment variables ("KEY=VALUE") for the child process.
+}
+
+func SpawnHTTPAgent(name, binPath string, args []string, job *JobObject, opts ...SpawnOptions) (*AgentProcess, error) {
 	// Use global job if none provided.
 	if job == nil {
 		job = globalJob
@@ -72,6 +77,11 @@ func SpawnHTTPAgent(name, binPath string, args []string, job *JobObject) (*Agent
 
 	cmd := exec.Command(binPath, fullArgs...)
 	cmd.Stderr = os.Stderr // Child logs to parent stderr (also writes to its own log file)
+
+	// Apply extra environment variables (inherit parent env + extras).
+	if len(opts) > 0 && len(opts[0].Env) > 0 {
+		cmd.Env = append(os.Environ(), opts[0].Env...)
+	}
 
 	// Set up process group on Unix for group kill.
 	setupProcessGroup(cmd)

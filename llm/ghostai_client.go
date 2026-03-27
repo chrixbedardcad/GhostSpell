@@ -90,7 +90,7 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 	}
 
 	slog.Info("[ghost-ai] spawning ghostai process", "bin", binPath, "model", def.Model)
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil)
+	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, metalSpawnOpts()...)
 	if err != nil {
 		return nil, fmt.Errorf("ghost-ai: failed to start: %w", err)
 	}
@@ -278,7 +278,7 @@ func (c *GhostAIClient) ensureRunning() error {
 		"--gpu-layers", fmt.Sprintf("%d", autoGPULayers(c.modelPath)),
 	}
 
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil)
+	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, metalSpawnOpts()...)
 	if err != nil {
 		return fmt.Errorf("ghost-ai: restart failed: %w", err)
 	}
@@ -365,6 +365,29 @@ func isThinkingModel(name string) bool {
 // thinking model handling is now done server-side in ghostai.exe.
 func isQwen35(name string) bool {
 	return strings.Contains(strings.ToLower(name), "qwen3.5")
+}
+
+// metalSpawnOpts returns spawn options that work around Metal backend issues.
+// On macOS 13 (Ventura), newBufferWithBytesNoCopy in ggml_metal_get_tensor_async
+// fails because the data pointer isn't page-aligned. Setting
+// GGML_METAL_SHARED_BUFFERS_DISABLE=1 forces private Metal buffers which
+// don't hit this issue. On macOS 14+ or non-macOS, returns no options.
+func metalSpawnOpts() []procmgr.SpawnOptions {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+	// Detect macOS version via sysctl.
+	out, err := exec.Command("sw_vers", "-productVersion").Output()
+	if err != nil {
+		return nil
+	}
+	ver := strings.TrimSpace(string(out))
+	// macOS 13.x = Ventura — needs workaround.
+	if strings.HasPrefix(ver, "13.") {
+		slog.Info("[ghost-ai] macOS 13 detected — disabling Metal shared buffers", "version", ver)
+		return []procmgr.SpawnOptions{{Env: []string{"GGML_METAL_SHARED_BUFFERS_DISABLE=1"}}}
+	}
+	return nil
 }
 
 // autoGPULayers determines how many layers to offload to GPU based on model
