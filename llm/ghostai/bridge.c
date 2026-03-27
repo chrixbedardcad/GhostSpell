@@ -99,27 +99,7 @@ int ghost_engine_load(ghost_engine* e, const char* model_path,
 
     struct llama_model_params params = llama_model_default_params();
 
-    /* gpu_layers=99 means "all layers". On macOS 13, offloading ALL layers
-     * triggers ggml_metal_get_tensor_async which crashes due to page-alignment
-     * issues with newBufferWithBytesNoCopy. Using n_layers-1 avoids that code
-     * path while still offloading nearly everything to GPU.
-     * We load once with 0 layers to query n_layers, then reload with the cap. */
-    int requested_gpu = e->config.gpu_layers;
-    if (requested_gpu >= 99) {
-        /* First: quick load to get layer count (no GPU needed). */
-        params.n_gpu_layers = 0;
-        struct llama_model* probe = llama_model_load_from_file(model_path, params);
-        if (probe) {
-            int n_layers = llama_model_n_layer(probe);
-            llama_model_free(probe);
-            /* Cap to n_layers-2 to keep the output layer on CPU.
-             * The output layer triggers ggml_metal_get_tensor_async which
-             * crashes on macOS 13 due to page-alignment issues. Keeping it
-             * on CPU avoids that path while still offloading ~90% to GPU. */
-            requested_gpu = n_layers > 2 ? n_layers - 2 : n_layers;
-        }
-    }
-    params.n_gpu_layers = requested_gpu;
+    params.n_gpu_layers = e->config.gpu_layers;
 
     e->model = llama_model_load_from_file(model_path, params);
     if (!e->model) {

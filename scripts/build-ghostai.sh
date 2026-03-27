@@ -48,6 +48,11 @@ if [ ! -d "$LLAMA_SRC" ]; then
     echo "    Downloaded to $LLAMA_SRC"
 fi
 
+# --- Step 1.5: Apply Metal compatibility patch (macOS 13) ---
+if [ -x "$SCRIPT_DIR/patch-metal.sh" ]; then
+    "$SCRIPT_DIR/patch-metal.sh" "$LLAMA_SRC"
+fi
+
 # --- Step 2: Build static libraries with CMake ---
 
 echo "[2/3] Building static libraries..."
