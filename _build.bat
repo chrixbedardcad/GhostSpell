@@ -34,7 +34,7 @@ if exist "C:\msys64\mingw64\bin\gcc.exe" (
     set "PATH=C:\msys64\mingw64\bin;%PATH%"
 )
 
-set LLAMA_VERSION=b8281
+set LLAMA_VERSION=b8545
 set BUILD_DIR=%~dp0build
 set LLAMA_SRC=%BUILD_DIR%\llama-src
 set LLAMA_OUT=%BUILD_DIR%\llama
@@ -141,16 +141,23 @@ if "%NPROC%"=="" set NPROC=4
 :: ============================================================
 if !GHOSTAI!==0 goto :skip_ghostai
 
-:: Skip if libraries already built
+:: Skip if libraries already built AND version matches.
 set /a EXISTING_LIBS=0
 if exist "%LLAMA_OUT%\lib" (
     for %%f in ("%LLAMA_OUT%\lib\*.a") do set /a EXISTING_LIBS+=1
 )
+set CACHED_VER=
+if exist "%LLAMA_SRC%\.version" set /p CACHED_VER=<"%LLAMA_SRC%\.version"
 if !EXISTING_LIBS! geq 3 (
-    echo [1] Ghost-AI libraries already built ^(!EXISTING_LIBS! libs^) — skipping.
-    echo     To rebuild: delete the build\llama folder and re-run.
-    echo.
-    goto :skip_ghostai
+    if "!CACHED_VER!"=="%LLAMA_VERSION%" (
+        echo [1] Ghost-AI libraries already built ^(!EXISTING_LIBS! libs, %LLAMA_VERSION%^) — skipping.
+        echo     To rebuild: delete the build\llama folder and re-run.
+        echo.
+        goto :skip_ghostai
+    ) else (
+        echo [1] llama.cpp version changed ^(!CACHED_VER! -^> %LLAMA_VERSION%^) — rebuilding...
+        rmdir /s /q "%LLAMA_OUT%" 2>nul
+    )
 )
 
 echo [1] Building Ghost-AI ^(llama.cpp %LLAMA_VERSION%^)...

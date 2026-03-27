@@ -116,11 +116,25 @@ NPROC=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
 # Step 1 — Build Ghost-AI static libraries (if toolchain found)
 # ============================================================
 if [ "$GHOSTAI" -eq 1 ]; then
-    # Skip if libraries already built
+    # Skip if libraries already built AND version matches build-ghostai.sh.
+    EXPECTED_VER=$(grep '^LLAMA_VERSION=' scripts/build-ghostai.sh | head -1 | sed 's/.*:-\(.*\)}.*/\1/')
+    CACHED_VER=""
+    [ -f build/llama-src/.version ] && CACHED_VER=$(cat build/llama-src/.version)
     EXISTING_LIBS=$(ls build/llama/lib/*.a 2>/dev/null | wc -l | tr -d ' ')
-    if [ "$EXISTING_LIBS" -ge 3 ]; then
-        echo "[1] Ghost-AI libraries already built ($EXISTING_LIBS libs) — skipping."
+    if [ "$EXISTING_LIBS" -ge 3 ] && [ "$CACHED_VER" = "$EXPECTED_VER" ]; then
+        echo "[1] Ghost-AI libraries already built ($EXISTING_LIBS libs, $CACHED_VER) — skipping."
         echo "    To rebuild: delete the build/llama folder and re-run."
+        echo ""
+    elif [ "$EXISTING_LIBS" -ge 3 ] && [ "$CACHED_VER" != "$EXPECTED_VER" ]; then
+        info "[1] llama.cpp version changed ($CACHED_VER → $EXPECTED_VER) — rebuilding..."
+        rm -rf build/llama
+        chmod +x scripts/build-ghostai.sh
+        if ! ./scripts/build-ghostai.sh; then
+            warn "Ghost-AI build failed — falling back to API-only build"
+            GHOSTAI=0
+        else
+            ok "Ghost-AI built ($EXPECTED_VER)"
+        fi
         echo ""
     else
         info "[1] Building Ghost-AI (llama.cpp)..."
