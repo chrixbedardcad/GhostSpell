@@ -387,13 +387,6 @@ func isMacOS13() bool {
 // model weights. Overcommitting causes GGML_ASSERT(buf_dst) crashes in the
 // Metal tensor copy path (llama.cpp b8281).
 func autoGPULayers(modelPath string) int {
-	// macOS 13 (Ventura): Metal backend has page-alignment bugs that crash
-	// during inference. Force CPU-only. macOS 14+ works fine.
-	if isMacOS13() {
-		slog.Info("[ghost-ai] macOS 13 detected — GPU disabled (Metal alignment bug)")
-		return 0
-	}
-
 	fi, err := os.Stat(modelPath)
 	if err != nil {
 		return 0
