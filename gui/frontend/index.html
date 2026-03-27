@@ -3624,7 +3624,21 @@ async function onOpenPermissions() {
 async function onLanguageChange(lang) { await goCall('setLanguage', lang); }
 async function onToggleSound(enabled) { await goCall('setSoundEnabled', enabled); }
 async function onToggleClipboard(enabled) { await goCall('setPreserveClipboard', enabled); }
-async function onToggleGPU(enabled) { await goCall('setGPUEnabled', enabled); }
+async function onToggleGPU(enabled) {
+  var res = await goCall('setGPUEnabled', enabled);
+  var label = document.querySelector('#pref-gpu').closest('.form-group').querySelector('.sublabel');
+  if (res === 'gpu_on') {
+    label.textContent = 'GPU enabled — local model will restart with GPU acceleration.';
+    label.style.color = '#a6e3a1';
+  } else if (res === 'gpu_off') {
+    label.textContent = 'GPU disabled — local model will restart in CPU-only mode.';
+    label.style.color = '#f9e2af';
+  }
+  setTimeout(function() {
+    label.textContent = 'Use Metal (macOS) or CUDA/Vulkan (Windows) for faster local AI inference. Disable to force CPU-only mode.';
+    label.style.color = '';
+  }, 5000);
+}
 async function onMaxCharsChange(val) { await goCall('setMaxInputChars', parseInt(val) || 0); }
 
 // ---- Stats ----

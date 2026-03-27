@@ -409,6 +409,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				slog.Info("Router created after settings save", "model", cfg.DefaultModel)
 			}
 		}
+		// Update GPU flag so the next ghostai spawn uses the new setting.
+		if cfg.GPUEnabled != nil && !*cfg.GPUEnabled {
+			llm.GPUEnabled = false
+		} else {
+			llm.GPUEnabled = true
+		}
 		mu.Unlock()
 		sound.SetEnabled(*cfg.SoundEnabled)
 		gui.SetIndicatorPosition(cfg.IndicatorPosition)

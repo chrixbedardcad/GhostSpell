@@ -716,14 +716,18 @@ func (s *SettingsService) SetPreserveClipboard(enabled bool) string {
 }
 
 // SetGPUEnabled toggles GPU acceleration for local models.
-// Takes effect on the next model load (config reload restarts ghostai).
+// Saves the config and triggers a live reload which restarts ghostai
+// with the new GPU setting.
 func (s *SettingsService) SetGPUEnabled(enabled bool) string {
 	guiLog("[GUI] JS called: SetGPUEnabled(%v)", enabled)
 	s.cfgCopy.GPUEnabled = &enabled
 	if err := s.validateAndSave(); err != nil {
 		return fmt.Sprintf("error: %v", err)
 	}
-	return "ok"
+	if enabled {
+		return "gpu_on"
+	}
+	return "gpu_off"
 }
 
 // SetMaxInputChars updates the max input character limit.
