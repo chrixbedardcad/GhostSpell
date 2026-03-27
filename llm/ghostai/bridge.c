@@ -6,7 +6,7 @@
  * Calls llama.cpp's C API (llama.h) to provide model loading and inference.
  * Compiled by CGo only when building with -tags ghostai.
  *
- * Pinned to llama.cpp API at tag b8281 (2025).
+ * Pinned to llama.cpp API at tag b8545 (2025).
  */
 
 #include "bridge.h"

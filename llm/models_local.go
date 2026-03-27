@@ -24,7 +24,7 @@ const (
 
 	// BundledLlamaCppVersion is the llama.cpp release tag compiled into GhostSpell.
 	// Single source of truth for CI builds and version display.
-	BundledLlamaCppVersion = "b8281"
+	BundledLlamaCppVersion = "b8545"
 )
 
 // LLMProviderDefCompat mirrors config.LLMProviderDef fields needed by local
