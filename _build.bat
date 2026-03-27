@@ -16,6 +16,18 @@ echo.
 
 cd /d "%~dp0"
 
+:: Kill any running GhostSpell processes before building.
+:: ghostspell.exe spawns ghostai.exe and ghostvoice.exe subprocesses —
+:: they must be stopped or the compiler can't overwrite the binaries.
+for %%p in (ghostspell.exe ghostai.exe ghostvoice.exe ghost.exe) do (
+    tasklist /fi "imagename eq %%p" /nh 2>nul | findstr /i "%%p" >nul 2>&1
+    if !errorlevel!==0 (
+        echo [pre-build] Stopping %%p...
+        taskkill /im %%p /f >nul 2>&1
+    )
+)
+timeout /t 1 /nobreak >nul
+
 :: --clean flag: delete build cache, sources, and binaries — full rebuild from scratch.
 if "%~1"=="--clean" (
     echo [clean] Deleting build cache, sources, and binaries...

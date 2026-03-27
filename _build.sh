@@ -27,6 +27,22 @@ echo "         GhostSpell Full Build"
 echo "============================================"
 echo ""
 
+# Kill any running GhostSpell processes before building.
+# On macOS, ghostspell spawns ghostai and ghostvoice subprocesses —
+# they must be stopped or the compiler can't overwrite the binaries.
+for proc in ghostspell ghostai ghostvoice; do
+    if pgrep -x "$proc" >/dev/null 2>&1; then
+        echo "[pre-build] Stopping $proc..."
+        pkill -x "$proc" 2>/dev/null || true
+    fi
+done
+# Also kill the .app bundle process (macOS).
+if pgrep -f "GhostSpell.app" >/dev/null 2>&1; then
+    echo "[pre-build] Stopping GhostSpell.app..."
+    pkill -f "GhostSpell.app" 2>/dev/null || true
+fi
+sleep 0.5
+
 # --clean flag: delete build cache, source, and binaries — full rebuild from scratch.
 if [[ "${1:-}" == "--clean" ]]; then
     echo "[clean] Deleting build cache, sources, and binaries..."
