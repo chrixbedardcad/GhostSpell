@@ -27,11 +27,12 @@ echo "         GhostSpell Full Build"
 echo "============================================"
 echo ""
 
-# --clean flag: delete build cache and force full rebuild.
+# --clean flag: delete build cache, source, and binaries — full rebuild from scratch.
 if [[ "${1:-}" == "--clean" ]]; then
-    echo "[clean] Deleting build cache..."
-    rm -rf build/llama build/whisper
-    echo "[clean] Done — rebuilding from scratch."
+    echo "[clean] Deleting build cache, sources, and binaries..."
+    rm -rf build/llama build/llama-src build/whisper build/whisper-src
+    rm -f ghostai ghostspell ghost ghostvoice-darwin-* ghostvoice-linux-*
+    echo "[clean] Done — rebuilding everything from scratch."
     echo ""
 fi
 

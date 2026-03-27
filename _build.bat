@@ -16,17 +16,23 @@ echo.
 
 cd /d "%~dp0"
 
-:: --clean flag: delete build cache and force full rebuild.
+:: --clean flag: delete build cache, sources, and binaries — full rebuild from scratch.
 if "%~1"=="--clean" (
-    echo [clean] Deleting build cache...
+    echo [clean] Deleting build cache, sources, and binaries...
     if exist "build\llama" rmdir /s /q "build\llama"
+    if exist "build\llama-src" rmdir /s /q "build\llama-src"
     if exist "build\whisper" rmdir /s /q "build\whisper"
-    echo [clean] Done — rebuilding from scratch.
+    if exist "build\whisper-src" rmdir /s /q "build\whisper-src"
+    del /q ghostspell.exe ghostai.exe ghost.exe ghostvoice.exe ghostvoice-windows-*.exe 2>nul
+    echo [clean] Done — rebuilding everything from scratch.
     echo.
 )
 if "%~2"=="--clean" (
     if exist "build\llama" rmdir /s /q "build\llama"
+    if exist "build\llama-src" rmdir /s /q "build\llama-src"
     if exist "build\whisper" rmdir /s /q "build\whisper"
+    if exist "build\whisper-src" rmdir /s /q "build\whisper-src"
+    del /q ghostspell.exe ghostai.exe ghost.exe ghostvoice.exe ghostvoice-windows-*.exe 2>nul
 )
 
 :: Auto-detect MSYS2 MinGW64 toolchain and add to PATH if present.
