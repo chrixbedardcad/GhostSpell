@@ -62,6 +62,9 @@ gui/frontend/node_modules/
 gui/frontend/dist/*
 !gui/frontend/dist/.gitkeep
 
+# macOS Finder metadata
+.DS_Store
+
 # Editor/IDE
 # .idea/
 # .vscode/
