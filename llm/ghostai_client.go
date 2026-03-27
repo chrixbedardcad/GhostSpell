@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -71,12 +72,14 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 		threads = 4
 	}
 
-	// GPU layers: 99 = offload all layers (GPU backend decides if available).
-	// When built without CUDA/Metal/Vulkan, this is ignored by llama.cpp.
-	// When GPUEnabled=false, force CPU-only (0 layers).
-	gpuLayers := 99
-	if !def.GPUEnabled {
-		gpuLayers = 0
+	// GPU layers: offload model layers to GPU (Metal/CUDA/Vulkan).
+	// On Apple Silicon (unified memory), large models need headroom for
+	// inference buffers (KV cache, compute scratch). Using 99 (all layers)
+	// can trigger GGML_ASSERT(buf_dst) in the Metal backend when memory is
+	// tight. Scale GPU layers based on model file size vs available RAM.
+	gpuLayers := 0
+	if def.GPUEnabled {
+		gpuLayers = autoGPULayers(modelPath)
 	}
 
 	args := []string{
@@ -272,7 +275,7 @@ func (c *GhostAIClient) ensureRunning() error {
 		"--model", c.modelPath,
 		"--context-size", fmt.Sprintf("%d", contextSize),
 		"--threads", fmt.Sprintf("%d", threads),
-		"--gpu-layers", "99",
+		"--gpu-layers", fmt.Sprintf("%d", autoGPULayers(c.modelPath)),
 	}
 
 	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil)
@@ -362,4 +365,63 @@ func isThinkingModel(name string) bool {
 // thinking model handling is now done server-side in ghostai.exe.
 func isQwen35(name string) bool {
 	return strings.Contains(strings.ToLower(name), "qwen3.5")
+}
+
+// autoGPULayers determines how many layers to offload to GPU based on model
+// file size and available system RAM. On Apple Silicon (unified memory), the
+// Metal backend needs headroom for KV cache and compute buffers beyond the
+// model weights. Overcommitting causes GGML_ASSERT(buf_dst) crashes in the
+// Metal tensor copy path (llama.cpp b8281).
+func autoGPULayers(modelPath string) int {
+	fi, err := os.Stat(modelPath)
+	if err != nil {
+		return 0
+	}
+	modelGB := float64(fi.Size()) / (1024 * 1024 * 1024)
+
+	ramGB := systemRAMGB()
+	if ramGB == 0 {
+		ramGB = 8 // safe default
+	}
+
+	// Reserve memory for OS + GhostSpell + Metal inference buffers (KV cache,
+	// compute scratch). The Metal backend in llama.cpp b8281 needs ~2x the
+	// model weight size for inference buffers; underestimating causes
+	// GGML_ASSERT(buf_dst) in ggml_metal_cpy_tensor_async.
+	overheadGB := 4.0 + modelGB*0.5 // OS/app + ~50% of model for Metal buffers
+	availableGB := float64(ramGB) - overheadGB
+	if availableGB < 1 {
+		slog.Info("[ghost-ai] not enough RAM for GPU offload, using CPU", "ram_gb", ramGB, "model_gb", fmt.Sprintf("%.1f", modelGB))
+		return 0
+	}
+
+	if modelGB <= availableGB {
+		// Model + buffers fit comfortably — offload everything.
+		slog.Info("[ghost-ai] GPU: full offload", "ram_gb", ramGB, "model_gb", fmt.Sprintf("%.1f", modelGB))
+		return 99
+	}
+
+	// Model too large for full offload — use partial (proportional).
+	ratio := availableGB / modelGB
+	layers := int(ratio * 99)
+	if layers < 1 {
+		layers = 0
+	}
+	slog.Info("[ghost-ai] GPU: partial offload", "ram_gb", ramGB, "model_gb", fmt.Sprintf("%.1f", modelGB), "layers", layers)
+	return layers
+}
+
+// systemRAMGB returns total system RAM in GB.
+func systemRAMGB() int {
+	switch runtime.GOOS {
+	case "darwin":
+		out, err := exec.Command("sysctl", "-n", "hw.memsize").Output()
+		if err != nil {
+			return 0
+		}
+		bytes, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+		return int(bytes / (1024 * 1024 * 1024))
+	default:
+		return 0
+	}
 }
