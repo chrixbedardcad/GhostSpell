@@ -115,7 +115,7 @@ GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-linux-${ARCH}"
 case "$OS" in
     MINGW*|MSYS*|CYGWIN*)
         GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-windows-${ARCH}.exe"
-        g++ -O2 -static -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+        g++ -O2 -static -fopenmp -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
             -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a \
             -lstdc++ -lm -lpthread -lkernel32
@@ -129,7 +129,7 @@ case "$OS" in
             -framework Accelerate -framework Metal -framework MetalKit -framework Foundation
         ;;
     *)
-        g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
+        g++ -O2 -fopenmp -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
             -Wl,--start-group -lwhisper -lggml -lggml-cpu -lggml-base -Wl,--end-group \
             -lstdc++ -lm -lpthread

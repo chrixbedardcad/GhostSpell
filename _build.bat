@@ -570,7 +570,7 @@ if !WHISPER_CUDA!==1 (
     if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
 ) else if !HAS_VULKAN!==1 (
     echo   Building ghostvoice.exe ^(MinGW + Vulkan^)...
-    g++ -O2 -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
+    g++ -O2 -fopenmp -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
         -I"%WHISPER_OUT%\include" ^
         -L"%WHISPER_OUT%\lib" -L"%VULKAN_SDK%\Lib" ^
         -l:libwhisper.a -l:ggml.a -l:ggml-vulkan.a -l:ggml-cpu.a -l:ggml-base.a ^
@@ -578,7 +578,7 @@ if !WHISPER_CUDA!==1 (
         -lstdc++ -lm -lpthread -lkernel32
 ) else (
     echo   Building ghostvoice.exe ^(MinGW, CPU-only^)...
-    g++ -O2 -static -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
+    g++ -O2 -static -fopenmp -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
         -I"%WHISPER_OUT%\include" ^
         -L"%WHISPER_OUT%\lib" ^
         -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a ^
