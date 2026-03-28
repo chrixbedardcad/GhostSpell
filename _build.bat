@@ -470,50 +470,96 @@ if !WNEED!==1 (
     echo   Downloaded OK
 )
 
-:: --- Build static libraries with CMake ---
-echo   Compiling whisper.cpp static libraries...
-
+:: --- Build whisper.cpp libraries with CMake ---
+:: CUDA: static libs with MSVC+nvcc (ghostvoice.exe linked with cl.exe — no DLL conflicts with llama ggml DLLs).
+:: Non-CUDA: static libs with MinGW (unchanged).
 set WHISPER_BUILD=%WHISPER_SRC%\build
 :: Clean stale build dir to force a fresh build
 if exist "%WHISPER_BUILD%" rmdir /s /q "%WHISPER_BUILD%"
 mkdir "%WHISPER_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
+set WHISPER_CUDA=0
 
 cd /d "%WHISPER_BUILD%"
-cmake .. -G "!GENERATOR_NAME!" ^
-    -DCMAKE_BUILD_TYPE=Release ^
-    -DCMAKE_C_COMPILER=gcc ^
-    -DCMAKE_CXX_COMPILER=g++ ^
-    -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
-    -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
-    -DBUILD_SHARED_LIBS=OFF ^
-    -DWHISPER_BUILD_TESTS=OFF ^
-    -DWHISPER_BUILD_EXAMPLES=ON ^
-    -DGGML_STATIC=ON ^
-    -DGGML_CUDA=OFF ^
-    -DGGML_VULKAN=!HAS_VULKAN! ^
-    -DGGML_METAL=OFF ^
-    -DGGML_OPENMP=ON ^
-    -DGGML_NATIVE=OFF ^
-    -DGGML_AVX=ON ^
-    -DGGML_AVX2=ON ^
-    -DGGML_AVX512=OFF ^
-    -DGGML_FMA=ON ^
-    -DGGML_F16C=OFF
-if !errorlevel! neq 0 (
-    echo   WARNING: CMake failed — skipping Ghost Voice
-    cd /d "%~dp0"
-    set GHOSTVOICE=0
-    goto :skip_ghostvoice
+if !HAS_CUDA!==1 (
+    echo   Compiling whisper.cpp with CUDA ^(MSVC + nvcc^)...
+    :: Remove MinGW from PATH so MSVC doesn't pick up MinGW headers.
+    set "SAVED_PATH_W=!PATH!"
+    set "PATH=!PATH:C:\msys64\mingw64\bin=!"
+    set "PATH=!PATH:C:\msys64\usr\bin=!"
+    cmake .. -G "Ninja" ^
+        -DCMAKE_BUILD_TYPE=Release ^
+        -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+        -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+        -DBUILD_SHARED_LIBS=OFF ^
+        -DWHISPER_BUILD_TESTS=OFF ^
+        -DWHISPER_BUILD_EXAMPLES=ON ^
+        -DGGML_STATIC=ON ^
+        -DGGML_CUDA=ON ^
+        -DGGML_VULKAN=OFF ^
+        -DGGML_METAL=OFF ^
+        -DGGML_OPENMP=ON ^
+        -DGGML_NATIVE=OFF ^
+        -DGGML_AVX=ON ^
+        -DGGML_AVX2=ON ^
+        -DGGML_AVX512=OFF ^
+        -DGGML_FMA=ON ^
+        -DGGML_F16C=ON
+    if !errorlevel!==0 (
+        cmake --build . --config Release -j %NPROC%
+        if !errorlevel!==0 (
+            set WHISPER_CUDA=1
+        ) else (
+            echo   WARNING: CUDA build failed — falling back to CPU
+        )
+    ) else (
+        echo   WARNING: CUDA CMake failed — falling back to CPU
+    )
+    :: Restore MinGW PATH.
+    if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
 )
 
-cmake --build . --config Release -j %NPROC%
-if !errorlevel! neq 0 (
-    echo   WARNING: Build failed — skipping Ghost Voice
-    cd /d "%~dp0"
-    set GHOSTVOICE=0
-    goto :skip_ghostvoice
+:: Non-CUDA fallback: MinGW static build.
+if !WHISPER_CUDA!==0 (
+    echo   Compiling whisper.cpp static libraries ^(CPU^)...
+    :: Clean build dir if CUDA attempt left artifacts.
+    if exist "%WHISPER_BUILD%" rmdir /s /q "%WHISPER_BUILD%"
+    mkdir "%WHISPER_BUILD%"
+    cd /d "%WHISPER_BUILD%"
+    cmake .. -G "!GENERATOR_NAME!" ^
+        -DCMAKE_BUILD_TYPE=Release ^
+        -DCMAKE_C_COMPILER=gcc ^
+        -DCMAKE_CXX_COMPILER=g++ ^
+        -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
+        -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+        -DBUILD_SHARED_LIBS=OFF ^
+        -DWHISPER_BUILD_TESTS=OFF ^
+        -DWHISPER_BUILD_EXAMPLES=ON ^
+        -DGGML_STATIC=ON ^
+        -DGGML_CUDA=OFF ^
+        -DGGML_VULKAN=!HAS_VULKAN! ^
+        -DGGML_METAL=OFF ^
+        -DGGML_OPENMP=ON ^
+        -DGGML_NATIVE=OFF ^
+        -DGGML_AVX=ON ^
+        -DGGML_AVX2=ON ^
+        -DGGML_AVX512=OFF ^
+        -DGGML_FMA=ON ^
+        -DGGML_F16C=OFF
+    if !errorlevel! neq 0 (
+        echo   WARNING: CMake failed — skipping Ghost Voice
+        cd /d "%~dp0"
+        set GHOSTVOICE=0
+        goto :skip_ghostvoice
+    )
+    cmake --build . --config Release -j %NPROC%
+    if !errorlevel! neq 0 (
+        echo   WARNING: Build failed — skipping Ghost Voice
+        cd /d "%~dp0"
+        set GHOSTVOICE=0
+        goto :skip_ghostvoice
+    )
 )
 cd /d "%~dp0"
 
@@ -531,17 +577,38 @@ if exist "%WHISPER_SRC%\ggml\include" (
 )
 
 :: Build ghostvoice.exe — GhostSpell's own speech-to-text helper (pure C++, links whisper static libs).
-echo   Building ghostvoice.exe...
-g++ -O2 -static -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
-    -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
-    -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
-    -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a ^
-    -lstdc++ -lm -lpthread -lkernel32
+if !WHISPER_CUDA!==1 (
+    echo   Building ghostvoice.exe ^(MSVC + CUDA^)...
+    :: Remove MinGW from PATH so cl.exe doesn't pick up MinGW headers.
+    set "SAVED_PATH_W=!PATH!"
+    set "PATH=!PATH:C:\msys64\mingw64\bin=!"
+    set "PATH=!PATH:C:\msys64\usr\bin=!"
+    cl /O2 /EHsc /std:c++17 /MD /openmp ^
+        /I"%WHISPER_SRC%\include" /I"%WHISPER_SRC%\ggml\include" ^
+        "%~dp0ghostvoice\main.cpp" ^
+        /Fe:"%~dp0ghostvoice.exe" ^
+        /link ^
+        /LIBPATH:"%WHISPER_BUILD%\src" ^
+        /LIBPATH:"%WHISPER_BUILD%\ggml\src" ^
+        /LIBPATH:"%CUDA_PATH%\lib\x64" ^
+        whisper.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
+        cudart_static.lib cublas.lib cublasLt.lib ^
+        advapi32.lib
+    if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
+) else (
+    echo   Building ghostvoice.exe ^(MinGW^)...
+    g++ -O2 -static -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
+        -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
+        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
+        -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a ^
+        -lstdc++ -lm -lpthread -lkernel32
+)
 if !errorlevel! neq 0 (
     echo   WARNING: ghostvoice.exe build failed
     set GHOSTVOICE=0
 ) else (
     echo   ghostvoice.exe built OK
+    if !WHISPER_CUDA!==1 echo   + CUDA GPU acceleration
     :: Stage for go:embed
     if not exist "%~dp0voicebin" mkdir "%~dp0voicebin"
     copy /y "%~dp0ghostvoice.exe" "%~dp0voicebin\ghostvoice.exe" >nul 2>&1

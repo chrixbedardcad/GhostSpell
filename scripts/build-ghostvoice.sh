@@ -143,7 +143,8 @@ case "$OS" in
         g++ -std=c++17 -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
             -lwhisper -lggml -lggml-cpu -lggml-metal -lggml-blas -lggml-base \
-            -lc++ -lm -lpthread -framework Accelerate -framework Metal -framework MetalKit -framework Foundation
+            -lc++ -lm -lpthread \
+            -framework Accelerate -framework Metal -framework MetalKit -framework Foundation
         ;;
     *)
         g++ -O2 -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \

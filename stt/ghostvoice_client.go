@@ -104,8 +104,15 @@ func (c *GhostVoiceClient) ensureDaemon() error {
 		return nil
 	}
 
-	slog.Info("[ghost-voice] starting daemon", "model", c.modelName)
-	cmd := exec.Command(c.cliPath, "--daemon", "-m", c.modelPath, "-t", "4")
+	threads := runtime.NumCPU()
+	if threads > 12 {
+		threads = 12
+	}
+	if threads < 4 {
+		threads = 4
+	}
+	slog.Info("[ghost-voice] starting daemon", "model", c.modelName, "threads", threads)
+	cmd := exec.Command(c.cliPath, "--daemon", "-m", c.modelPath, "-t", fmt.Sprintf("%d", threads))
 
 	// Redirect daemon stderr to ghostvoice.log.
 	if logFile, err := openVoiceLog(); err == nil {

@@ -167,6 +167,7 @@ static int run_daemon(const char *model_path, int n_threads) {
     whisper_log_set([](enum ggml_log_level, const char *, void *) {}, nullptr);
 
     struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.flash_attn = true;
     struct whisper_context *ctx = whisper_init_from_file_with_params(model_path, cparams);
     if (!ctx) {
         fprintf(stdout, "{\"ready\":false,\"error\":\"failed to load model\"}\n");
@@ -243,6 +244,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "ghostvoice: %d samples (%.1fs)\n", (int)pcm.size(), pcm.size() / 16000.0);
 
     struct whisper_context_params cparams = whisper_context_default_params();
+    cparams.flash_attn = true;
     struct whisper_context *ctx = whisper_init_from_file_with_params(model_path, cparams);
     if (!ctx) {
         fprintf(stderr, "ghostvoice: failed to load model: %s\n", model_path);
