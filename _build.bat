@@ -350,32 +350,15 @@ cd /d "%~dp0"
 :: Restore MinGW PATH after CUDA build.
 if defined SAVED_PATH set "PATH=!SAVED_PATH!"
 
-:: --- Install headers + libraries ---
-if not exist "%LLAMA_OUT%\include" mkdir "%LLAMA_OUT%\include"
-if not exist "%LLAMA_OUT%\lib" mkdir "%LLAMA_OUT%\lib"
+:: --- Install headers + libraries via cmake --install ---
+:: Produces a flat, stable layout regardless of llama.cpp's internal structure.
+if exist "%LLAMA_OUT%" rmdir /s /q "%LLAMA_OUT%"
+echo   Installing llama.cpp headers + libraries...
+cmake --install "%LLAMA_BUILD%" --prefix "%LLAMA_OUT%" >nul 2>&1
 
-:: Headers
-copy /y "%LLAMA_SRC%\include\llama.h" "%LLAMA_OUT%\include\" >nul 2>&1
-if exist "%LLAMA_SRC%\ggml\include" (
-    copy /y "%LLAMA_SRC%\ggml\include\*.h" "%LLAMA_OUT%\include\" >nul 2>&1
-)
-if exist "%LLAMA_SRC%\include\ggml*.h" (
-    copy /y "%LLAMA_SRC%\include\ggml*.h" "%LLAMA_OUT%\include\" >nul 2>&1
-)
-
-:: Collect libraries from build tree.
-:: CUDA (shared DLL) build: collect .dll + .lib, generate MinGW .a import libs.
-:: MinGW (static) build: collect .a files directly.
+:: CUDA shared DLL builds: generate MinGW-compatible import libraries.
+:: CGo (MinGW) can't link MSVC .lib directly — gendef + dlltool bridge the gap.
 if !HAS_CUDA!==1 (
-    :: Collect DLLs and MSVC import libraries.
-    if not exist "%LLAMA_OUT%\bin" mkdir "%LLAMA_OUT%\bin"
-    for /r "%LLAMA_BUILD%" %%f in (*.dll) do (
-        copy /y "%%f" "%LLAMA_OUT%\bin\" >nul 2>&1
-    )
-    for /r "%LLAMA_BUILD%" %%f in (*.lib) do (
-        copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
-    )
-    :: Generate MinGW-compatible import libraries from DLLs using gendef + dlltool.
     echo   Generating MinGW import libraries from DLLs...
     for %%f in ("%LLAMA_OUT%\bin\*.dll") do (
         set "dllname=%%~nf"
@@ -383,18 +366,6 @@ if !HAS_CUDA!==1 (
         if exist "!dllname!.def" (
             dlltool -d "!dllname!.def" -l "%LLAMA_OUT%\lib\lib!dllname!.a" -D "%%~nxf" >nul 2>&1
             del "!dllname!.def" 2>nul
-        )
-    )
-) else (
-    :: Static MinGW build: collect .a files.
-    for /r "%LLAMA_BUILD%" %%f in (*.a) do (
-        copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
-    )
-    :: Ensure lib* prefix for MinGW linker.
-    for %%f in ("%LLAMA_OUT%\lib\*.a") do (
-        set "fname=%%~nxf"
-        if not "!fname:~0,3!"=="lib" (
-            rename "%%f" "lib!fname!"
         )
     )
 )

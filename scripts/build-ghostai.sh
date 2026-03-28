@@ -103,33 +103,23 @@ cd "$LLAMA_BUILD"
 cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -5
 cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -5
 
-# --- Step 3: Copy headers and libraries to output ---
+# --- Step 3: Install via cmake ---
+# cmake --install produces a flat, stable layout regardless of llama.cpp internals.
 
 echo "[3/3] Installing to $LLAMA_OUT..."
+cmake --install "$LLAMA_BUILD" --prefix "$LLAMA_OUT" > /dev/null 2>&1
 
-mkdir -p "$LLAMA_OUT/include" "$LLAMA_OUT/lib"
-
-# Headers.
-cp "$LLAMA_SRC/include/llama.h" "$LLAMA_OUT/include/"
-# ggml headers may be in different locations depending on version.
-for header_dir in "$LLAMA_SRC/ggml/include" "$LLAMA_SRC/include"; do
-    if [ -d "$header_dir" ]; then
-        cp "$header_dir"/*.h "$LLAMA_OUT/include/" 2>/dev/null || true
-    fi
-done
-
-# Static libraries — search for them in the build tree.
-find "$LLAMA_BUILD" -name '*.a' -exec cp {} "$LLAMA_OUT/lib/" \; 2>/dev/null || true
-# On Windows (MinGW), look for .lib files too.
-find "$LLAMA_BUILD" -name '*.lib' -exec cp {} "$LLAMA_OUT/lib/" \; 2>/dev/null || true
-
-# Windows: MinGW linker expects lib*.a naming; Ninja may produce *.a without prefix.
+# Windows/MinGW: cmake install may produce .lib import libs that MinGW can't use.
+# Generate MinGW .a import libs from any installed DLLs.
 case "$(uname -s)" in
     MINGW*|MSYS*)
-        for lib in "$LLAMA_OUT/lib/"*.a; do
-            base=$(basename "$lib")
-            if [[ "$base" != lib* ]]; then
-                mv "$lib" "$LLAMA_OUT/lib/lib$base"
+        for dll in "$LLAMA_OUT/bin/"*.dll; do
+            [ -f "$dll" ] || continue
+            dllname=$(basename "$dll" .dll)
+            gendef "$dll" > /dev/null 2>&1
+            if [ -f "${dllname}.def" ]; then
+                dlltool -d "${dllname}.def" -l "$LLAMA_OUT/lib/lib${dllname}.a" -D "$(basename "$dll")" > /dev/null 2>&1
+                rm -f "${dllname}.def"
             fi
         done
         ;;
