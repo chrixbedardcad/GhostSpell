@@ -565,7 +565,7 @@ if !WHISPER_CUDA!==1 (
         /LIBPATH:"%WHISPER_OUT%\lib" ^
         /LIBPATH:"%CUDA_PATH%\lib\x64" ^
         whisper.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
-        cudart_static.lib cublas.lib cublasLt.lib ^
+        cudart_static.lib cublas.lib cublasLt.lib cuda.lib ^
         advapi32.lib
     if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
 ) else if !HAS_VULKAN!==1 (
