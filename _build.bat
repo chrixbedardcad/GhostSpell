@@ -422,7 +422,7 @@ if !HAS_CMAKE!==1 if !HAS_GCC!==1 if !HAS_GENERATOR!==1 set GHOSTVOICE=1
 
 if !GHOSTVOICE!==0 goto :skip_ghostvoice
 
-set WHISPER_VERSION=v1.7.5
+set WHISPER_VERSION=v1.8.4
 set WHISPER_SRC=%BUILD_DIR%\whisper-src
 set WHISPER_OUT=%BUILD_DIR%\whisper
 
@@ -498,7 +498,6 @@ if !HAS_CUDA!==1 (
         -DCMAKE_BUILD_TYPE=Release ^
         -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
         -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
-        -DCMAKE_CUDA_ARCHITECTURES=native ^
         -DBUILD_SHARED_LIBS=OFF ^
         -DWHISPER_BUILD_TESTS=OFF ^
         -DWHISPER_BUILD_EXAMPLES=ON ^
@@ -512,8 +511,7 @@ if !HAS_CUDA!==1 (
         -DGGML_AVX2=ON ^
         -DGGML_AVX512=OFF ^
         -DGGML_FMA=ON ^
-        -DGGML_F16C=ON ^
-        -DGGML_CPU_AARCH64=OFF
+        -DGGML_F16C=ON
     if !errorlevel!==0 (
         cmake --build . --config Release -j %NPROC%
         if !errorlevel!==0 (
@@ -555,8 +553,7 @@ if !WHISPER_CUDA!==0 (
         -DGGML_AVX2=ON ^
         -DGGML_AVX512=OFF ^
         -DGGML_FMA=ON ^
-        -DGGML_F16C=OFF ^
-        -DGGML_CPU_AARCH64=OFF
+        -DGGML_F16C=OFF
     if !errorlevel! neq 0 (
         echo   WARNING: CMake failed — skipping Ghost Voice
         cd /d "%~dp0"

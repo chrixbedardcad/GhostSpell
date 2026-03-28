@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build Ghost Voice: fetch whisper.cpp source and compile static libraries.
 #
-# Usage: ./scripts/build-ghostvoice.sh [--version v1.7.5]
+# Usage: ./scripts/build-ghostvoice.sh [--version v1.8.4]
 #
 # Output: build/whisper/lib/ and build/whisper/include/
 # These are referenced by CGo in stt/ghostvoice/engine_cgo.go.
@@ -12,9 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Default whisper.cpp version.
-WHISPER_VERSION="${1:-v1.7.5}"
+WHISPER_VERSION="${1:-v1.8.4}"
 if [[ "$WHISPER_VERSION" == --version ]]; then
-    WHISPER_VERSION="${2:-v1.7.5}"
+    WHISPER_VERSION="${2:-v1.8.4}"
 fi
 
 BUILD_DIR="$PROJECT_ROOT/build"
@@ -43,7 +43,7 @@ if [ ! -d "$WHISPER_SRC" ]; then
     mkdir -p "$BUILD_DIR"
     TARBALL_URL="https://github.com/ggml-org/whisper.cpp/archive/refs/tags/${WHISPER_VERSION}.tar.gz"
     curl -fsSL "$TARBALL_URL" | tar xz -C "$BUILD_DIR"
-    # The extracted directory name varies: whisper.cpp-v1.7.5 or whisper.cpp-1.7.5
+    # The extracted directory name varies: whisper.cpp-v1.8.4 or whisper.cpp-1.7.5
     EXTRACTED=$(ls -d "$BUILD_DIR"/whisper.cpp-* 2>/dev/null | head -1)
     if [ -z "$EXTRACTED" ]; then
         echo "ERROR: Failed to find extracted whisper.cpp directory"
@@ -75,7 +75,6 @@ CMAKE_ARGS=(
     -DGGML_AVX2=ON
     -DGGML_FMA=ON
     -DGGML_F16C=ON
-    -DGGML_CPU_AARCH64=OFF
 )
 
 # Platform-specific GPU acceleration.
