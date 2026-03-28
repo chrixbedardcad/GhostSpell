@@ -99,42 +99,24 @@ cmake "$WHISPER_SRC" "${CMAKE_ARGS[@]}"
 JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 cmake --build . --config Release -j "$JOBS"
 
-# --- Step 3: Copy outputs ---
-
-echo "[3/3] Copying headers, libraries, and whisper-cli..."
-mkdir -p "$WHISPER_OUT/include" "$WHISPER_OUT/lib" "$WHISPER_OUT/bin"
-
-# Headers — copy all .h files from whisper and ggml include directories.
-cp "$WHISPER_SRC/include/"*.h "$WHISPER_OUT/include/" 2>/dev/null || true
-if [ -d "$WHISPER_SRC/ggml/include" ]; then
-    cp "$WHISPER_SRC/ggml/include/"*.h "$WHISPER_OUT/include/" 2>/dev/null || true
-fi
-# Also search for any remaining headers in the ggml src directory.
-find "$WHISPER_SRC" -maxdepth 4 -name "ggml*.h" -exec cp {} "$WHISPER_OUT/include/" \; 2>/dev/null || true
-
-# Libraries — find all .a files from the build.
-find "$WHISPER_SRC/build-static" -name "*.a" -exec cp {} "$WHISPER_OUT/lib/" \;
-
-# On Windows/MinGW, rename libXXX.dll.a → libXXX.a if needed.
-for f in "$WHISPER_OUT/lib"/*.dll.a; do
-    [ -f "$f" ] && mv "$f" "${f%.dll.a}.a"
-done
+# --- Step 3: Install via cmake ---
+# cmake --install produces a flat, stable layout in WHISPER_OUT regardless
+# of whisper.cpp's internal build directory structure.
+echo "[3/3] Installing headers + libraries..."
+cmake --install "$WHISPER_SRC/build-static" --prefix "$WHISPER_OUT" > /dev/null 2>&1
 
 # Build ghostvoice binary — GhostSpell's own STT helper (pure C++).
+# All link paths use the flat WHISPER_OUT/lib layout from cmake install.
 echo "Building ghostvoice..."
 GHOSTVOICE_SRC="$PROJECT_ROOT/ghostvoice/main.cpp"
-# Detect platform for output naming.
 ARCH=$(uname -m)
 case "$ARCH" in x86_64|amd64) ARCH="amd64" ;; arm64|aarch64) ARCH="arm64" ;; esac
 GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-linux-${ARCH}"
 case "$OS" in
     MINGW*|MSYS*|CYGWIN*)
         GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-windows-${ARCH}.exe"
-        # Link from build directory with explicit .a names (matches _build.bat).
-        # Using -l: ensures static linking — -lwhisper may resolve differently.
         g++ -O2 -static -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
-            -I"$WHISPER_SRC/include" -I"$WHISPER_SRC/ggml/include" \
-            -L"$WHISPER_SRC/build-static/src" -L"$WHISPER_SRC/build-static/ggml/src" \
+            -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
             -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a \
             -lstdc++ -lm -lpthread -lkernel32
         ;;

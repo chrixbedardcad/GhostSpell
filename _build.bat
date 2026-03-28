@@ -570,20 +570,15 @@ if !WHISPER_CUDA!==0 (
 )
 cd /d "%~dp0"
 
-:: --- Install headers + libraries (same pattern as Ghost-AI) ---
-:: Wipe output dir to prevent stale headers/libs from previous failed builds
+:: --- Install headers + libraries via cmake --install ---
+:: This produces a flat, stable layout in WHISPER_OUT regardless of
+:: whisper.cpp's internal build directory structure.
 if exist "%WHISPER_OUT%" rmdir /s /q "%WHISPER_OUT%"
-mkdir "%WHISPER_OUT%\include"
-mkdir "%WHISPER_OUT%\lib"
-
-:: Headers — copy all .h from whisper's include dirs
-echo   Collecting headers...
-copy /y "%WHISPER_SRC%\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
-if exist "%WHISPER_SRC%\ggml\include" (
-    copy /y "%WHISPER_SRC%\ggml\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
-)
+echo   Installing whisper.cpp headers + libraries...
+cmake --install "!WHISPER_BUILD!" --prefix "%WHISPER_OUT%" >nul 2>&1
 
 :: Build ghostvoice.exe — GhostSpell's own speech-to-text helper (pure C++, links whisper static libs).
+:: All link paths use the flat WHISPER_OUT/lib layout from cmake install.
 if !WHISPER_CUDA!==1 (
     echo   Building ghostvoice.exe ^(MSVC + CUDA^)...
     :: Remove MinGW from PATH so cl.exe doesn't pick up MinGW headers.
@@ -591,13 +586,11 @@ if !WHISPER_CUDA!==1 (
     set "PATH=!PATH:C:\msys64\mingw64\bin=!"
     set "PATH=!PATH:C:\msys64\usr\bin=!"
     cl /O2 /EHsc /std:c++17 /MD /openmp ^
-        /I"%WHISPER_SRC%\include" /I"%WHISPER_SRC%\ggml\include" ^
+        /I"%WHISPER_OUT%\include" ^
         "%~dp0ghostvoice\main.cpp" ^
         /Fe:"%~dp0ghostvoice.exe" ^
         /link ^
-        /LIBPATH:"!WHISPER_BUILD!\src" ^
-        /LIBPATH:"!WHISPER_BUILD!\ggml\src" ^
-        /LIBPATH:"!WHISPER_BUILD!\ggml\src\ggml-cuda" ^
+        /LIBPATH:"%WHISPER_OUT%\lib" ^
         /LIBPATH:"%CUDA_PATH%\lib\x64" ^
         whisper.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
         cudart_static.lib cublas.lib cublasLt.lib ^
@@ -606,17 +599,16 @@ if !WHISPER_CUDA!==1 (
 ) else if !HAS_VULKAN!==1 (
     echo   Building ghostvoice.exe ^(MinGW + Vulkan^)...
     g++ -O2 -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
-        -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
-        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" -L"%WHISPER_BUILD%\ggml\src\ggml-vulkan" ^
-        -L"%VULKAN_SDK%\Lib" ^
+        -I"%WHISPER_OUT%\include" ^
+        -L"%WHISPER_OUT%\lib" -L"%VULKAN_SDK%\Lib" ^
         -l:libwhisper.a -l:ggml.a -l:ggml-vulkan.a -l:ggml-cpu.a -l:ggml-base.a ^
         -lvulkan-1 ^
         -lstdc++ -lm -lpthread -lkernel32
 ) else (
     echo   Building ghostvoice.exe ^(MinGW, CPU-only^)...
     g++ -O2 -static -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
-        -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
-        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
+        -I"%WHISPER_OUT%\include" ^
+        -L"%WHISPER_OUT%\lib" ^
         -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a ^
         -lstdc++ -lm -lpthread -lkernel32
 )
@@ -632,25 +624,9 @@ if !errorlevel! neq 0 (
     copy /y "%~dp0ghostvoice.exe" "%~dp0voicebin\ghostvoice.exe" >nul 2>&1
 )
 
-:: Static libraries — collect all .a from build tree
-echo   Collecting libraries...
-for /r "%WHISPER_BUILD%" %%f in (*.a) do (
-    echo     Found: %%~nxf
-    copy /y "%%f" "%WHISPER_OUT%\lib\" >nul 2>&1
-)
-
-:: Ensure lib* prefix for MinGW linker
-for %%f in ("%WHISPER_OUT%\lib\*.a") do (
-    set "wfn=%%~nxf"
-    if not "!wfn:~0,3!"=="lib" (
-        rename "%%f" "lib!wfn!"
-    )
-)
-
-
-:: Verify we got libraries
+:: Verify cmake install produced libraries
 set /a WCOUNT=0
-for %%f in ("%WHISPER_OUT%\lib\*.a") do set /a WCOUNT+=1
+for %%f in ("%WHISPER_OUT%\lib\*.*") do set /a WCOUNT+=1
 if !WCOUNT!==0 (
     echo   WARNING: No whisper libraries found — falling back without Ghost Voice
     set GHOSTVOICE=0
