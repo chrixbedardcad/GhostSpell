@@ -128,7 +128,7 @@ case "$OS" in
         GHOSTVOICE_OUT="$PROJECT_ROOT/ghostvoice-windows-${ARCH}.exe"
         g++ -O2 -static -fopenmp -o "$GHOSTVOICE_OUT" "$GHOSTVOICE_SRC" \
             -I"$WHISPER_OUT/include" -L"$WHISPER_OUT/lib" \
-            -l:libwhisper.a -l:ggml.a -l:ggml-cpu.a -l:ggml-base.a \
+            -lwhisper -lggml -lggml-cpu -lggml-base \
             -lstdc++ -lm -lpthread -lkernel32
         ;;
     Darwin)
