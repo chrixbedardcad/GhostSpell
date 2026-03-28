@@ -483,8 +483,12 @@ mkdir "%WHISPER_BUILD%"
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
 set WHISPER_CUDA=0
 
-cd /d "%WHISPER_BUILD%"
 if !HAS_CUDA!==1 (
+    :: CUDA build uses a separate build dir to avoid stale-cache issues on fallback.
+    set WHISPER_BUILD_CUDA=%WHISPER_SRC%\build-cuda
+    if exist "!WHISPER_BUILD_CUDA!" rmdir /s /q "!WHISPER_BUILD_CUDA!"
+    mkdir "!WHISPER_BUILD_CUDA!"
+    cd /d "!WHISPER_BUILD_CUDA!"
     echo   Compiling whisper.cpp with CUDA ^(MSVC + nvcc^)...
     :: Remove MinGW from PATH so MSVC doesn't pick up MinGW headers.
     set "SAVED_PATH_W=!PATH!"
@@ -494,6 +498,7 @@ if !HAS_CUDA!==1 (
         -DCMAKE_BUILD_TYPE=Release ^
         -DCMAKE_C_FLAGS="%WIN_FLAGS%" ^
         -DCMAKE_CXX_FLAGS="%WIN_FLAGS%" ^
+        -DCMAKE_CUDA_ARCHITECTURES=native ^
         -DBUILD_SHARED_LIBS=OFF ^
         -DWHISPER_BUILD_TESTS=OFF ^
         -DWHISPER_BUILD_EXAMPLES=ON ^
@@ -513,6 +518,8 @@ if !HAS_CUDA!==1 (
         cmake --build . --config Release -j %NPROC%
         if !errorlevel!==0 (
             set WHISPER_CUDA=1
+            :: Point WHISPER_BUILD to the CUDA output for the link step.
+            set WHISPER_BUILD=!WHISPER_BUILD_CUDA!
         ) else (
             echo   WARNING: CUDA build failed — falling back to CPU
         )
@@ -523,10 +530,9 @@ if !HAS_CUDA!==1 (
     if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
 )
 
-:: Non-CUDA fallback: MinGW static build.
+:: Non-CUDA fallback: MinGW static build (separate build dir, no stale cache).
 if !WHISPER_CUDA!==0 (
     echo   Compiling whisper.cpp static libraries ^(CPU^)...
-    :: Clean build dir if CUDA attempt left artifacts.
     if exist "%WHISPER_BUILD%" rmdir /s /q "%WHISPER_BUILD%"
     mkdir "%WHISPER_BUILD%"
     cd /d "%WHISPER_BUILD%"
@@ -592,8 +598,8 @@ if !WHISPER_CUDA!==1 (
         "%~dp0ghostvoice\main.cpp" ^
         /Fe:"%~dp0ghostvoice.exe" ^
         /link ^
-        /LIBPATH:"%WHISPER_BUILD%\src" ^
-        /LIBPATH:"%WHISPER_BUILD%\ggml\src" ^
+        /LIBPATH:"!WHISPER_BUILD!\src" ^
+        /LIBPATH:"!WHISPER_BUILD!\ggml\src" ^
         /LIBPATH:"%CUDA_PATH%\lib\x64" ^
         whisper.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
         cudart_static.lib cublas.lib cublasLt.lib ^
