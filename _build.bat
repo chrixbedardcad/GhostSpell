@@ -597,6 +597,7 @@ if !WHISPER_CUDA!==1 (
         /link ^
         /LIBPATH:"!WHISPER_BUILD!\src" ^
         /LIBPATH:"!WHISPER_BUILD!\ggml\src" ^
+        /LIBPATH:"!WHISPER_BUILD!\ggml\src\ggml-cuda" ^
         /LIBPATH:"%CUDA_PATH%\lib\x64" ^
         whisper.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
         cudart_static.lib cublas.lib cublasLt.lib ^
@@ -606,7 +607,7 @@ if !WHISPER_CUDA!==1 (
     echo   Building ghostvoice.exe ^(MinGW + Vulkan^)...
     g++ -O2 -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
         -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
-        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
+        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" -L"%WHISPER_BUILD%\ggml\src\ggml-vulkan" ^
         -L"%VULKAN_SDK%\Lib" ^
         -l:libwhisper.a -l:ggml.a -l:ggml-vulkan.a -l:ggml-cpu.a -l:ggml-base.a ^
         -lvulkan-1 ^
