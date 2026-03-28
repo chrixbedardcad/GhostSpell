@@ -82,8 +82,10 @@ func (s *SettingsService) SaveProviderConfig(providerType, apiKey, endpoint, ref
 			break
 		}
 	}
-	if !hasModel {
-		// Find recommended model from catalog.
+	if !hasModel && providerType != "local" {
+		// Auto-enable the recommended catalog model for cloud providers.
+		// Skip for local provider — the user must download a model first,
+		// and the wizard/settings explicitly call SaveModel after downloading.
 		var bestModel, bestName string
 		for _, cm := range parseCatalog() {
 			if cm.Provider != providerType {

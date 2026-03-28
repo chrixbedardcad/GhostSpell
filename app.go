@@ -408,6 +408,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				router = mode.NewRouter(cfg, client)
 				initErr = nil
 				slog.Info("Router created after settings save", "model", cfg.DefaultModel)
+			} else {
+				slog.Warn("Router recovery failed after settings save", "model", cfg.DefaultModel, "error", clientErr)
 			}
 		}
 		// Update GPU flag so the next ghostai spawn uses the new setting.
@@ -566,6 +568,8 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					router = mode.NewRouter(cfg, client)
 					localRouter = router
 					slog.Info("Router recovered on hotkey press", "model", cfg.DefaultModel)
+				} else {
+					slog.Warn("Router recovery failed on hotkey press", "model", cfg.DefaultModel, "error", clientErr)
 				}
 			}
 			slog.Info("Hotkey: config snapshot", "default_model", cfg.DefaultModel, "prompt", promptName, "prompt_llm", promptLLM, "prompt_idx", promptIdx)
