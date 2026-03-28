@@ -75,6 +75,7 @@ CMAKE_ARGS=(
     -DGGML_AVX2=ON
     -DGGML_FMA=ON
     -DGGML_F16C=ON
+    -DGGML_CPU_AARCH64=OFF
 )
 
 # Platform-specific GPU acceleration.

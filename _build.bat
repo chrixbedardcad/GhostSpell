@@ -155,6 +155,59 @@ set NPROC=%NUMBER_OF_PROCESSORS%
 if "%NPROC%"=="" set NPROC=4
 
 :: ============================================================
+:: GPU detection — runs BEFORE any build steps so both Ghost-AI
+:: and Ghost Voice can use the result.
+:: ============================================================
+set HAS_CUDA=0
+set HAS_VULKAN=0
+set USE_MSVC=0
+
+:: Check for CUDA + MSVC. CUDA's nvcc requires cl.exe from Visual Studio.
+set "VCVARS="
+for /f "delims=" %%i in ('where cl 2^>nul') do set "VCVARS=found"
+if "!VCVARS!"=="" (
+    :: Try to find and load vcvars64.bat from known VS Build Tools locations.
+    for %%p in (
+        "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat"
+        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    ) do (
+        if exist %%p (
+            echo   Loading MSVC environment from %%p
+            call %%p >nul 2>&1
+            set "VCVARS=found"
+            goto :vcvars_done
+        )
+    )
+)
+:vcvars_done
+
+where nvcc >nul 2>&1
+if !errorlevel!==0 (
+    where cl >nul 2>&1
+    if !errorlevel!==0 (
+        set HAS_CUDA=1
+        set USE_MSVC=1
+        echo   CUDA + MSVC detected — enabling NVIDIA GPU acceleration
+    ) else (
+        echo   CUDA found but MSVC ^(cl.exe^) missing — install Visual Studio Build Tools
+    )
+)
+
+:: Fallback: check for Vulkan SDK (works with MinGW).
+if !HAS_CUDA!==0 (
+    if defined VULKAN_SDK (
+        set HAS_VULKAN=1
+        echo   Vulkan SDK detected — enabling GPU acceleration ^(fallback^)
+    ) else (
+        echo   No GPU SDK found — building CPU-only
+        echo   For best performance: install Visual Studio Build Tools + CUDA Toolkit
+    )
+)
+echo.
+
+:: ============================================================
 :: Step 1 — Build Ghost-AI static libraries (if toolchain found)
 :: ============================================================
 if !GHOSTAI!==0 goto :skip_ghostai
@@ -226,57 +279,6 @@ set LLAMA_BUILD=%LLAMA_SRC%\build
 if not exist "%LLAMA_BUILD%" mkdir "%LLAMA_BUILD%"
 
 set WIN_FLAGS=-D_WIN32_WINNT=0x0A00
-
-:: Auto-detect GPU backend.
-:: Priority: CUDA (fastest, needs MSVC + nvcc) > Vulkan (MinGW) > CPU.
-set HAS_CUDA=0
-set HAS_VULKAN=0
-set USE_MSVC=0
-
-:: Check for CUDA + MSVC. CUDA's nvcc requires cl.exe from Visual Studio.
-:: We look for vcvarsall.bat to set up the MSVC environment.
-set "VCVARS="
-for /f "delims=" %%i in ('where cl 2^>nul') do set "VCVARS=found"
-if "!VCVARS!"=="" (
-    :: Try to find and load vcvars64.bat from known VS Build Tools locations.
-    for %%p in (
-        "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-        "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-        "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat"
-        "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-    ) do (
-        if exist %%p (
-            echo   Loading MSVC environment from %%p
-            call %%p >nul 2>&1
-            set "VCVARS=found"
-            goto :vcvars_done
-        )
-    )
-)
-:vcvars_done
-
-where nvcc >nul 2>&1
-if !errorlevel!==0 (
-    where cl >nul 2>&1
-    if !errorlevel!==0 (
-        set HAS_CUDA=1
-        set USE_MSVC=1
-        echo   CUDA + MSVC detected — enabling NVIDIA GPU acceleration
-    ) else (
-        echo   CUDA found but MSVC ^(cl.exe^) missing — install Visual Studio Build Tools
-    )
-)
-
-:: Fallback: check for Vulkan SDK (works with MinGW).
-if !HAS_CUDA!==0 (
-    if defined VULKAN_SDK (
-        set HAS_VULKAN=1
-        echo   Vulkan SDK detected — enabling GPU acceleration ^(fallback^)
-    ) else (
-        echo   No GPU SDK found — building CPU-only
-        echo   For best performance: install Visual Studio Build Tools + CUDA Toolkit
-    )
-)
 
 cd /d "%LLAMA_BUILD%"
 
@@ -505,7 +507,8 @@ if !HAS_CUDA!==1 (
         -DGGML_AVX2=ON ^
         -DGGML_AVX512=OFF ^
         -DGGML_FMA=ON ^
-        -DGGML_F16C=ON
+        -DGGML_F16C=ON ^
+        -DGGML_CPU_AARCH64=OFF
     if !errorlevel!==0 (
         cmake --build . --config Release -j %NPROC%
         if !errorlevel!==0 (
@@ -546,7 +549,8 @@ if !WHISPER_CUDA!==0 (
         -DGGML_AVX2=ON ^
         -DGGML_AVX512=OFF ^
         -DGGML_FMA=ON ^
-        -DGGML_F16C=OFF
+        -DGGML_F16C=OFF ^
+        -DGGML_CPU_AARCH64=OFF
     if !errorlevel! neq 0 (
         echo   WARNING: CMake failed — skipping Ghost Voice
         cd /d "%~dp0"
