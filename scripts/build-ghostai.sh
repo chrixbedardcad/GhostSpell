@@ -103,14 +103,35 @@ cd "$LLAMA_BUILD"
 cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -5
 cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -5
 
-# --- Step 3: Install via cmake ---
-# cmake --install produces a flat, stable layout regardless of llama.cpp internals.
+# --- Step 3: Install headers + libraries ---
+# Try cmake --install first (flat, stable layout). Fall back to manual copy
+# if install rules don't cover all targets (common with static MinGW builds).
 
 echo "[3/3] Installing to $LLAMA_OUT..."
 cmake --install "$LLAMA_BUILD" --prefix "$LLAMA_OUT" > /dev/null 2>&1
 
-# Windows/MinGW: cmake install may produce .lib import libs that MinGW can't use.
-# Generate MinGW .a import libs from any installed DLLs.
+# Check if cmake install produced libraries; if not, copy manually.
+LIB_COUNT=$(ls "$LLAMA_OUT/lib/" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$LIB_COUNT" -eq 0 ]; then
+    echo "  cmake install produced no libs — falling back to manual copy"
+    mkdir -p "$LLAMA_OUT/include" "$LLAMA_OUT/lib"
+    cp "$LLAMA_SRC/include/llama.h" "$LLAMA_OUT/include/" 2>/dev/null || true
+    for d in "$LLAMA_SRC/ggml/include" "$LLAMA_SRC/include"; do
+        [ -d "$d" ] && cp "$d"/*.h "$LLAMA_OUT/include/" 2>/dev/null || true
+    done
+    find "$LLAMA_BUILD" -name '*.a' -exec cp {} "$LLAMA_OUT/lib/" \; 2>/dev/null || true
+    find "$LLAMA_BUILD" -name '*.lib' -exec cp {} "$LLAMA_OUT/lib/" \; 2>/dev/null || true
+    find "$LLAMA_BUILD" -name '*.dll' -exec sh -c 'mkdir -p "$1/bin" && cp "$2" "$1/bin/"' _ "$LLAMA_OUT" {} \; 2>/dev/null || true
+    # Ensure lib* prefix for MinGW linker.
+    for lib in "$LLAMA_OUT/lib/"*.a; do
+        [ -f "$lib" ] || continue
+        base=$(basename "$lib")
+        [[ "$base" == lib* ]] || mv "$lib" "$LLAMA_OUT/lib/lib$base"
+    done
+fi
+
+# Windows/MinGW: generate MinGW .a import libs from any DLLs.
+# CGo (MinGW) can't link MSVC .lib directly.
 case "$(uname -s)" in
     MINGW*|MSYS*)
         for dll in "$LLAMA_OUT/bin/"*.dll; do
