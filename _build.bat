@@ -350,11 +350,35 @@ cd /d "%~dp0"
 :: Restore MinGW PATH after CUDA build.
 if defined SAVED_PATH set "PATH=!SAVED_PATH!"
 
-:: --- Install headers + libraries via cmake --install ---
-:: Produces a flat, stable layout regardless of llama.cpp's internal structure.
+:: --- Install headers + libraries ---
+:: Try cmake --install first (flat, stable layout). Fall back to manual copy
+:: if install rules don't cover all targets (common with static MinGW builds).
 if exist "%LLAMA_OUT%" rmdir /s /q "%LLAMA_OUT%"
 echo   Installing llama.cpp headers + libraries...
 cmake --install "%LLAMA_BUILD%" --prefix "%LLAMA_OUT%" >nul 2>&1
+
+:: Check if cmake install produced libraries; if not, copy manually.
+set /a _ICOUNT=0
+if exist "%LLAMA_OUT%\lib" for %%f in ("%LLAMA_OUT%\lib\*.*") do set /a _ICOUNT+=1
+if !_ICOUNT!==0 (
+    echo   cmake install produced no libs — falling back to manual copy
+    if not exist "%LLAMA_OUT%\include" mkdir "%LLAMA_OUT%\include"
+    if not exist "%LLAMA_OUT%\lib" mkdir "%LLAMA_OUT%\lib"
+    copy /y "%LLAMA_SRC%\include\llama.h" "%LLAMA_OUT%\include\" >nul 2>&1
+    if exist "%LLAMA_SRC%\ggml\include" copy /y "%LLAMA_SRC%\ggml\include\*.h" "%LLAMA_OUT%\include\" >nul 2>&1
+    if exist "%LLAMA_SRC%\include\ggml*.h" copy /y "%LLAMA_SRC%\include\ggml*.h" "%LLAMA_OUT%\include\" >nul 2>&1
+    for /r "%LLAMA_BUILD%" %%f in (*.a) do copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+    for /r "%LLAMA_BUILD%" %%f in (*.lib) do copy /y "%%f" "%LLAMA_OUT%\lib\" >nul 2>&1
+    for /r "%LLAMA_BUILD%" %%f in (*.dll) do (
+        if not exist "%LLAMA_OUT%\bin" mkdir "%LLAMA_OUT%\bin"
+        copy /y "%%f" "%LLAMA_OUT%\bin\" >nul 2>&1
+    )
+    :: Ensure lib* prefix for MinGW linker.
+    for %%f in ("%LLAMA_OUT%\lib\*.a") do (
+        set "fname=%%~nxf"
+        if not "!fname:~0,3!"=="lib" rename "%%f" "lib!fname!"
+    )
+)
 
 :: CUDA shared DLL builds: generate MinGW-compatible import libraries.
 :: CGo (MinGW) can't link MSVC .lib directly — gendef + dlltool bridge the gap.
@@ -547,6 +571,23 @@ cd /d "%~dp0"
 if exist "%WHISPER_OUT%" rmdir /s /q "%WHISPER_OUT%"
 echo   Installing whisper.cpp headers + libraries...
 cmake --install "!WHISPER_BUILD!" --prefix "%WHISPER_OUT%" >nul 2>&1
+
+:: Check if cmake install produced libraries; if not, copy manually.
+set /a _ICOUNT=0
+if exist "%WHISPER_OUT%\lib" for %%f in ("%WHISPER_OUT%\lib\*.*") do set /a _ICOUNT+=1
+if !_ICOUNT!==0 (
+    echo   cmake install produced no libs — falling back to manual copy
+    if not exist "%WHISPER_OUT%\include" mkdir "%WHISPER_OUT%\include"
+    if not exist "%WHISPER_OUT%\lib" mkdir "%WHISPER_OUT%\lib"
+    copy /y "%WHISPER_SRC%\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
+    if exist "%WHISPER_SRC%\ggml\include" copy /y "%WHISPER_SRC%\ggml\include\*.h" "%WHISPER_OUT%\include\" >nul 2>&1
+    for /r "!WHISPER_BUILD!" %%f in (*.a) do copy /y "%%f" "%WHISPER_OUT%\lib\" >nul 2>&1
+    for /r "!WHISPER_BUILD!" %%f in (*.lib) do copy /y "%%f" "%WHISPER_OUT%\lib\" >nul 2>&1
+    for %%f in ("%WHISPER_OUT%\lib\*.a") do (
+        set "wfn=%%~nxf"
+        if not "!wfn:~0,3!"=="lib" rename "%%f" "lib!wfn!"
+    )
+)
 
 :: Build ghostvoice.exe — GhostSpell's own speech-to-text helper (pure C++, links whisper static libs).
 :: All link paths use the flat WHISPER_OUT/lib layout from cmake install.
