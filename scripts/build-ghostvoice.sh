@@ -105,6 +105,17 @@ cmake --build . --config Release -j "$JOBS"
 echo "[3/3] Installing headers + libraries..."
 cmake --install "$WHISPER_SRC/build-static" --prefix "$WHISPER_OUT" > /dev/null 2>&1
 
+# Ensure lib* prefix for MinGW linker (cmake install may omit it on Windows).
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        for lib in "$WHISPER_OUT/lib/"*.a; do
+            [ -f "$lib" ] || continue
+            base=$(basename "$lib")
+            [[ "$base" == lib* ]] || mv "$lib" "$WHISPER_OUT/lib/lib$base"
+        done
+        ;;
+esac
+
 # Build ghostvoice binary — GhostSpell's own STT helper (pure C++).
 # All link paths use the flat WHISPER_OUT/lib layout from cmake install.
 echo "Building ghostvoice..."

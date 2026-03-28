@@ -110,6 +110,17 @@ cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/
 echo "[3/3] Installing to $LLAMA_OUT..."
 cmake --install "$LLAMA_BUILD" --prefix "$LLAMA_OUT" > /dev/null 2>&1
 
+# Ensure lib* prefix for MinGW linker (cmake install may produce ggml.a instead of libggml.a).
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        for lib in "$LLAMA_OUT/lib/"*.a; do
+            [ -f "$lib" ] || continue
+            base=$(basename "$lib")
+            [[ "$base" == lib* ]] || mv "$lib" "$LLAMA_OUT/lib/lib$base"
+        done
+        ;;
+esac
+
 # Check if cmake install produced libraries; if not, copy manually.
 LIB_COUNT=$(ls "$LLAMA_OUT/lib/" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$LIB_COUNT" -eq 0 ]; then
