@@ -113,6 +113,7 @@ func (c *GhostVoiceClient) ensureDaemon() error {
 	}
 	slog.Info("[ghost-voice] starting daemon", "model", c.modelName, "threads", threads)
 	cmd := exec.Command(c.cliPath, "--daemon", "-m", c.modelPath, "-t", fmt.Sprintf("%d", threads))
+	hideConsoleWindow(cmd)
 
 	// Redirect daemon stderr to ghostvoice.log.
 	if logFile, err := openVoiceLog(); err == nil {
