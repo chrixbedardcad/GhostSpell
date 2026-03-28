@@ -228,6 +228,9 @@ echo ""
 # Step 3 — Build Go binary
 # ============================================================
 MAIN_TAGS="production"
+if [ "$GHOSTVOICE" -eq 1 ] && [ -f voicebin/ghostvoice ]; then
+    MAIN_TAGS="$MAIN_TAGS ghostvoice"
+fi
 if [ "$GHOSTAI" -eq 1 ]; then
     info "[3] Building ghostspell + ghostai..."
 else
