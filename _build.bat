@@ -605,8 +605,17 @@ if !WHISPER_CUDA!==1 (
         cudart_static.lib cublas.lib cublasLt.lib ^
         advapi32.lib
     if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
+) else if !HAS_VULKAN!==1 (
+    echo   Building ghostvoice.exe ^(MinGW + Vulkan^)...
+    g++ -O2 -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
+        -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
+        -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
+        -L"%VULKAN_SDK%\Lib" ^
+        -l:libwhisper.a -l:ggml.a -l:ggml-vulkan.a -l:ggml-cpu.a -l:ggml-base.a ^
+        -lvulkan-1 ^
+        -lstdc++ -lm -lpthread -lkernel32
 ) else (
-    echo   Building ghostvoice.exe ^(MinGW^)...
+    echo   Building ghostvoice.exe ^(MinGW, CPU-only^)...
     g++ -O2 -static -o "%~dp0ghostvoice.exe" "%~dp0ghostvoice\main.cpp" ^
         -I"%WHISPER_SRC%\include" -I"%WHISPER_SRC%\ggml\include" ^
         -L"%WHISPER_BUILD%\src" -L"%WHISPER_BUILD%\ggml\src" ^
@@ -618,7 +627,8 @@ if !errorlevel! neq 0 (
     set GHOSTVOICE=0
 ) else (
     echo   ghostvoice.exe built OK
-    if !WHISPER_CUDA!==1 echo   + CUDA GPU acceleration
+    if !WHISPER_CUDA!==1 echo   + CUDA GPU acceleration ^(NVIDIA^)
+    if !WHISPER_CUDA!==0 if !HAS_VULKAN!==1 echo   + Vulkan GPU acceleration ^(AMD/Intel/NVIDIA^)
     :: Stage for go:embed
     if not exist "%~dp0voicebin" mkdir "%~dp0voicebin"
     copy /y "%~dp0ghostvoice.exe" "%~dp0voicebin\ghostvoice.exe" >nul 2>&1
