@@ -8,6 +8,8 @@
 *.so
 *.dylib
 *.obj
+*.exp
+*.lib
 
 # Built binary (Linux/macOS)
 ghosttype
