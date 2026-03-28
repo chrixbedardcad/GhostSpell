@@ -559,6 +559,7 @@ if !WHISPER_CUDA!==1 (
     cl /O2 /EHsc /std:c++17 /MD /openmp ^
         /I"%WHISPER_OUT%\include" ^
         "%~dp0ghostvoice\main.cpp" ^
+        /Fo:"%BUILD_DIR%\ghostvoice.obj" ^
         /Fe:"%~dp0ghostvoice.exe" ^
         /link ^
         /LIBPATH:"%WHISPER_OUT%\lib" ^
