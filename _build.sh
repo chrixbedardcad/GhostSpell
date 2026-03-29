@@ -294,7 +294,11 @@ if [ -f "$APPDATA_DIR/ghostai.log" ]; then
 fi
 echo ""
 
-echo "Starting GhostSpell..."
-./ghostspell &
+if [ -n "${GHOSTSPELL_NO_LAUNCH:-}" ]; then
+    echo "Build complete. Skipping launch (GHOSTSPELL_NO_LAUNCH set)."
+else
+    echo "Starting GhostSpell..."
+    ./ghostspell &
+fi
 echo ""
 echo "Build log saved to: $LOGFILE"

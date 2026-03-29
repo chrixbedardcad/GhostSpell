@@ -774,8 +774,12 @@ if exist "%APPDATA_DIR%\ghostai.log" (
     echo Cleared %APPDATA_DIR%\ghostai.log
 )
 echo.
-echo Starting GhostSpell...
-start "" ghostspell.exe
+if defined GHOSTSPELL_NO_LAUNCH (
+    echo Build complete. Skipping launch ^(GHOSTSPELL_NO_LAUNCH set^).
+) else (
+    echo Starting GhostSpell...
+    start "" ghostspell.exe
+)
 echo.
 echo Build log saved to: %LOGFILE%
 goto :eof
