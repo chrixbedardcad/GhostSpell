@@ -59,6 +59,13 @@ else
     echo ""
     chmod +x _build.sh
     ./_build.sh
+    # _build.sh launches ghostspell in background — kill it so we can package.
+    sleep 2
+    for proc in ghostspell ghostai ghostvoice; do
+        pkill -x "$proc" 2>/dev/null || true
+    done
+    pkill -f "GhostSpell.app" 2>/dev/null || true
+    sleep 1
     echo ""
 fi
 

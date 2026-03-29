@@ -64,6 +64,15 @@ if "%~1"=="--skip-build" (
         pause
         exit /b 1
     )
+    :: _build.bat launches ghostspell.exe at the end — kill it so we can
+    :: package the binaries without file locks.
+    echo.
+    echo   Stopping GhostSpell for packaging...
+    timeout /t 2 /nobreak >nul
+    for %%p in (ghostspell.exe ghostai.exe ghostvoice.exe) do (
+        taskkill /im %%p /f >nul 2>&1
+    )
+    timeout /t 1 /nobreak >nul
     echo.
 )
 
