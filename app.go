@@ -386,7 +386,10 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	}
 
 	// Initialize the shared onSettingsSaved callback now that all dependencies are ready.
-	onSettingsSaved = func() {
+	// Debounced: multiple rapid saves (SaveModel + SetDefaultModel + SaveProviderConfig)
+	// collapse into a single reload 500ms after the last save. No thrashing.
+	var reloadTimer *time.Timer
+	doReload := func() {
 		newCfg, err := config.LoadRaw(configPath)
 		if err != nil {
 			slog.Error("Failed to reload config after settings save", "error", err)
@@ -394,30 +397,61 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		mu.Lock()
 		oldDefault := cfg.DefaultModel
+		oldGPU := llm.GPUEnabled
+		// Resolve the old model entry for comparison.
+		var oldModelID, oldProvider string
+		if me, ok := cfg.Models[oldDefault]; ok {
+			oldModelID = me.Model
+			oldProvider = me.Provider
+		}
+
 		*cfg = *newCfg
-		slog.Info("Config reloaded", "old_default", oldDefault, "new_default", cfg.DefaultModel, "models_count", len(cfg.Models))
-		if router != nil {
-			router.ResetClients()
-		}
-		// Recreate the router with a fresh client. ResetClients kills the
-		// old client (stops ghostai), so we always need a new one.
-		if cfg.DefaultModel != "" {
-			client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
-			if clientErr == nil {
-				router = mode.NewRouter(cfg, client)
-				initErr = nil
-				slog.Info("Router created after settings save", "model", cfg.DefaultModel)
-			} else {
-				slog.Warn("Router recovery failed after settings save", "model", cfg.DefaultModel, "error", clientErr)
-			}
-		}
-		// Update GPU flag so the next ghostai spawn uses the new setting.
+
+		// Update GPU flag.
 		if cfg.GPUEnabled != nil && !*cfg.GPUEnabled {
 			llm.GPUEnabled = false
 		} else {
 			llm.GPUEnabled = true
 		}
-		mu.Unlock()
+
+		// Only restart ghostai when model-affecting fields actually changed.
+		var newModelID, newProvider string
+		if me, ok := cfg.Models[cfg.DefaultModel]; ok {
+			newModelID = me.Model
+			newProvider = me.Provider
+		}
+		needsRestart := router == nil ||
+			oldDefault != cfg.DefaultModel ||
+			oldModelID != newModelID ||
+			oldProvider != newProvider ||
+			oldGPU != llm.GPUEnabled
+
+		slog.Info("Config reloaded", "old_default", oldDefault, "new_default", cfg.DefaultModel, "models_count", len(cfg.Models), "needs_restart", needsRestart)
+
+		if needsRestart {
+			// Capture old router to close OUTSIDE the lock (avoids blocking hotkeys
+			// for the 3-second process stop timeout).
+			oldRouter := router
+			router = nil
+			if cfg.DefaultModel != "" {
+				client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
+				if clientErr == nil {
+					router = mode.NewRouter(cfg, client)
+					initErr = nil
+					slog.Info("Router created after settings save", "model", cfg.DefaultModel)
+				} else {
+					slog.Warn("Router recovery failed after settings save", "model", cfg.DefaultModel, "error", clientErr)
+				}
+			}
+			mu.Unlock()
+			// Close old router outside lock — process stop can take seconds.
+			if oldRouter != nil {
+				oldRouter.ResetClients()
+			}
+		} else {
+			mu.Unlock()
+		}
+
 		sound.SetEnabled(*cfg.SoundEnabled)
 		gui.SetIndicatorPosition(cfg.IndicatorPosition)
 		gui.SetIndicatorMode(cfg.IndicatorMode)
@@ -429,6 +463,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		slog.Info("Live config reloaded after settings save")
 		refreshTrayMenu()
 		refreshHotkeys()
+	}
+	onSettingsSaved = func() {
+		if reloadTimer != nil {
+			reloadTimer.Stop()
+		}
+		reloadTimer = time.AfterFunc(500*time.Millisecond, doReload)
 	}
 
 	// Background update checker — checks after 60s, then every 24h.
