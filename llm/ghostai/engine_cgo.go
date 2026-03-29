@@ -7,7 +7,7 @@ package ghostai
 #cgo LDFLAGS: -L${SRCDIR}/../../build/llama/lib
 #cgo linux LDFLAGS: -Wl,--start-group -lllama -lggml -lggml-cpu -lggml-base -Wl,--end-group -lstdc++ -lm -lpthread -lgomp
 #cgo darwin LDFLAGS: -lllama -lggml -lggml-cpu -lggml-metal -lggml-blas -lggml-base -lc++ -lm -lpthread -framework Accelerate -framework Metal -framework MetalKit -framework Foundation
-#cgo windows LDFLAGS: -lllama -lggml -lggml-cpu -lggml-base -lstdc++ -lm -lpthread -lkernel32 -lgomp
+#cgo windows LDFLAGS: -lllama -lggml -lggml-cpu -lggml-cuda -lggml-base -lstdc++ -lm -lpthread -lkernel32 -lgomp
 
 #include "bridge.h"
 #include <stdlib.h>

@@ -394,6 +394,11 @@ if !HAS_CUDA!==1 (
     )
 )
 
+:: Ensure libggml-cuda.a exists for CGo link (empty stub for CPU builds).
+if not exist "%LLAMA_OUT%\lib\libggml-cuda.a" (
+    ar rcs "%LLAMA_OUT%\lib\libggml-cuda.a" 2>nul
+)
+
 :: Verify we got libraries
 set /a LCOUNT=0
 for %%f in ("%LLAMA_OUT%\lib\*.a") do set /a LCOUNT+=1

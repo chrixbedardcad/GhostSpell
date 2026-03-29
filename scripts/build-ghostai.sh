@@ -79,29 +79,67 @@ CMAKE_ARGS=(
     -DGGML_F16C=ON
 )
 
-# Platform-specific GPU acceleration.
-if [ "$(uname)" = "Darwin" ]; then
-    CMAKE_ARGS+=(-DGGML_ACCELERATE=ON)
-    CMAKE_ARGS+=(-DGGML_METAL=ON)
-    echo "  Metal GPU acceleration enabled (Apple Silicon)"
-elif command -v nvcc &>/dev/null; then
-    CMAKE_ARGS+=(-DGGML_CUDA=ON)
-    echo "  CUDA GPU acceleration enabled (NVIDIA)"
-fi
-
-# Windows (MSYS2/MinGW): use Ninja with MinGW GCC.
-# Set _WIN32_WINNT=0x0A00 (Win10) so MinGW headers expose CreateFile2 etc.
+# Platform-specific GPU acceleration + compiler setup.
+HAS_CUDA=0
 case "$(uname -s)" in
+    Darwin)
+        CMAKE_ARGS+=(-DGGML_ACCELERATE=ON -DGGML_METAL=ON)
+        echo "  Metal GPU acceleration enabled"
+        ;;
     MINGW*|MSYS*)
         WIN_FLAGS="-D_WIN32_WINNT=0x0A00"
-        CMAKE_ARGS+=(-G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++)
-        CMAKE_ARGS+=(-DCMAKE_C_FLAGS="$WIN_FLAGS" -DCMAKE_CXX_FLAGS="$WIN_FLAGS")
+        # CUDA + MSVC: build shared DLLs (CGo links via MinGW import libs).
+        # Non-CUDA: static .a with MinGW GCC.
+        if command -v nvcc &>/dev/null && command -v cl &>/dev/null; then
+            echo "  CUDA + MSVC detected — building shared DLLs"
+            HAS_CUDA=1
+            # Remove MinGW from PATH so cmake finds MSVC, not GCC.
+            SAVED_PATH="$PATH"
+            export PATH=$(echo "$PATH" | tr ':' '\n' | grep -v '/mingw64/' | grep -v '/msys64/usr/' | tr '\n' ':')
+            CMAKE_ARGS=( # Reset — MSVC build uses different flags.
+                -G Ninja
+                -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_C_FLAGS="$WIN_FLAGS"
+                -DCMAKE_CXX_FLAGS="$WIN_FLAGS"
+                -DGGML_CUDA=ON
+                -DGGML_VULKAN=OFF
+                -DGGML_METAL=OFF
+                -DGGML_OPENMP=ON
+                -DLLAMA_BUILD_TESTS=OFF
+                -DLLAMA_BUILD_EXAMPLES=OFF
+                -DLLAMA_BUILD_SERVER=OFF
+                -DBUILD_SHARED_LIBS=ON
+                -DGGML_NATIVE=OFF
+                -DGGML_AVX=ON
+                -DGGML_AVX2=ON
+                -DGGML_AVX512=OFF
+                -DGGML_FMA=ON
+                -DGGML_F16C=ON
+            )
+            # CI has no GPU — use explicit architectures covering ~8 years of GPUs.
+            # Local builds with a GPU: cmake auto-detects via GGML_NATIVE.
+            if [ -z "${CUDA_PATH:-}" ] || ! nvidia-smi &>/dev/null; then
+                CMAKE_ARGS+=(-DCMAKE_CUDA_ARCHITECTURES="60;61;70;75;80;86;89")
+                echo "  CUDA architectures: 60;61;70;75;80;86;89 (CI/no GPU)"
+            fi
+        else
+            echo "  MinGW CPU build (no CUDA)"
+            CMAKE_ARGS+=(-G Ninja -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++)
+            CMAKE_ARGS+=(-DCMAKE_C_FLAGS="$WIN_FLAGS" -DCMAKE_CXX_FLAGS="$WIN_FLAGS")
+        fi
         ;;
 esac
 
 cd "$LLAMA_BUILD"
 cmake .. "${CMAKE_ARGS[@]}" 2>&1 | tail -5
-cmake --build . --config Release -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})" 2>&1 | tail -5
+
+JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo ${NUMBER_OF_PROCESSORS:-4})
+cmake --build . --config Release -j"$JOBS" 2>&1 | tail -5
+
+# Restore MinGW PATH after CUDA build.
+if [ "$HAS_CUDA" = "1" ] && [ -n "${SAVED_PATH:-}" ]; then
+    export PATH="$SAVED_PATH"
+fi
 
 # --- Step 3: Install headers + libraries ---
 # Try cmake --install first (flat, stable layout). Fall back to manual copy
@@ -156,6 +194,13 @@ case "$(uname -s)" in
         done
         ;;
 esac
+
+# Ensure libggml-cuda.a exists for CGo link (empty archive for CPU builds,
+# import lib for CUDA builds). CGo LDFLAGS always include -lggml-cuda.
+if [ ! -f "$LLAMA_OUT/lib/libggml-cuda.a" ]; then
+    ar rcs "$LLAMA_OUT/lib/libggml-cuda.a"
+    echo "  Created empty libggml-cuda.a stub (CPU build)"
+fi
 
 echo ""
 echo "=== Build complete ==="
