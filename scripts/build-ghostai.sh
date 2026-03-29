@@ -198,8 +198,13 @@ esac
 # Ensure libggml-cuda.a exists for CGo link (empty archive for CPU builds,
 # import lib for CUDA builds). CGo LDFLAGS always include -lggml-cuda.
 if [ ! -f "$LLAMA_OUT/lib/libggml-cuda.a" ]; then
-    ar rcs "$LLAMA_OUT/lib/libggml-cuda.a"
-    echo "  Created empty libggml-cuda.a stub (CPU build)"
+    # BSD ar (macOS) can't create empty archives — use a dummy .o file.
+    STUB_DIR=$(mktemp -d)
+    echo "void __ggml_cuda_stub(void){}" > "$STUB_DIR/stub.c"
+    cc -c -o "$STUB_DIR/stub.o" "$STUB_DIR/stub.c"
+    ar rcs "$LLAMA_OUT/lib/libggml-cuda.a" "$STUB_DIR/stub.o"
+    rm -rf "$STUB_DIR"
+    echo "  Created libggml-cuda.a stub (CPU build)"
 fi
 
 echo ""
