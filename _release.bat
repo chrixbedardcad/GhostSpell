@@ -102,7 +102,7 @@ git tag "!TAG!" 2>nul
 git push origin "!TAG!" 2>nul
 
 :: Create or update the release.
-gh release create "!TAG!" release\* --title "!TAG!" --generate-release-notes
+gh release create "!TAG!" release\* --title "!TAG!" --generate-notes
 if !errorlevel! neq 0 (
     echo.
     echo Release may already exist. Uploading assets to existing release...

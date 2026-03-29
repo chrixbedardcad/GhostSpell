@@ -119,7 +119,7 @@ git tag "$TAG" 2>/dev/null || true
 git push origin "$TAG" 2>/dev/null || true
 
 # Create or update the release.
-if gh release create "$TAG" release/* --title "$TAG" --generate-release-notes; then
+if gh release create "$TAG" release/* --title "$TAG" --generate-notes; then
     ok "Release created"
 else
     echo ""
