@@ -399,10 +399,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		if router != nil {
 			router.ResetClients()
 		}
-		// Always try to create the router if it's nil — don't gate on initErr.
-		// The user may have fixed their config, added a new provider, or the
-		// OAuth token may have been refreshed.
-		if router == nil && cfg.DefaultModel != "" {
+		// Recreate the router with a fresh client. ResetClients kills the
+		// old client (stops ghostai), so we always need a new one.
+		if cfg.DefaultModel != "" {
 			client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
 			if clientErr == nil {
 				router = mode.NewRouter(cfg, client)
