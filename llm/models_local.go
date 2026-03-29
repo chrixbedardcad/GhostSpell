@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/chrixbedardcad/GhostSpell/llm/ghostai"
 )
 
 const (
@@ -42,15 +40,12 @@ type LLMProviderDefCompat struct {
 var GPUEnabled = true
 
 // GhostAIAvailable reports whether the embedded Ghost-AI engine is compiled in.
-// Recovers from panics in case CGo initialization fails (missing DLL, etc.).
-func GhostAIAvailable() (available bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			slog.Error("[ghost-ai] availability check panicked", "panic", r)
-			available = false
-		}
-	}()
-	return ghostai.Available()
+// GhostAIAvailable returns true if the ghostai binary can be found.
+// With the pure C++ ghostai, this is a simple file existence check —
+// no CGo, no DLLs, no panics.
+func GhostAIAvailable() bool {
+	_, err := findGhostAI()
+	return err == nil
 }
 
 // LocalModel describes a downloadable local model.

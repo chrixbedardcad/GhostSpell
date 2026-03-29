@@ -70,18 +70,11 @@ func companionAssets() []companionAsset {
 		ext = ".exe"
 	}
 	arch := runtime.GOARCH
-	assets := []companionAsset{
+	// ghostai is now a pure C++ binary with static CUDA — no DLLs needed.
+	return []companionAsset{
 		{fmt.Sprintf("ghostai-%s-%s%s", runtime.GOOS, arch, ext), "ghostai" + ext},
 		{fmt.Sprintf("ghost-%s-%s%s", runtime.GOOS, arch, ext), "ghost" + ext},
 	}
-	// CUDA shared DLLs — required at runtime next to ghostai.exe on Windows.
-	// These are optional: if not in the release, the download is silently skipped.
-	if runtime.GOOS == "windows" {
-		for _, dll := range []string{"ggml.dll", "ggml-base.dll", "ggml-cpu.dll", "ggml-cuda.dll", "llama.dll"} {
-			assets = append(assets, companionAsset{dll, dll})
-		}
-	}
-	return assets
 }
 
 // installFromDMG mounts the downloaded DMG, copies the signed .app bundle

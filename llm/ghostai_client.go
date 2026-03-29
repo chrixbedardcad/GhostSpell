@@ -1,13 +1,12 @@
 package llm
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,32 +15,32 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/chrixbedardcad/GhostSpell/internal/procmgr"
 )
 
 // GhostAIClient implements the Client interface by communicating with a
-// ghostai.exe HTTP server process (llama.cpp inference via OpenAI-compatible API).
+// ghostai daemon process via stdin/stdout JSON (same pattern as ghostvoice).
 type GhostAIClient struct {
 	mu        sync.Mutex
-	agent     *procmgr.AgentProcess
+	proc      *exec.Cmd
+	stdin     io.WriteCloser
+	stdout    *bufio.Scanner
 	modelPath string
 	modelName string
 	maxTokens int
 	keepAlive bool
+	running   bool
 	idleTimer *time.Timer
-	httpClient *http.Client
+	logFile   *os.File
 }
 
-// newGhostAIFromDef creates a GhostAIClient that spawns and manages ghostai.exe.
+// newGhostAIFromDef creates a GhostAIClient that spawns and manages ghostai.
 func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 	maxTokens := def.MaxTokens
 	if maxTokens == 0 {
 		maxTokens = 256
 	}
 	// Thinking models need a much larger budget — their <think> blocks
-	// consume most tokens before the answer. Force minimum 2048 regardless
-	// of what the config says.
+	// consume most tokens before the answer.
 	if isThinkingModel(def.Model) && maxTokens < 2048 {
 		maxTokens = 2048
 	}
@@ -51,68 +50,15 @@ func newGhostAIFromDef(def LLMProviderDefCompat) (*GhostAIClient, error) {
 		return nil, fmt.Errorf("local model %q: %w", def.Model, err)
 	}
 
-	// Find ghostai binary.
-	binPath, err := findGhostAI()
-	if err != nil {
-		return nil, err
-	}
-
-	// Spawn ghostai.exe with the model.
-	contextSize := 512
-	if isThinkingModel(def.Model) {
-		contextSize = 2048
-	}
-
-	// Auto-detect thread count: use NumCPU, cap at 12.
-	threads := runtime.NumCPU()
-	if threads > 12 {
-		threads = 12
-	}
-	if threads < 1 {
-		threads = 4
-	}
-
-	// GPU layers: offload model layers to GPU (Metal/CUDA/Vulkan).
-	// On Apple Silicon (unified memory), large models need headroom for
-	// inference buffers (KV cache, compute scratch). Using 99 (all layers)
-	// can trigger GGML_ASSERT(buf_dst) in the Metal backend when memory is
-	// tight. Scale GPU layers based on model file size vs available RAM.
-	gpuLayers := 0
-	if def.GPUEnabled {
-		gpuLayers = autoGPULayers(modelPath)
-	}
-
-	args := []string{
-		"--model", modelPath,
-		"--context-size", fmt.Sprintf("%d", contextSize),
-		"--threads", fmt.Sprintf("%d", threads),
-		"--gpu-layers", fmt.Sprintf("%d", gpuLayers),
-	}
-
-	slog.Info("[ghost-ai] spawning ghostai process", "bin", binPath, "model", def.Model)
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, )
-	if err != nil {
-		return nil, fmt.Errorf("ghost-ai: failed to start: %w", err)
-	}
-	slog.Info("[ghost-ai] process started", "pid", agent.PID(), "port", agent.Port)
-
 	c := &GhostAIClient{
-		agent:     agent,
 		modelPath: modelPath,
 		modelName: def.Model,
 		maxTokens: maxTokens,
 		keepAlive: def.KeepAlive,
-		httpClient: &http.Client{Timeout: 120 * time.Second},
 	}
 
-	// Start idle timer (unless keep-alive).
-	if !def.KeepAlive {
-		c.idleTimer = time.AfterFunc(localIdleTimeout, func() {
-			slog.Info("[ghost-ai] idle timeout — unloading model")
-			c.mu.Lock()
-			defer c.mu.Unlock()
-			c.postJSON("/v1/models/unload", nil)
-		})
+	if err := c.startDaemon(def.GPUEnabled); err != nil {
+		return nil, err
 	}
 
 	return c, nil
@@ -128,10 +74,11 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (*Response, error
 
 	c.mu.Lock()
 
-	// Check if process is alive, restart if needed.
-	if err := c.ensureRunning(); err != nil {
-		c.mu.Unlock()
-		return nil, err
+	if !c.running {
+		if err := c.startDaemon(GPUEnabled); err != nil {
+			c.mu.Unlock()
+			return nil, err
+		}
 	}
 
 	// Reset idle timer.
@@ -139,88 +86,95 @@ func (c *GhostAIClient) Send(ctx context.Context, req Request) (*Response, error
 		c.idleTimer.Reset(localIdleTimeout)
 	}
 
-	baseURL := c.agent.BaseURL()
-	c.mu.Unlock()
-
-	// Build chat messages.
+	// Build request JSON.
 	messages := []map[string]string{
 		{"role": "system", "content": req.Prompt},
 		{"role": "user", "content": req.Text},
 	}
-
 	body := map[string]any{
 		"messages":   messages,
 		"max_tokens": c.maxTokens,
 	}
-
 	data, err := json.Marshal(body)
 	if err != nil {
+		c.mu.Unlock()
 		return nil, fmt.Errorf("ghost-ai: marshal: %w", err)
 	}
+	data = append(data, '\n')
 
-	// Use request context so cancellation aborts the HTTP call,
-	// which causes ghostai.exe to detect the closed connection and abort inference.
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		baseURL+"/v1/chat/completions", bytes.NewReader(data))
+	// Write to daemon stdin.
+	_, err = c.stdin.Write(data)
 	if err != nil {
-		return nil, fmt.Errorf("ghost-ai: request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("ghost-ai: aborted")
+		// Daemon crashed — try to restart and retry once.
+		slog.Warn("[ghost-ai] daemon write failed, restarting", "error", err)
+		c.stopDaemonLocked()
+		if err := c.startDaemon(GPUEnabled); err != nil {
+			c.mu.Unlock()
+			return nil, err
 		}
-		return nil, fmt.Errorf("ghost-ai: request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("ghost-ai: read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error string `json:"error"`
+		_, err = c.stdin.Write(data)
+		if err != nil {
+			c.mu.Unlock()
+			return nil, fmt.Errorf("ghost-ai: write after restart: %w", err)
 		}
-		json.Unmarshal(respBody, &errResp)
-		return nil, fmt.Errorf("ghost-ai: %s", errResp.Error)
 	}
 
-	var chatResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Usage struct {
-			PromptTokens     int     `json:"prompt_tokens"`
-			CompletionTokens int     `json:"completion_tokens"`
-			TokensPerSecond  float64 `json:"tokens_per_second"`
-		} `json:"usage"`
-		Model string `json:"model"`
+	// Read response from daemon stdout (with context cancellation).
+	type readResult struct {
+		line string
+		err  error
 	}
+	ch := make(chan readResult, 1)
+	go func() {
+		if c.stdout.Scan() {
+			ch <- readResult{line: c.stdout.Text()}
+		} else {
+			ch <- readResult{err: fmt.Errorf("ghost-ai: daemon closed")}
+		}
+	}()
 
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+	c.mu.Unlock()
+
+	// Wait for response or context cancellation.
+	select {
+	case <-ctx.Done():
+		// Context cancelled — daemon will detect broken pipe or we restart later.
+		return nil, fmt.Errorf("ghost-ai: aborted")
+	case res := <-ch:
+		if res.err != nil {
+			return nil, res.err
+		}
+		return c.parseResponse(res.line)
+	}
+}
+
+func (c *GhostAIClient) parseResponse(line string) (*Response, error) {
+	var resp struct {
+		Text             string  `json:"text"`
+		Error            string  `json:"error"`
+		Model            string  `json:"model"`
+		PromptTokens     int     `json:"prompt_tokens"`
+		CompletionTokens int     `json:"completion_tokens"`
+		TokensPerSecond  float64 `json:"tokens_per_second"`
+	}
+	if err := json.Unmarshal([]byte(line), &resp); err != nil {
 		return nil, fmt.Errorf("ghost-ai: parse response: %w", err)
 	}
-
-	if len(chatResp.Choices) == 0 {
-		return nil, fmt.Errorf("ghost-ai: empty response")
+	if resp.Error != "" {
+		if resp.Error == "aborted" {
+			return nil, fmt.Errorf("ghost-ai: aborted")
+		}
+		return nil, fmt.Errorf("ghost-ai: %s", resp.Error)
 	}
 
-	text := chatResp.Choices[0].Message.Content
-
 	slog.Info("[ghost-ai] complete",
-		"prompt_tok", chatResp.Usage.PromptTokens,
-		"gen_tok", chatResp.Usage.CompletionTokens,
-		"tps", fmt.Sprintf("%.1f", chatResp.Usage.TokensPerSecond),
-		"text_len", len(text))
+		"prompt_tok", resp.PromptTokens,
+		"gen_tok", resp.CompletionTokens,
+		"tps", fmt.Sprintf("%.1f", resp.TokensPerSecond),
+		"text_len", len(resp.Text))
 
 	return &Response{
-		Text:     text,
+		Text:     resp.Text,
 		Provider: "local",
 		Model:    c.modelName,
 	}, nil
@@ -235,24 +189,13 @@ func (c *GhostAIClient) Close() {
 		c.idleTimer = nil
 	}
 
-	if c.agent != nil {
-		c.agent.Stop(3 * time.Second)
-		c.agent = nil
-	}
+	c.stopDaemonLocked()
 }
 
-// ensureRunning checks if the ghostai process is alive and restarts it if needed.
-// Must be called with c.mu held.
-func (c *GhostAIClient) ensureRunning() error {
-	if c.agent != nil {
-		if err := c.agent.Health(); err == nil {
-			return nil
-		}
-		slog.Warn("[ghost-ai] process unhealthy, restarting")
-		c.agent.Stop(2 * time.Second)
-	}
-
-	// Re-spawn.
+// startDaemon spawns the ghostai daemon process.
+// Must NOT be called with c.mu held (it acquires it internally if needed),
+// OR must be called when c.mu is already held (the initial spawn from newGhostAIFromDef).
+func (c *GhostAIClient) startDaemon(gpuEnabled bool) error {
 	binPath, err := findGhostAI()
 	if err != nil {
 		return err
@@ -271,55 +214,154 @@ func (c *GhostAIClient) ensureRunning() error {
 		threads = 4
 	}
 
-	args := []string{
-		"--model", c.modelPath,
+	gpuLayers := 0
+	if gpuEnabled {
+		gpuLayers = autoGPULayers(c.modelPath)
+	}
+
+	slog.Info("[ghost-ai] starting daemon", "model", c.modelName, "threads", threads, "gpu_layers", gpuLayers)
+	cmd := exec.Command(binPath, "--daemon",
+		"-m", c.modelPath,
+		"-t", fmt.Sprintf("%d", threads),
+		"--gpu-layers", fmt.Sprintf("%d", gpuLayers),
 		"--context-size", fmt.Sprintf("%d", contextSize),
-		"--threads", fmt.Sprintf("%d", threads),
-		"--gpu-layers", fmt.Sprintf("%d", autoGPULayers(c.modelPath)),
+	)
+	hideConsoleWindow(cmd) // no-op on non-Windows
+
+	// Add parent PID so daemon auto-exits if we crash.
+	cmd.Args = append(cmd.Args, "--parent-pid", fmt.Sprintf("%d", os.Getpid()))
+
+	// Redirect stderr to ghostai.log.
+	if logFile, err := openGhostAILog(); err == nil {
+		cmd.Stderr = logFile
+		c.logFile = logFile
+	} else {
+		cmd.Stderr = os.Stderr
 	}
 
-	agent, err := procmgr.SpawnHTTPAgent("ghostai", binPath, args, nil, )
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("ghost-ai: restart failed: %w", err)
+		return fmt.Errorf("ghost-ai: stdin pipe: %w", err)
+	}
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		stdin.Close()
+		return fmt.Errorf("ghost-ai: stdout pipe: %w", err)
 	}
 
-	c.agent = agent
-	slog.Info("[ghost-ai] process restarted", "pid", agent.PID(), "port", agent.Port)
+	if err := cmd.Start(); err != nil {
+		stdin.Close()
+		return fmt.Errorf("ghost-ai: start: %w", err)
+	}
+
+	// Read the ready message.
+	scanner := bufio.NewScanner(stdoutPipe)
+	scanner.Buffer(make([]byte, 256*1024), 256*1024)
+
+	if !scanner.Scan() {
+		cmd.Process.Kill()
+		cmd.Wait()
+		return fmt.Errorf("ghost-ai: daemon did not send ready message")
+	}
+
+	readyLine := scanner.Text()
+	var ready struct {
+		Ready bool   `json:"ready"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(readyLine), &ready); err != nil || !ready.Ready {
+		cmd.Process.Kill()
+		cmd.Wait()
+		errMsg := ready.Error
+		if errMsg == "" {
+			errMsg = "daemon failed to load model"
+		}
+		return fmt.Errorf("ghost-ai: %s", errMsg)
+	}
+
+	c.proc = cmd
+	c.stdin = stdin
+	c.stdout = scanner
+	c.running = true
+
+	slog.Info("[ghost-ai] daemon started (model loaded)", "model", c.modelName, "pid", cmd.Process.Pid)
+
+	// Start idle timer.
+	if !c.keepAlive {
+		c.idleTimer = time.AfterFunc(localIdleTimeout, func() {
+			slog.Info("[ghost-ai] idle timeout — stopping daemon")
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			c.stopDaemonLocked()
+		})
+	}
+
 	return nil
 }
 
-// postJSON sends a POST request to the ghostai server. Used for model management.
-func (c *GhostAIClient) postJSON(path string, body any) error {
-	if c.agent == nil {
-		return fmt.Errorf("ghost-ai not running")
+// stopDaemonLocked stops the daemon process. Must be called with c.mu held.
+func (c *GhostAIClient) stopDaemonLocked() {
+	if !c.running {
+		return
 	}
 
-	var reqBody io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return err
+	// Send quit command.
+	if c.stdin != nil {
+		fmt.Fprintf(c.stdin, "{\"quit\":true}\n")
+		c.stdin.Close()
+		c.stdin = nil
+	}
+
+	// Wait for clean exit (3 second timeout).
+	done := make(chan struct{})
+	go func() {
+		if c.proc != nil {
+			c.proc.Wait()
 		}
-		reqBody = bytes.NewReader(data)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		if c.proc != nil && c.proc.Process != nil {
+			c.proc.Process.Kill()
+		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	if c.logFile != nil {
+		c.logFile.Close()
+		c.logFile = nil
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.agent.BaseURL()+path, reqBody)
+	c.proc = nil
+	c.stdout = nil
+	c.running = false
+	slog.Info("[ghost-ai] daemon stopped")
+}
+
+// hideConsoleWindow is defined in platform-specific files (stt/ package has it,
+// but we need it here too for the llm package).
+func hideConsoleWindow(cmd *exec.Cmd) {
+	hideGhostAIConsole(cmd)
+}
+
+// openGhostAILog opens the ghostai log file for stderr redirection.
+func openGhostAILog() (*os.File, error) {
+	dir, err := os.UserConfigDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if reqBody != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
+	logDir := filepath.Join(dir, "GhostSpell")
+	os.MkdirAll(logDir, 0755)
 
-	resp, err := c.httpClient.Do(req)
+	logPath := filepath.Join(logDir, "ghostai.log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	resp.Body.Close()
-	return nil
+	fmt.Fprintf(f, "\n=== ghostai %s started at %s ===\n", "daemon", time.Now().Format(time.RFC3339))
+	return f, nil
 }
 
 // findGhostAI locates the ghostai binary.
@@ -352,7 +394,7 @@ func findGhostAI() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("ghost-ai: ghostai%s not found — build it with: go build -tags ghostai -o ghostai%s ./cmd/ghostai", ext, ext)
+	return "", fmt.Errorf("ghost-ai: ghostai%s not found — run _build.bat to build it", ext)
 }
 
 // isThinkingModel returns true for models that can generate <think> blocks.
@@ -361,15 +403,12 @@ func isThinkingModel(name string) bool {
 	return strings.Contains(n, "qwen3") || strings.Contains(n, "deepseek")
 }
 
-// isQwen35 is kept for reference but no longer used in the client —
-// thinking model handling is now done server-side in ghostai.exe.
+// isQwen35 checks for Qwen3.5 specifically.
 func isQwen35(name string) bool {
 	return strings.Contains(strings.ToLower(name), "qwen3.5")
 }
 
 // isMacOS13 returns true if running on macOS 13 (Ventura).
-// The Metal backend in llama.cpp has page-alignment issues on macOS 13 that
-// cause GGML_ASSERT crashes. GPU must be disabled on this version.
 func isMacOS13() bool {
 	if runtime.GOOS != "darwin" {
 		return false
@@ -381,11 +420,7 @@ func isMacOS13() bool {
 	return strings.HasPrefix(strings.TrimSpace(string(out)), "13.")
 }
 
-// autoGPULayers determines how many layers to offload to GPU based on model
-// file size and available system RAM. On Apple Silicon (unified memory), the
-// Metal backend needs headroom for KV cache and compute buffers beyond the
-// model weights. Overcommitting causes GGML_ASSERT(buf_dst) crashes in the
-// Metal tensor copy path (llama.cpp b8281).
+// autoGPULayers determines how many layers to offload to GPU.
 func autoGPULayers(modelPath string) int {
 	fi, err := os.Stat(modelPath)
 	if err != nil {
@@ -395,14 +430,10 @@ func autoGPULayers(modelPath string) int {
 
 	ramGB := systemRAMGB()
 	if ramGB == 0 {
-		ramGB = 8 // safe default
+		ramGB = 8
 	}
 
-	// Reserve memory for OS + GhostSpell + Metal inference buffers (KV cache,
-	// compute scratch). The Metal backend in llama.cpp b8281 needs ~2x the
-	// model weight size for inference buffers; underestimating causes
-	// GGML_ASSERT(buf_dst) in ggml_metal_cpy_tensor_async.
-	overheadGB := 4.0 + modelGB*0.5 // OS/app + ~50% of model for Metal buffers
+	overheadGB := 4.0 + modelGB*0.5
 	availableGB := float64(ramGB) - overheadGB
 	if availableGB < 1 {
 		slog.Info("[ghost-ai] not enough RAM for GPU offload, using CPU", "ram_gb", ramGB, "model_gb", fmt.Sprintf("%.1f", modelGB))
@@ -410,12 +441,10 @@ func autoGPULayers(modelPath string) int {
 	}
 
 	if modelGB <= availableGB {
-		// Model + buffers fit comfortably — offload everything.
 		slog.Info("[ghost-ai] GPU: full offload", "ram_gb", ramGB, "model_gb", fmt.Sprintf("%.1f", modelGB))
 		return 99
 	}
 
-	// Model too large for full offload — use partial (proportional).
 	ratio := availableGB / modelGB
 	layers := int(ratio * 99)
 	if layers < 1 {

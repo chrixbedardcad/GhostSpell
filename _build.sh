@@ -242,10 +242,35 @@ if ! go build -tags "$MAIN_TAGS" -o ghostspell .; then
     fail "Go build failed"
 fi
 
-# Build ghostai binary (CGo — links llama.cpp, separate LLM server process).
+# Build ghostai binary (pure C++ — links llama.cpp directly, same pattern as ghostvoice).
 if [ "$GHOSTAI" -eq 1 ]; then
-    echo "  Building ghostai (LLM server)..."
-    if go build -tags "production ghostai" -o ghostai ./cmd/ghostai; then
+    echo "  Building ghostai (LLM server, C++)..."
+    GHOSTAI_SRC="$PROJECT_ROOT/ghostai/main.cpp"
+    ARCH_TAG=$(uname -m)
+    case "$ARCH_TAG" in x86_64|amd64) ARCH_TAG="amd64" ;; arm64|aarch64) ARCH_TAG="arm64" ;; esac
+    GHOSTAI_OUT="ghostai"
+    case "$(uname -s)" in
+        Darwin)
+            g++ -std=c++17 -O2 -o "$GHOSTAI_OUT" "$GHOSTAI_SRC" \
+                -I"$LLAMA_OUT/include" -L"$LLAMA_OUT/lib" \
+                -lllama -lggml -lggml-cpu -lggml-metal -lggml-blas -lggml-base \
+                -lc++ -lm -lpthread \
+                -framework Accelerate -framework Metal -framework MetalKit -framework Foundation
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            g++ -O2 -static -fopenmp -o "$GHOSTAI_OUT" "$GHOSTAI_SRC" \
+                -I"$LLAMA_OUT/include" -L"$LLAMA_OUT/lib" \
+                -lllama -lggml -lggml-cpu -lggml-base \
+                -lstdc++ -lm -lpthread -lkernel32
+            ;;
+        *)
+            g++ -O2 -fopenmp -o "$GHOSTAI_OUT" "$GHOSTAI_SRC" \
+                -I"$LLAMA_OUT/include" -L"$LLAMA_OUT/lib" \
+                -Wl,--start-group -lllama -lggml -lggml-cpu -lggml-base -Wl,--end-group \
+                -lstdc++ -lm -lpthread
+            ;;
+    esac
+    if [ $? -eq 0 ]; then
         echo "  ghostai built OK"
     else
         warn "ghostai build failed — local AI will not be available"

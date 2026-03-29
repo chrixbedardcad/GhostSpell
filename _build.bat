@@ -688,14 +688,14 @@ echo.
 :: ============================================================
 :: Step 3 — Build Go binary
 :: ============================================================
-:: ghostspell.exe links Ghost-AI (llama.cpp) only.
-:: Voice (whisper.cpp) runs via whisper-cli.exe subprocess — no CGo needed.
+:: ghostspell.exe is pure Go — no CGo. Ghost-AI and Ghost Voice
+:: are separate C++ binaries (ghostai.exe, ghostvoice.exe).
 
 set MAIN_TAGS=production
 if !GHOSTVOICE!==1 if exist "%~dp0voicebin\ghostvoice.exe" set MAIN_TAGS=!MAIN_TAGS! ghostvoice
 
 if !GHOSTAI!==1 (
-    echo [3] Building ghostspell.exe with Ghost-AI...
+    echo [3] Building ghostspell.exe...
 ) else (
     echo [2] Building ghostspell.exe ^(API-only mode^)...
 )
@@ -716,20 +716,39 @@ if !errorlevel! neq 0 (
     exit /b 1
 )
 
-:: Build ghostai.exe (CGo — links llama.cpp, separate process).
+:: Build ghostai.exe (pure C++ — links llama.cpp directly, same pattern as ghostvoice).
 if !GHOSTAI!==1 (
-    echo   Building ghostai.exe ^(LLM server^)...
-    go build -tags "production ghostai" -o ghostai.exe ./cmd/ghostai
+    if !HAS_CUDA!==1 (
+        echo   Building ghostai.exe ^(MSVC + CUDA^)...
+        set "SAVED_PATH_W=!PATH!"
+        set "PATH=!PATH:C:\msys64\mingw64\bin=!"
+        set "PATH=!PATH:C:\msys64\usr\bin=!"
+        cl /O2 /EHsc /std:c++17 /MD /openmp ^
+            /I"%LLAMA_OUT%\include" ^
+            "%~dp0ghostai\main.cpp" ^
+            /Fo:"%BUILD_DIR%\ghostai.obj" ^
+            /Fe:"%~dp0ghostai.exe" ^
+            /link ^
+            /LIBPATH:"%LLAMA_OUT%\lib" ^
+            /LIBPATH:"%CUDA_PATH%\lib\x64" ^
+            llama.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib ^
+            cudart_static.lib cublas.lib cublasLt.lib cuda.lib ^
+            advapi32.lib
+        if defined SAVED_PATH_W set "PATH=!SAVED_PATH_W!"
+    ) else (
+        echo   Building ghostai.exe ^(MinGW, CPU^)...
+        g++ -O2 -static -fopenmp -o "%~dp0ghostai.exe" "%~dp0ghostai\main.cpp" ^
+            -I"%LLAMA_OUT%\include" ^
+            -L"%LLAMA_OUT%\lib" ^
+            -lllama -lggml -lggml-cpu -lggml-base ^
+            -lstdc++ -lm -lpthread -lkernel32
+    )
     if !errorlevel! neq 0 (
         echo   WARNING: ghostai.exe build failed — local AI will not be available
         set GHOSTAI=0
     ) else (
         echo   ghostai.exe built OK
-        :: For CUDA shared DLL builds: copy DLLs next to ghostai.exe.
-        if exist "%LLAMA_OUT%\bin\*.dll" (
-            echo   Copying CUDA DLLs...
-            copy /y "%LLAMA_OUT%\bin\*.dll" "%~dp0" >nul 2>&1
-        )
+        if !HAS_CUDA!==1 echo   + CUDA GPU acceleration
     )
 )
 
