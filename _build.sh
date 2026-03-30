@@ -250,7 +250,7 @@ if [ "$GHOSTAI" -eq 1 ]; then
     GHOSTAI_SRC="$PROJECT_ROOT/ghostai/main.cpp"
     ARCH_TAG=$(uname -m)
     case "$ARCH_TAG" in x86_64|amd64) ARCH_TAG="amd64" ;; arm64|aarch64) ARCH_TAG="arm64" ;; esac
-    GHOSTAI_OUT="ghostai"
+    GHOSTAI_OUT="ghostai-darwin-${ARCH_TAG}"
     case "$(uname -s)" in
         Darwin)
             g++ -std=c++17 -O2 -o "$GHOSTAI_OUT" "$GHOSTAI_SRC" \
