@@ -301,7 +301,8 @@ if !HAS_CUDA!==1 (
         -DLLAMA_BUILD_TESTS=OFF ^
         -DLLAMA_BUILD_EXAMPLES=OFF ^
         -DLLAMA_BUILD_SERVER=OFF ^
-        -DBUILD_SHARED_LIBS=ON ^
+        -DBUILD_SHARED_LIBS=OFF ^
+        -DGGML_STATIC=ON ^
         -DGGML_NATIVE=OFF ^
         -DGGML_AVX=ON ^
         -DGGML_AVX2=ON ^
@@ -378,25 +379,6 @@ if !_ICOUNT!==0 (
         set "fname=%%~nxf"
         if not "!fname:~0,3!"=="lib" rename "%%f" "lib!fname!"
     )
-)
-
-:: CUDA shared DLL builds: generate MinGW-compatible import libraries.
-:: CGo (MinGW) can't link MSVC .lib directly — gendef + dlltool bridge the gap.
-if !HAS_CUDA!==1 (
-    echo   Generating MinGW import libraries from DLLs...
-    for %%f in ("%LLAMA_OUT%\bin\*.dll") do (
-        set "dllname=%%~nf"
-        gendef "%%f" >nul 2>&1
-        if exist "!dllname!.def" (
-            dlltool -d "!dllname!.def" -l "%LLAMA_OUT%\lib\lib!dllname!.a" -D "%%~nxf" >nul 2>&1
-            del "!dllname!.def" 2>nul
-        )
-    )
-)
-
-:: Ensure libggml-cuda.a exists for CGo link (empty stub for CPU builds).
-if not exist "%LLAMA_OUT%\lib\libggml-cuda.a" (
-    ar rcs "%LLAMA_OUT%\lib\libggml-cuda.a" 2>nul
 )
 
 :: Verify we got libraries

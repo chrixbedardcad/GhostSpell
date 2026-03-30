@@ -86,10 +86,7 @@ if not exist release mkdir release
 copy /y ghostspell.exe "release\ghostspell-windows-amd64.exe" >nul
 copy /y ghostai.exe "release\ghostai-windows-amd64.exe" >nul
 copy /y ghost.exe "release\ghost-windows-amd64.exe" >nul
-:: Include CUDA DLLs if present (needed at runtime for GPU acceleration).
-for %%f in (ggml*.dll llama.dll) do (
-    if exist "%%f" copy /y "%%f" "release\" >nul
-)
+:: No DLLs needed — ghostai is statically linked (pure C++).
 echo   Done.
 echo.
 
