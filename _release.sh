@@ -81,9 +81,11 @@ for f in ghost ghost-darwin-*; do
 done
 
 echo "  ghostspell: $GHOSTSPELL_BIN"
-echo "  ghostai:    ${GHOSTAI_BIN:-MISSING (API-only mode)}"
+echo "  ghostai:    ${GHOSTAI_BIN:-MISSING}"
 echo "  ghost:      ${GHOST_BIN:-MISSING}"
 echo ""
+
+[ -n "$GHOSTAI_BIN" ] || fail "MISSING: ghostai binary — local AI will not work. Check _build.sh output."
 
 # --- Bundle .app + .dmg ---
 info "[3/4] Bundling macOS .app + .dmg..."

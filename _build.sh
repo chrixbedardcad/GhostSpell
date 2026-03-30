@@ -128,6 +128,8 @@ fi
 echo ""
 
 NPROC=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+PROJECT_ROOT="$(pwd)"
+LLAMA_OUT="$PROJECT_ROOT/build/llama"
 
 # ============================================================
 # Step 1 — Build Ghost-AI static libraries (if toolchain found)
