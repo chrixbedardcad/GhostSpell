@@ -116,13 +116,11 @@ install_macos() {
     # Symlink ghost CLI to /usr/local/bin if it exists in the .app bundle.
     local ghost_in_app="/Applications/GhostSpell.app/Contents/MacOS/ghost"
     if [ -f "$ghost_in_app" ]; then
-        mkdir -p /usr/local/bin 2>/dev/null || true
-        if [ -w /usr/local/bin ]; then
-            ln -sf "$ghost_in_app" /usr/local/bin/ghost
-        else
-            sudo ln -sf "$ghost_in_app" /usr/local/bin/ghost
+        sudo mkdir -p /usr/local/bin 2>/dev/null || true
+        if [ -d /usr/local/bin ]; then
+            sudo ln -sf "$ghost_in_app" /usr/local/bin/ghost 2>/dev/null || true
+            info "ghost CLI available at /usr/local/bin/ghost"
         fi
-        info "ghost CLI available at /usr/local/bin/ghost"
     fi
 
     rm -rf "$tmpdir"
