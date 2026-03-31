@@ -560,11 +560,14 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				close(wizardDone)
 			},
 			func() {
-				// onCancel — user closed wizard without saving.
+				// onCancel — user closed wizard without completing setup.
+				// Don't exit — let the app run so the user can access Settings
+				// from the tray menu and complete setup manually.
 				if settingsSvc.Restarting {
 					return // restart is handling the exit
 				}
-				os.Exit(1)
+				slog.Warn("Wizard closed without completing setup — app running without model")
+				close(wizardDone) // unblock hotkey registration
 			},
 		)
 	} else {
