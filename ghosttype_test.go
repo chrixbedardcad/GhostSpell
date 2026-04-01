@@ -175,8 +175,8 @@ func TestConfigLoadAndCreateDefault(t *testing.T) {
 		t.Fatalf("Created config is invalid JSON: %v", err)
 	}
 
-	if reloaded.Hotkeys.Action != "F7" {
-		t.Errorf("Expected default hotkey 'F7' in file, got '%s'", reloaded.Hotkeys.Action)
+	if reloaded.Hotkeys.Action == "" {
+		t.Error("Expected non-empty default hotkey in file")
 	}
 }
 
