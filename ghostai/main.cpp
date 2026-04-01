@@ -32,6 +32,7 @@ static double now_ms() {
 #include <time.h>
 #include <signal.h>
 #include <unistd.h>
+#include <pthread.h>
 static double now_ms() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
