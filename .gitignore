@@ -11,6 +11,9 @@
 *.exp
 *.lib
 
+# Release artifacts (built by _release.bat/_release.sh)
+release/
+
 # Built binary (Linux/macOS)
 ghosttype
 
