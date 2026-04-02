@@ -677,6 +677,53 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			}
 		}
 
+		// Per-skill hotkeys — each one selects the skill and triggers it immediately.
+		for i, p := range cfg.Prompts {
+			if p.Hotkey == "" || p.Disabled {
+				continue
+			}
+			skillIdx := i // capture for closure
+			skillName := p.Name
+			hotkeyName := fmt.Sprintf("skill_%d", skillIdx)
+			if err := mgr.Register(hotkeyName, p.Hotkey, func() {
+				slog.Debug("Skill hotkey fired", "skill", skillName, "index", skillIdx)
+
+				if dismissTrayMenu() {
+					time.Sleep(50 * time.Millisecond)
+				}
+
+				mu.Lock()
+				// Set this skill as the active prompt.
+				cfg.ActivePrompt = skillIdx
+				if router != nil {
+					router.SetPrompt(skillIdx)
+				}
+
+				localRouter := router
+				if localRouter == nil && cfg.DefaultModel != "" {
+					client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
+					if clientErr == nil {
+						router = mode.NewRouter(cfg, client)
+						localRouter = router
+					}
+				}
+				mu.Unlock()
+
+				if localRouter == nil {
+					sound.PlayError()
+					gui.PopIndicator("\u2699\ufe0f", "No model — opening Settings")
+					if gui.OnIndicatorOpenSettings != nil {
+						gui.OnIndicatorOpenSettings()
+					}
+					return
+				}
+
+				processMode(skillName, skillIdx, cfg, localRouter, cb, kb, &mu, &cancelLLM, trayStartAnim, trayStopAnim)
+			}); err != nil {
+				slog.Warn("Skill hotkey registration failed", "skill", skillName, "key", p.Hotkey, "error", err)
+			}
+		}
+
 		return nil
 	}
 

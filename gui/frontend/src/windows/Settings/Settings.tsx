@@ -5,6 +5,7 @@ import { GeneralTab } from "./GeneralTab";
 import { ModelsTab } from "./ModelsTab";
 import { PromptsTab } from "./PromptsTab";
 import { HotkeysTab } from "./HotkeysTab";
+import { LanguageTab } from "./LanguageTab";
 import { StatsTab } from "./StatsTab";
 import { HistoryTab } from "./HistoryTab";
 import { DebugTab } from "./DebugTab";
@@ -21,6 +22,7 @@ const TABS = [
   { id: "models", label: "Models" },
   { id: "prompts", label: "Skills" },
   { id: "hotkeys", label: "Hotkeys" },
+  { id: "language", label: "Language" },
   { id: "stats", label: "Stats" },
   { id: "history", label: "History" },
   { id: "debug", label: "Debug" },
@@ -63,6 +65,7 @@ export function SettingsWindow() {
         {activeTab === "models" && <ModelsTab />}
         {activeTab === "prompts" && <PromptsTab />}
         {activeTab === "hotkeys" && <HotkeysTab />}
+        {activeTab === "language" && <LanguageTab />}
         {activeTab === "stats" && <StatsTab />}
         {activeTab === "history" && <HistoryTab />}
         {activeTab === "debug" && <DebugTab />}

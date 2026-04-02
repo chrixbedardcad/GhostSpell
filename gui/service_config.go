@@ -637,6 +637,19 @@ func (s *SettingsService) SavePrompt(index int, name, prompt, llmLabel, icon str
 	return "ok"
 }
 
+// SetPromptHotkey sets or clears the direct hotkey for a prompt/skill.
+func (s *SettingsService) SetPromptHotkey(index int, hotkey string) string {
+	guiLog("[GUI] JS called: SetPromptHotkey(%d, %q)", index, hotkey)
+	if index < 0 || index >= len(s.cfgCopy.Prompts) {
+		return "error: invalid index"
+	}
+	s.cfgCopy.Prompts[index].Hotkey = hotkey
+	if err := s.validateAndSave(); err != nil {
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
+}
+
 // DeletePrompt removes the prompt at the given index.
 func (s *SettingsService) DeletePrompt(index int) string {
 	guiLog("[GUI] JS called: DeletePrompt(%d)", index)

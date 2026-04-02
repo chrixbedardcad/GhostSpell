@@ -22,6 +22,7 @@ type PromptEntry struct {
 	Voice       bool   `json:"voice,omitempty"`         // record microphone instead of capture text
 	VoiceMode   string `json:"voice_mode,omitempty"`    // "skill" (default) or "dictation"
 	Disabled    bool   `json:"disabled,omitempty"`      // hidden from tray/cycling when true
+	Hotkey      string `json:"hotkey,omitempty"`        // optional direct hotkey (e.g. "Ctrl+Shift+C")
 }
 
 // NextEnabledPrompt returns the index of the next enabled prompt after `from`,

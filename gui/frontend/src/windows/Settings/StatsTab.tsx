@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { goCall } from "@/bridge";
+import { usePlatform } from "@/hooks/usePlatform";
 
 interface ModelStat {
   label: string;
@@ -21,6 +22,8 @@ interface PromptStat {
  * Zen: clean numbers, minimal charts, calm colors.
  */
 export function StatsTab() {
+  const platform = usePlatform();
+  const hotkey = platform === "darwin" ? "⌘G" : "Ctrl+G";
   const [total, setTotal] = useState(0);
   const [avgTime, setAvgTime] = useState(0);
   const [topPrompt, setTopPrompt] = useState("");
@@ -125,7 +128,7 @@ export function StatsTab() {
 
       {total === 0 && (
         <p className="text-xs text-overlay-0 text-center py-4">
-          No usage data yet. Press Ctrl+G to start using GhostSpell.
+          No usage data yet. Press {hotkey} to start using GhostSpell.
         </p>
       )}
     </div>
