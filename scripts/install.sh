@@ -3,6 +3,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/chrixbedardcad/GhostSpell/main/scripts/install.sh | bash
+#   curl -fsSL ... | bash -s -- --uninstall    # complete uninstall
 #
 # What it does:
 #   1. Detects your OS (macOS or Linux) and architecture (amd64 or arm64)
@@ -89,18 +90,16 @@ install_macos() {
     sleep 1
 
     info "Installing GhostSpell.app to /Applications..."
-    # Remove old version if present, then copy.
-    if [ -w /Applications ] || [ ! -d /Applications/GhostSpell.app ]; then
-        rm -rf /Applications/GhostSpell.app 2>/dev/null || true
-        cp -R "${mount_point}/GhostSpell.app" /Applications/ || {
-            info "Need admin permission to install to /Applications..."
-            sudo cp -R "${mount_point}/GhostSpell.app" /Applications/
-        }
-    else
-        info "Need admin permission to install to /Applications..."
+    # Remove old version completely — use sudo to handle permission issues.
+    if [ -d /Applications/GhostSpell.app ]; then
         sudo rm -rf /Applications/GhostSpell.app
-        sudo cp -R "${mount_point}/GhostSpell.app" /Applications/
     fi
+    # Copy new version.
+    sudo cp -R "${mount_point}/GhostSpell.app" /Applications/
+
+    # Clear macOS Launch Services cache so the system sees the new binary.
+    # Without this, macOS can launch a cached old version after reinstall.
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user 2>/dev/null || true
 
     info "Unmounting disk image..."
     hdiutil detach "$mount_point" -quiet 2>/dev/null || true
@@ -246,7 +245,43 @@ install_linux() {
 
 # --- Main -------------------------------------------------------------------
 
+uninstall() {
+    info "Uninstalling GhostSpell..."
+    local os
+    os=$(detect_os)
+
+    # Kill running processes.
+    killall GhostSpell ghostai ghostvoice 2>/dev/null || true
+    sleep 1
+
+    if [ "$os" = "darwin" ]; then
+        sudo rm -rf /Applications/GhostSpell.app
+        sudo rm -f /usr/local/bin/ghost 2>/dev/null || true
+        # Clear Launch Services cache.
+        /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user 2>/dev/null || true
+        ok "GhostSpell.app removed from /Applications"
+    else
+        sudo rm -f /usr/local/bin/ghostspell /usr/local/bin/ghostai /usr/local/bin/ghost
+        ok "GhostSpell binaries removed from /usr/local/bin"
+    fi
+
+    echo ""
+    echo "App removed. Your config and models are preserved at:"
+    if [ "$os" = "darwin" ]; then
+        echo "  ~/Library/Application Support/GhostSpell/"
+    else
+        echo "  ~/.config/GhostSpell/"
+    fi
+    echo "Delete that folder to remove all data."
+}
+
 main() {
+    # Handle --uninstall flag.
+    if [ "${1:-}" = "--uninstall" ]; then
+        uninstall
+        return
+    fi
+
     local os arch version
     os=$(detect_os)
     arch=$(detect_arch)
@@ -265,4 +300,4 @@ main() {
     esac
 }
 
-main
+main "$@"
