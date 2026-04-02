@@ -109,7 +109,7 @@ install_macos() {
     xattr -dr com.apple.quarantine /Applications/GhostSpell.app 2>/dev/null || true
 
     # Force macOS to refresh the app icon (clears Launch Services cache).
-    touch /Applications/GhostSpell.app
+    sudo touch /Applications/GhostSpell.app 2>/dev/null || true
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/GhostSpell.app 2>/dev/null || true
 
     # Symlink ghost CLI to /usr/local/bin if it exists in the .app bundle.
