@@ -420,8 +420,26 @@ func isMacOS13() bool {
 	return strings.HasPrefix(strings.TrimSpace(string(out)), "13.")
 }
 
+// isIntelMac returns true if running on an Intel (x86_64) Mac.
+// The Metal backend in llama.cpp can stall on Intel Macs with
+// AMD/Intel discrete GPUs — inference hangs indefinitely.
+func isIntelMac() bool {
+	return runtime.GOOS == "darwin" && runtime.GOARCH == "amd64"
+}
+
 // autoGPULayers determines how many layers to offload to GPU.
 func autoGPULayers(modelPath string) int {
+	// Disable GPU on Intel Macs — Metal backend hangs on discrete AMD/Intel GPUs.
+	if isIntelMac() {
+		slog.Info("[ghost-ai] Intel Mac detected — using CPU (Metal unreliable on discrete GPU)")
+		return 0
+	}
+	// Disable GPU on macOS 13 — Metal has page-alignment bugs.
+	if isMacOS13() {
+		slog.Info("[ghost-ai] macOS 13 detected — using CPU (Metal bug)")
+		return 0
+	}
+
 	fi, err := os.Stat(modelPath)
 	if err != nil {
 		return 0
