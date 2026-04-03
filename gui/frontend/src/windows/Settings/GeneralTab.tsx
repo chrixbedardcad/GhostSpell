@@ -172,7 +172,7 @@ export function GeneralTab() {
     <div className="space-y-8">
       {/* Hotkey display */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Activation
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 flex items-center gap-4">
@@ -185,7 +185,7 @@ export function GeneralTab() {
 
       {/* Sound & Clipboard */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Behavior
         </h2>
         <div className="space-y-3">
@@ -210,7 +210,7 @@ export function GeneralTab() {
 
       {/* Input limit */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Input
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4">
@@ -239,7 +239,7 @@ export function GeneralTab() {
 
       {/* Ghost Indicator */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Ghost Indicator
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-4">
@@ -291,7 +291,7 @@ export function GeneralTab() {
 
       {/* API Server */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           API Server
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">

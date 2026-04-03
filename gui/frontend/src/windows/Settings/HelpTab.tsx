@@ -59,7 +59,7 @@ export function HelpTab() {
     <div className="space-y-8">
       {/* How It Works */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           How It Works
         </h2>
         <div className="space-y-3">
@@ -77,7 +77,7 @@ export function HelpTab() {
 
       {/* Keyboard Shortcuts */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Keyboard Shortcuts
         </h2>
         <div className="bg-surface-0/30 rounded-xl overflow-hidden">
@@ -108,7 +108,7 @@ export function HelpTab() {
 
       {/* Status Indicators */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Status Indicators
         </h2>
         <div className="bg-surface-0/30 rounded-xl overflow-hidden">
@@ -137,7 +137,7 @@ export function HelpTab() {
 
       {/* Default Skills */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Default Skills
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-5 py-3 space-y-2">
@@ -153,7 +153,7 @@ export function HelpTab() {
 
       {/* Tips */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Tips
         </h2>
         <ul className="space-y-2">

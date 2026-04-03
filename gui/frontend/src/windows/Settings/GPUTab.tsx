@@ -46,7 +46,7 @@ export function GPUTab() {
     <div className="space-y-8">
       {/* Detection Result */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           GPU Detection
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
@@ -73,7 +73,7 @@ export function GPUTab() {
       {/* GPU Toggle */}
       {gpu.available && (
         <section>
-          <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+          <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
             Acceleration
           </h2>
           <div className="bg-surface-0/30 rounded-xl px-6 py-4">
@@ -101,7 +101,7 @@ export function GPUTab() {
 
       {/* How It Works */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           How It Works
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3 text-xs text-overlay-1">

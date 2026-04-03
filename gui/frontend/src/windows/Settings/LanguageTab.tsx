@@ -73,7 +73,7 @@ export function LanguageTab() {
     <div className="space-y-8">
       {/* Writing Language */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Writing Language
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
@@ -100,7 +100,7 @@ export function LanguageTab() {
 
       {/* Voice Language */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Voice Language
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-5">

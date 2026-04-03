@@ -304,7 +304,7 @@ function LocalSection({
 
   return (
     <section>
-      <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+      <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
         GhostSpell Local
       </h2>
       <div className="bg-surface-0/30 rounded-xl p-5 space-y-4">
@@ -1010,7 +1010,7 @@ export function ProvidersTab() {
 
       {/* Other Local Providers */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Other Local Providers
         </h2>
         <p className="text-xs text-overlay-0 mb-4">Free, private -- your text never leaves your machine.</p>
@@ -1028,7 +1028,7 @@ export function ProvidersTab() {
 
       {/* Cloud Providers */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Cloud Providers
         </h2>
         <p className="text-xs text-overlay-0 mb-4">

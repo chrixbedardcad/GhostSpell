@@ -94,7 +94,7 @@ export function HotkeysTab() {
     <div className="space-y-8">
       {/* Global hotkeys */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Global Shortcuts
         </h2>
         <div className="space-y-4">
@@ -117,7 +117,7 @@ export function HotkeysTab() {
 
       {/* Skill shortcuts — only show assigned + add button */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Skill Shortcuts
         </h2>
         <p className="text-[12px] text-overlay-0 mb-5">
@@ -200,7 +200,7 @@ export function HotkeysTab() {
 
       {/* Quick Reference */}
       <section>
-        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
+        <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Quick Reference
         </h2>
         <div className="bg-surface-0/30 rounded-xl px-6 py-4">

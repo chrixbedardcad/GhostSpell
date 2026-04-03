@@ -14,6 +14,26 @@ import { HistoryTab } from "./HistoryTab";
 import { DebugTab } from "./DebugTab";
 import { HelpTab } from "./HelpTab";
 
+/*
+ * Design system — consistent across sidebar + content:
+ *
+ * Font sizes:
+ *   Page title:      16px  semibold
+ *   Section header:  11px  semibold  uppercase  tracking-wider  text-overlay-0
+ *   Card label:      13px  medium    text-text
+ *   Card desc:       12px  normal    text-overlay-0
+ *   Sidebar nav:     13px  medium    (active: text-text, inactive: text-overlay-1)
+ *   Sidebar group:   10px  medium    uppercase  tracking-widest  text-overlay-0/50
+ *   Status strip:    11px  normal    text-overlay-0
+ *
+ * Spacing:
+ *   Between sections:    space-y-8  (32px)
+ *   Between cards:       space-y-3  (12px)
+ *   Card padding:        px-5 py-4
+ *   Content padding:     px-8 pb-8
+ *   Sidebar width:       200px
+ */
+
 interface NavItem {
   id: string;
   label: string;
@@ -66,7 +86,6 @@ export function SettingsWindow() {
   useEffect(() => {
     goCall("getVersion").then((v) => { if (v) setVersion(v); });
     refreshStatus();
-    // Listen for config changes (GPU toggle, model change, etc.)
     const unsub = onEvent("configChanged", refreshStatus);
     return unsub;
   }, [refreshStatus]);
@@ -80,52 +99,48 @@ export function SettingsWindow() {
 
   return (
     <div className="h-full flex flex-col bg-base">
-      {/* Title bar — frameless window, draggable */}
+      {/* Title bar */}
       <div
-        className="flex items-center justify-between px-4 h-[36px] shrink-0 bg-crust border-b border-surface-0/30 select-none"
+        className="flex items-center justify-between px-5 h-[38px] shrink-0 bg-crust border-b border-surface-0/30 select-none"
         style={{ ["--wails-draggable" as string]: "drag" }}
       >
-        <div className="flex items-center gap-2 text-[11px] text-overlay-0">
+        <div className="flex items-center gap-2">
           <img src="/dist/ghost-icon.png" alt="" className="w-4 h-4 opacity-70" />
-          <span className="font-medium text-subtext-1">GhostSpell</span>
-          {version && <span className="text-overlay-0/50">v{version}</span>}
+          <span className="text-[12px] font-medium text-subtext-0">GhostSpell</span>
+          {version && <span className="text-[11px] text-overlay-0/50">v{version}</span>}
         </div>
-        <div
-          className="flex items-center gap-1"
-          style={{ ["--wails-draggable" as string]: "no-drag" }}
-        >
+        <div style={{ ["--wails-draggable" as string]: "no-drag" }}>
           <button
             onClick={() => goCall("closeWindow")}
-            className="w-[28px] h-[24px] flex items-center justify-center rounded
+            className="w-[30px] h-[24px] flex items-center justify-center rounded
                        text-overlay-0 hover:text-white hover:bg-red-500/80 transition-colors text-[14px]"
-            title="Close"
           >{"\u2715"}</button>
         </div>
       </div>
 
-      {/* Main layout: sidebar + content */}
+      {/* Main: sidebar + content */}
       <div className="flex-1 flex min-h-0">
         {/* Sidebar */}
-        <div className="w-[170px] shrink-0 bg-crust border-r border-surface-0/40 flex flex-col overflow-hidden">
-          <nav className="flex-1 overflow-y-auto px-2 pt-3 pb-2">
+        <div className="w-[200px] shrink-0 bg-crust border-r border-surface-0/30 flex flex-col">
+          <nav className="flex-1 overflow-y-auto px-3 pt-4 pb-3">
             {Object.entries(groups).map(([group, items]) => (
-              <div key={group} className="mb-2">
-                <p className="px-2 mb-1 text-[10px] font-medium text-overlay-0/60 uppercase tracking-widest">
+              <div key={group} className="mb-4">
+                <p className="px-3 mb-2 text-[10px] font-semibold text-overlay-0/50 uppercase tracking-widest">
                   {group}
                 </p>
                 {items.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-2 px-2.5 py-[5px] rounded-lg text-[12px]
-                      transition-all duration-150 mb-[1px] text-left
+                    className={`w-full flex items-center gap-3 px-3 py-[7px] rounded-lg text-[13px]
+                      transition-all duration-150 mb-[2px] text-left
                       ${activeTab === item.id
-                        ? "bg-surface-0/60 text-text font-medium"
-                        : "text-overlay-1 hover:text-subtext-0 hover:bg-surface-0/30"
+                        ? "bg-surface-0/50 text-text font-medium"
+                        : "text-overlay-1 hover:text-subtext-0 hover:bg-surface-0/25"
                       }`}
                   >
-                    <span className="w-4 text-center text-[11px] opacity-70">{item.icon}</span>
-                    {item.label}
+                    <span className="w-5 text-center text-[13px] opacity-60">{item.icon}</span>
+                    <span>{item.label}</span>
                   </button>
                 ))}
               </div>
@@ -133,41 +148,41 @@ export function SettingsWindow() {
           </nav>
 
           {/* Status strip */}
-          <div className="px-3 py-2 border-t border-surface-0/30 space-y-1 shrink-0">
+          <div className="px-4 py-3 border-t border-surface-0/20 space-y-1.5 shrink-0">
             {llmModel && (
-              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"LLM: " + llmModel + " (" + llmLabel + ")"}>
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+              <div className="flex items-center gap-2 text-[11px] text-overlay-0 truncate" title={"LLM: " + llmModel}>
+                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
                 <span className="truncate">{llmModel}</span>
               </div>
             )}
             {llmLabel && !llmModel && (
-              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"LLM: " + llmLabel}>
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+              <div className="flex items-center gap-2 text-[11px] text-overlay-0 truncate" title={"LLM: " + llmLabel}>
+                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
                 <span className="truncate">{llmLabel}</span>
               </div>
             )}
             {voiceModel && (
-              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"Voice: " + voiceModel}>
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+              <div className="flex items-center gap-2 text-[11px] text-overlay-0 truncate" title={"Voice: " + voiceModel}>
+                <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
                 <span className="truncate">{voiceModel}</span>
               </div>
             )}
             {gpuOn && (
-              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 shrink-0" />
+              <div className="flex items-center gap-2 text-[11px] text-overlay-0">
+                <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
                 GPU
               </div>
             )}
             {!llmLabel && !voiceModel && (
-              <div className="text-[10px] text-overlay-0/40 italic">No model configured</div>
+              <div className="text-[11px] text-overlay-0/30 italic">No model configured</div>
             )}
           </div>
         </div>
 
-        {/* Content area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="px-8 pt-6 pb-4 shrink-0">
-            <h1 className="text-[18px] font-semibold text-text">
+        {/* Content */}
+        <div className="flex-1 flex flex-col min-w-0 bg-base">
+          <div className="px-8 pt-7 pb-2 shrink-0">
+            <h1 className="text-[16px] font-semibold text-text">
               {NAV.find((n) => n.id === activeTab)?.label}
             </h1>
           </div>
