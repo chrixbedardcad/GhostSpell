@@ -29,7 +29,7 @@ function inlineCSSPlugin() {
   return {
     name: "inline-css-into-html",
     enforce: "post" as const,
-    closeBundle() {
+    writeBundle() {
       const dist = path.resolve(__dirname, "dist");
       const htmlPath = path.resolve(dist, "react.html");
       if (!existsSync(htmlPath)) return;
