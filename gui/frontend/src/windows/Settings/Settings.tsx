@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { goCall } from "@/bridge";
 import { TitleBar } from "./TitleBar";
 import { AboutTab } from "./AboutTab";
 import { GeneralTab } from "./GeneralTab";
@@ -6,6 +7,7 @@ import { ModelsTab } from "./ModelsTab";
 import { PromptsTab } from "./PromptsTab";
 import { HotkeysTab } from "./HotkeysTab";
 import { LanguageTab } from "./LanguageTab";
+import { VoiceTab } from "./VoiceTab";
 import { ProvidersTab } from "./ProvidersTab";
 import { GPUTab } from "./GPUTab";
 import { StatsTab } from "./StatsTab";
@@ -32,6 +34,7 @@ const NAV: NavItem[] = [
   { id: "prompts",   label: "Skills",    icon: "✨", group: "Settings" },
   { id: "hotkeys",   label: "Hotkeys",   icon: "⌨", group: "Settings" },
   { id: "language",  label: "Language",  icon: "🌐", group: "Settings" },
+  { id: "voice",     label: "Voice",     icon: "🎤", group: "Settings" },
   { id: "gpu",       label: "GPU",       icon: "⚡", group: "Performance" },
   { id: "stats",     label: "Stats",     icon: "📊", group: "Data" },
   { id: "history",   label: "History",   icon: "📝", group: "Data" },
@@ -44,6 +47,21 @@ type TabId = (typeof NAV)[number]["id"];
 
 export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
+  const [version, setVersion] = useState("");
+  const [activeModelName, setActiveModelName] = useState("");
+
+  useEffect(() => {
+    goCall("getVersion").then((v) => {
+      if (v) setVersion(v);
+    });
+    goCall("getConfig").then((raw) => {
+      if (!raw) return;
+      try {
+        const cfg = JSON.parse(raw);
+        setActiveModelName(cfg.active_model_name || cfg.model || "");
+      } catch { /* ignore */ }
+    });
+  }, []);
 
   // Group nav items
   const groups = NAV.reduce<Record<string, NavItem[]>>((acc, item) => {
@@ -92,6 +110,22 @@ export function SettingsWindow() {
           ))}
         </nav>
 
+        {/* Version + active model */}
+        {(version || activeModelName) && (
+          <div className="px-3 pb-2" style={{ ["--wails-draggable" as string]: "no-drag" }}>
+            <div className="px-2 py-2 space-y-0.5">
+              {version && (
+                <p className="text-[10px] text-overlay-0/60 truncate">v{version}</p>
+              )}
+              {activeModelName && (
+                <p className="text-[10px] text-overlay-0/60 truncate" title={activeModelName}>
+                  {activeModelName}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Close button (Windows frameless) */}
         <div className="px-3 pb-3" style={{ ["--wails-draggable" as string]: "no-drag" }}>
           <button
@@ -125,6 +159,7 @@ export function SettingsWindow() {
           {activeTab === "prompts" && <PromptsTab />}
           {activeTab === "hotkeys" && <HotkeysTab />}
           {activeTab === "language" && <LanguageTab />}
+          {activeTab === "voice" && <VoiceTab />}
           {activeTab === "gpu" && <GPUTab />}
           {activeTab === "stats" && <StatsTab />}
           {activeTab === "history" && <HistoryTab />}
