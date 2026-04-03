@@ -29,7 +29,7 @@ export function AboutTab() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* App identity */}
       <div className="text-center py-4">
         <img src="/ghost-icon.png" alt="" className="w-16 h-16 mx-auto mb-4 opacity-80" />
@@ -50,7 +50,7 @@ export function AboutTab() {
       </div>
 
       {/* Update check */}
-      <section className="bg-surface-0/30 rounded-xl p-5">
+      <section className="bg-surface-0/30 rounded-xl px-5 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-text">Updates</h3>

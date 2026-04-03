@@ -46,13 +46,13 @@ export function DebugTab() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* Debug session */}
       <section>
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Debug Session
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Debug Logging</p>
@@ -132,7 +132,7 @@ export function DebugTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Report a Bug
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
           <p className="text-xs text-overlay-0">
             Describe the issue below. System info and logs are included automatically.
           </p>

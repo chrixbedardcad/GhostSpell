@@ -84,10 +84,10 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="flex items-center justify-between py-2">
       <div>
-        <p className="text-[14px] font-medium text-text">{label}</p>
-        {description && <p className="text-[12px] text-overlay-0 mt-1">{description}</p>}
+        <p className="text-[13px] font-medium text-text">{label}</p>
+        {description && <p className="text-[11px] text-overlay-0 mt-0.5">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}
@@ -169,13 +169,13 @@ export function GeneralTab() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* Hotkey display */}
       <section>
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Activation
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7 flex items-center gap-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4 flex items-center gap-4">
           <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
             {hotkey}
           </div>
@@ -188,20 +188,23 @@ export function GeneralTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Behavior
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7">
-          <ToggleRow
-            label="Sound Effects"
-            description="Play sounds during processing"
-            checked={sound}
-            onChange={(v) => { setSound(v); saveField("setSoundEnabled", v); }}
-          />
-          <div className="h-px bg-surface-0/50 my-4" />
-          <ToggleRow
-            label="Preserve Clipboard"
-            description="Restore clipboard contents after paste"
-            checked={clipboard}
-            onChange={(v) => { setClipboard(v); saveField("setPreserveClipboard", v); }}
-          />
+        <div className="space-y-3">
+          <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+            <ToggleRow
+              label="Sound Effects"
+              description="Play sounds during processing"
+              checked={sound}
+              onChange={(v) => { setSound(v); saveField("setSoundEnabled", v); }}
+            />
+          </div>
+          <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+            <ToggleRow
+              label="Preserve Clipboard"
+              description="Restore clipboard contents after paste"
+              checked={clipboard}
+              onChange={(v) => { setClipboard(v); saveField("setPreserveClipboard", v); }}
+            />
+          </div>
         </div>
       </section>
 
@@ -210,7 +213,7 @@ export function GeneralTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Input
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Max Input Characters</p>
@@ -239,7 +242,7 @@ export function GeneralTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Ghost Indicator
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Position</p>
@@ -291,7 +294,7 @@ export function GeneralTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           API Server
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
           <ToggleRow
             label="Enable API Server"
             description="Expose GhostSpell over HTTP for CLI, Telegram, and integrations"

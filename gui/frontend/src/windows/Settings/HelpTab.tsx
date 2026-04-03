@@ -56,7 +56,7 @@ export function HelpTab() {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* How It Works */}
       <section>
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
@@ -140,7 +140,7 @@ export function HelpTab() {
         <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Default Skills
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 space-y-2">
+        <div className="bg-surface-0/30 rounded-xl px-5 py-3 space-y-2">
           {defaultSkills.map((skill) => (
             <div key={skill.name} className="flex items-baseline gap-3">
               <span className="shrink-0 text-base">{skill.icon}</span>
