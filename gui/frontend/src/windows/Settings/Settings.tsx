@@ -42,7 +42,8 @@ type TabId = (typeof NAV)[number]["id"];
 export function SettingsWindow() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [version, setVersion] = useState("");
-  const [defaultModel, setDefaultModel] = useState("");
+  const [llmLabel, setLlmLabel] = useState("");
+  const [llmModel, setLlmModel] = useState("");
   const [voiceModel, setVoiceModel] = useState("");
   const [gpuOn, setGpuOn] = useState(false);
 
@@ -52,7 +53,12 @@ export function SettingsWindow() {
       if (!raw) return;
       try {
         const cfg = JSON.parse(raw);
-        setDefaultModel(cfg.default_model || "");
+        const label = cfg.default_model || "";
+        setLlmLabel(label);
+        // Resolve the actual model name from the models map.
+        if (label && cfg.models && cfg.models[label]) {
+          setLlmModel(cfg.models[label].model || "");
+        }
         setVoiceModel(cfg.voice?.model || "");
         setGpuOn(cfg.gpu_enabled !== false);
       } catch { /* ignore */ }
@@ -122,10 +128,16 @@ export function SettingsWindow() {
 
           {/* Status strip */}
           <div className="px-3 py-2 border-t border-surface-0/30 space-y-1 shrink-0">
-            {defaultModel && (
-              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"LLM: " + defaultModel}>
+            {llmModel && (
+              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"LLM: " + llmModel + " (" + llmLabel + ")"}>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                <span className="truncate">{defaultModel}</span>
+                <span className="truncate">{llmModel}</span>
+              </div>
+            )}
+            {llmLabel && !llmModel && (
+              <div className="flex items-center gap-1.5 text-[10px] text-overlay-0 truncate" title={"LLM: " + llmLabel}>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+                <span className="truncate">{llmLabel}</span>
               </div>
             )}
             {voiceModel && (
@@ -140,7 +152,7 @@ export function SettingsWindow() {
                 GPU
               </div>
             )}
-            {!defaultModel && !voiceModel && (
+            {!llmLabel && !voiceModel && (
               <div className="text-[10px] text-overlay-0/40 italic">No model configured</div>
             )}
           </div>
