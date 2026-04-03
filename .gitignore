@@ -10,6 +10,7 @@
 *.obj
 *.exp
 *.lib
+*.syso
 
 # Release artifacts (built by _release.bat/_release.sh)
 release/
