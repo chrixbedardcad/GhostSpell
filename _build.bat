@@ -683,13 +683,13 @@ if !GHOSTAI!==1 (
 )
 set CGO_ENABLED=1
 
-go build -tags "!MAIN_TAGS!" -o ghostspell.exe .
+go build -tags "!MAIN_TAGS!" -ldflags "-H=windowsgui" -o ghostspell.exe .
 if !errorlevel! neq 0 (
     if !GHOSTAI!==1 (
         echo.
         echo   Build failed — retrying without Ghost-AI...
         set GHOSTAI=0
-        go build -tags "production" -o ghostspell.exe .
+        go build -tags "production" -ldflags "-H=windowsgui" -o ghostspell.exe .
     )
 )
 if !errorlevel! neq 0 (
