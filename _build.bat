@@ -23,10 +23,18 @@ for %%p in (ghostspell.exe ghostai.exe ghostvoice.exe ghost.exe) do (
     tasklist /fi "imagename eq %%p" /nh 2>nul | findstr /i "%%p" >nul 2>&1
     if !errorlevel!==0 (
         echo [pre-build] Stopping %%p...
-        taskkill /im %%p /f >nul 2>&1
+        taskkill /im %%p /f /t >nul 2>&1
     )
 )
-timeout /t 1 /nobreak >nul
+:: Extra wait + retry — windowsgui processes can be stubborn.
+timeout /t 2 /nobreak >nul
+for %%p in (ghostspell.exe ghostai.exe) do (
+    tasklist /fi "imagename eq %%p" /nh 2>nul | findstr /i "%%p" >nul 2>&1
+    if !errorlevel!==0 (
+        echo [pre-build] Force-killing %%p ^(retry^)...
+        wmic process where "name='%%p'" delete >nul 2>&1
+    )
+)
 
 :: --clean flag: delete build cache, sources, and binaries — full rebuild from scratch.
 if "%~1"=="--clean" (
