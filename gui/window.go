@@ -128,6 +128,7 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 		Height:    780,
 		URL:       "/dist/react.html?window=settings",
 		Frameless: false,
+		Icon:      windowAppIcon(),
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:               application.MacBackdropTranslucent,
