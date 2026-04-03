@@ -146,13 +146,13 @@ jobs:
             linux)
               g++ -O2 -fopenmp -o "ghostai-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}" ghostai/main.cpp \
                 -I"$LLAMA_OUT/include" -L"$LLAMA_OUT/lib" \
-                -Wl,--start-group -lllama -lggml -lggml-cpu -lggml-base -lggml-cuda -Wl,--end-group \
+                -Wl,--start-group -lllama -lggml -lggml-cpu -lggml-base -Wl,--end-group \
                 -lstdc++ -lm -lpthread
               ;;
             windows)
               g++ -O2 -static -fopenmp -o "ghostai-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}" ghostai/main.cpp \
                 -I"$LLAMA_OUT/include" -L"$LLAMA_OUT/lib" \
-                -lllama -lggml -lggml-cpu -lggml-base -lggml-cuda \
+                -lllama -lggml -lggml-cpu -lggml-base \
                 -lstdc++ -lm -lpthread -lkernel32
               ;;
           esac
