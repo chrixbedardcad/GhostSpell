@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from "fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync, readdirSync } from "fs";
 
 // Copy static assets (images) into dist after build
 function copyStaticAssets() {
@@ -22,8 +22,47 @@ function copyStaticAssets() {
   };
 }
 
+// Inline CSS into HTML — Wails' embedded FS doesn't reliably serve .css files.
+// This makes the HTML self-contained: no external CSS request needed.
+function inlineCSSPlugin() {
+  return {
+    name: "inline-css-into-html",
+    enforce: "post" as const,
+    closeBundle() {
+      const dist = path.resolve(__dirname, "dist");
+      const htmlPath = path.resolve(dist, "react.html");
+      if (!existsSync(htmlPath)) return;
+
+      let html = readFileSync(htmlPath, "utf-8");
+
+      // Find all CSS files in assets/
+      const assetsDir = path.resolve(dist, "assets");
+      if (!existsSync(assetsDir)) return;
+
+      const cssFiles = readdirSync(assetsDir).filter((f) => f.endsWith(".css"));
+      for (const cssFile of cssFiles) {
+        const cssPath = path.resolve(assetsDir, cssFile);
+        const css = readFileSync(cssPath, "utf-8");
+
+        // Remove the <link> tag referencing this CSS
+        const linkPattern = new RegExp(
+          `<link[^>]*href="/dist/assets/${cssFile.replace(".", "\\.")}"[^>]*>`,
+          "g"
+        );
+        html = html.replace(linkPattern, "");
+
+        // Inject inline <style> in <head>
+        html = html.replace("</head>", `  <style>${css}</style>\n</head>`);
+      }
+
+      writeFileSync(htmlPath, html);
+      console.log(`  Inlined ${cssFiles.length} CSS file(s) into react.html`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), copyStaticAssets()],
+  plugins: [react(), tailwindcss(), copyStaticAssets(), inlineCSSPlugin()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -36,10 +75,6 @@ export default defineConfig({
     cssCodeSplit: false,
     rollupOptions: {
       input: "react.html",
-      output: {
-        // Don't add crossorigin attribute — breaks Wails embedded FS on some platforms.
-        manualChunks: undefined,
-      },
     },
   },
 });
