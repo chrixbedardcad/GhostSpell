@@ -6,6 +6,7 @@ import { ModelsTab } from "./ModelsTab";
 import { PromptsTab } from "./PromptsTab";
 import { HotkeysTab } from "./HotkeysTab";
 import { LanguageTab } from "./LanguageTab";
+import { ProvidersTab } from "./ProvidersTab";
 import { GPUTab } from "./GPUTab";
 import { StatsTab } from "./StatsTab";
 import { HistoryTab } from "./HistoryTab";
@@ -13,66 +14,123 @@ import { DebugTab } from "./DebugTab";
 import { HelpTab } from "./HelpTab";
 
 /**
- * Settings window — 9-tab interface.
- * Zen: clean tab bar, generous content area, no visual noise.
+ * Settings window — sidebar navigation, zen dark theme.
+ * Inspired by Claude Desktop / modern desktop apps.
  */
 
-const TABS = [
-  { id: "about", label: "About" },
-  { id: "general", label: "General" },
-  { id: "models", label: "Models" },
-  { id: "prompts", label: "Skills" },
-  { id: "hotkeys", label: "Hotkeys" },
-  { id: "language", label: "Language" },
-  { id: "gpu", label: "GPU" },
-  { id: "stats", label: "Stats" },
-  { id: "history", label: "History" },
-  { id: "debug", label: "Debug" },
-  { id: "help", label: "Help" },
-] as const;
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  group?: string;
+}
 
-type TabId = (typeof TABS)[number]["id"];
+const NAV: NavItem[] = [
+  { id: "general",   label: "General",   icon: "⚙", group: "Settings" },
+  { id: "providers", label: "Providers", icon: "🔗", group: "Settings" },
+  { id: "models",    label: "Models",    icon: "🧠", group: "Settings" },
+  { id: "prompts",   label: "Skills",    icon: "✨", group: "Settings" },
+  { id: "hotkeys",   label: "Hotkeys",   icon: "⌨", group: "Settings" },
+  { id: "language",  label: "Language",  icon: "🌐", group: "Settings" },
+  { id: "gpu",       label: "GPU",       icon: "⚡", group: "Performance" },
+  { id: "stats",     label: "Stats",     icon: "📊", group: "Data" },
+  { id: "history",   label: "History",   icon: "📝", group: "Data" },
+  { id: "debug",     label: "Debug",     icon: "🔍", group: "Advanced" },
+  { id: "help",      label: "Help",      icon: "?",  group: "Advanced" },
+  { id: "about",     label: "About",     icon: "👻", group: "Advanced" },
+];
+
+type TabId = (typeof NAV)[number]["id"];
 
 export function SettingsWindow() {
-  const [activeTab, setActiveTab] = useState<TabId>("about");
+  const [activeTab, setActiveTab] = useState<TabId>("general");
+
+  // Group nav items
+  const groups = NAV.reduce<Record<string, NavItem[]>>((acc, item) => {
+    const g = item.group || "";
+    if (!acc[g]) acc[g] = [];
+    acc[g].push(item);
+    return acc;
+  }, {});
 
   return (
-    <div className="h-full flex flex-col bg-base">
-      <TitleBar />
+    <div className="h-full flex bg-base">
+      {/* Sidebar */}
+      <div
+        className="w-[180px] shrink-0 bg-crust flex flex-col border-r border-surface-0/40"
+        style={{ ["--wails-draggable" as string]: "drag" }}
+      >
+        {/* Logo area */}
+        <div className="px-4 pt-5 pb-4 flex items-center gap-2.5">
+          <img src="/dist/ghost-icon.png" alt="" className="w-6 h-6 opacity-80" />
+          <span className="text-[13px] font-semibold text-subtext-1 tracking-tight">GhostSpell</span>
+        </div>
 
-      {/* Tab bar */}
-      <div className="flex border-b border-surface-0/60 px-4 shrink-0 bg-mantle/50 overflow-x-auto">
-        {TABS.map((tab) => (
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-2 pb-4" style={{ ["--wails-draggable" as string]: "no-drag" }}>
+          {Object.entries(groups).map(([group, items]) => (
+            <div key={group} className="mb-3">
+              <p className="px-2 mb-1 text-[10px] font-medium text-overlay-0/60 uppercase tracking-widest">
+                {group}
+              </p>
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-lg text-[12.5px]
+                    transition-all duration-150 mb-[1px]
+                    ${activeTab === item.id
+                      ? "bg-surface-0/60 text-text font-medium"
+                      : "text-overlay-1 hover:text-subtext-0 hover:bg-surface-0/30"
+                    }`}
+                >
+                  <span className="w-4 text-center text-[11px] opacity-70">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+
+        {/* Close button (Windows frameless) */}
+        <div className="px-3 pb-3" style={{ ["--wails-draggable" as string]: "no-drag" }}>
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`relative px-3 py-2.5 text-[12px] font-medium transition-colors whitespace-nowrap
-              ${activeTab === tab.id
-                ? "text-accent-blue"
-                : "text-overlay-0 hover:text-subtext-0"
-              }`}
+            onClick={() => window.wails?.Window?.Close()}
+            className="w-full py-1.5 rounded-lg text-[11px] text-overlay-0
+                       hover:text-accent-red hover:bg-surface-0/30 transition-colors"
           >
-            {tab.label}
-            {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-1.5 right-1.5 h-0.5 bg-accent-blue rounded-full" />
-            )}
+            Close
           </button>
-        ))}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        {activeTab === "about" && <AboutTab />}
-        {activeTab === "general" && <GeneralTab />}
-        {activeTab === "models" && <ModelsTab />}
-        {activeTab === "prompts" && <PromptsTab />}
-        {activeTab === "hotkeys" && <HotkeysTab />}
-        {activeTab === "language" && <LanguageTab />}
-        {activeTab === "gpu" && <GPUTab />}
-        {activeTab === "stats" && <StatsTab />}
-        {activeTab === "history" && <HistoryTab />}
-        {activeTab === "debug" && <DebugTab />}
-        {activeTab === "help" && <HelpTab />}
+      {/* Content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Content header */}
+        <div
+          className="px-6 pt-5 pb-3 shrink-0"
+          style={{ ["--wails-draggable" as string]: "drag" }}
+        >
+          <h1 className="text-[15px] font-semibold text-text">
+            {NAV.find((n) => n.id === activeTab)?.label}
+          </h1>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          {activeTab === "about" && <AboutTab />}
+          {activeTab === "general" && <GeneralTab />}
+          {activeTab === "providers" && <ProvidersTab />}
+          {activeTab === "models" && <ModelsTab />}
+          {activeTab === "prompts" && <PromptsTab />}
+          {activeTab === "hotkeys" && <HotkeysTab />}
+          {activeTab === "language" && <LanguageTab />}
+          {activeTab === "gpu" && <GPUTab />}
+          {activeTab === "stats" && <StatsTab />}
+          {activeTab === "history" && <HistoryTab />}
+          {activeTab === "debug" && <DebugTab />}
+          {activeTab === "help" && <HelpTab />}
+        </div>
       </div>
     </div>
   );
