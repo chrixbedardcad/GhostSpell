@@ -95,7 +95,7 @@ export function HotkeysTab() {
     <div className="space-y-10">
       {/* Global hotkeys */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Global Shortcuts
         </h2>
         <div className="space-y-3">
@@ -118,7 +118,7 @@ export function HotkeysTab() {
 
       {/* Per-skill hotkeys */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Skill Shortcuts
         </h2>
         <p className="text-xs text-overlay-0 mb-3">
@@ -163,10 +163,10 @@ export function HotkeysTab() {
 
       {/* Quick Reference */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Quick Reference
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3 text-xs">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3 text-xs">
           <div className="flex justify-between text-overlay-1">
             <span>Cancel active request</span>
             <span className="text-subtext-0">Press {formatKey(actionKey)} again</span>
@@ -206,7 +206,7 @@ function HotkeyRow({ label, description, keys, capturing, onCapture }: {
   onCapture: () => void;
 }) {
   return (
-    <div className="bg-surface-0/30 rounded-xl p-6 flex items-center justify-between">
+    <div className="bg-surface-0/30 rounded-xl p-7 flex items-center justify-between">
       <div>
         <p className="text-sm text-text">{label}</p>
         <p className="text-xs text-overlay-0 mt-0.5">{description}</p>

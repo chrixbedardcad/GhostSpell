@@ -46,10 +46,10 @@ export function GPUTab() {
     <div className="space-y-10">
       {/* Detection Result */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           GPU Detection
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">{gpu.name || "No GPU detected"}</p>
@@ -73,10 +73,10 @@ export function GPUTab() {
       {/* GPU Toggle */}
       {gpu.available && (
         <section>
-          <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+          <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
             Acceleration
           </h2>
-          <div className="bg-surface-0/30 rounded-xl p-6">
+          <div className="bg-surface-0/30 rounded-xl p-7">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text">Enable GPU Acceleration</p>
@@ -90,9 +90,9 @@ export function GPUTab() {
                 className={`relative shrink-0 transition-colors duration-200 ${
                   gpuEnabled ? "bg-accent-blue" : "bg-surface-2"
                 }`}
-                style={{ width: 36, height: 20, borderRadius: 10 }}
+                style={{ width: 44, height: 24, borderRadius: 12 }}
               >
-                <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 16, height: 16, top: 2, left: gpuEnabled ? 18 : 2, transition: "left 200ms ease" }} />
+                <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 20, height: 20, top: 2, left: gpuEnabled ? 22 : 2, transition: "left 200ms ease" }} />
               </button>
             </div>
           </div>
@@ -101,10 +101,10 @@ export function GPUTab() {
 
       {/* How It Works */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           How It Works
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3 text-xs text-overlay-1">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3 text-xs text-overlay-1">
           <p>
             GPU acceleration offloads AI model layers to your graphics card,
             making local inference 5-10x faster than CPU-only mode.

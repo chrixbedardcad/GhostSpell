@@ -84,25 +84,25 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-4">
       <div>
-        <p className="text-[13px] text-text">{label}</p>
-        {description && <p className="text-[11px] text-overlay-0 mt-0.5">{description}</p>}
+        <p className="text-[14px] font-medium text-text">{label}</p>
+        {description && <p className="text-[12px] text-overlay-0 mt-1">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}
         className={`relative shrink-0 transition-colors duration-200 ${
           checked ? "bg-accent-blue" : "bg-surface-2"
         }`}
-        style={{ width: 36, height: 20, borderRadius: 10 }}
+        style={{ width: 44, height: 24, borderRadius: 12 }}
       >
         <span
           className="absolute bg-white rounded-full shadow-sm"
           style={{
-            width: 16,
-            height: 16,
+            width: 20,
+            height: 20,
             top: 2,
-            left: checked ? 18 : 2,
+            left: checked ? 22 : 2,
             transition: "left 200ms ease",
           }}
         />
@@ -172,10 +172,10 @@ export function GeneralTab() {
     <div className="space-y-10">
       {/* Hotkey display */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Activation
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 flex items-center gap-4">
+        <div className="bg-surface-0/30 rounded-xl p-7 flex items-center gap-4">
           <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
             {hotkey}
           </div>
@@ -185,10 +185,10 @@ export function GeneralTab() {
 
       {/* Sound & Clipboard */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Behavior
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6">
+        <div className="bg-surface-0/30 rounded-xl p-7">
           <ToggleRow
             label="Sound Effects"
             description="Play sounds during processing"
@@ -207,10 +207,10 @@ export function GeneralTab() {
 
       {/* Input limit */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Input
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6">
+        <div className="bg-surface-0/30 rounded-xl p-7">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Max Input Characters</p>
@@ -236,10 +236,10 @@ export function GeneralTab() {
 
       {/* Ghost Indicator */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Ghost Indicator
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Position</p>
@@ -288,10 +288,10 @@ export function GeneralTab() {
 
       {/* API Server */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           API Server
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
           <ToggleRow
             label="Enable API Server"
             description="Expose GhostSpell over HTTP for CLI, Telegram, and integrations"

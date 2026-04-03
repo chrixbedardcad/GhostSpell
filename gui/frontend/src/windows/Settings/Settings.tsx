@@ -166,12 +166,12 @@ export function SettingsWindow() {
 
         {/* Content area */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="px-6 pt-5 pb-3 shrink-0">
-            <h1 className="text-[15px] font-semibold text-text">
+          <div className="px-8 pt-6 pb-4 shrink-0">
+            <h1 className="text-[18px] font-semibold text-text">
               {NAV.find((n) => n.id === activeTab)?.label}
             </h1>
           </div>
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto px-8 pb-8">
             {activeTab === "about" && <AboutTab />}
             {activeTab === "general" && <GeneralTab />}
             {activeTab === "providers" && <ProvidersTab />}

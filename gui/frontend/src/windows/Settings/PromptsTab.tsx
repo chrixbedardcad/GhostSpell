@@ -204,9 +204,9 @@ function PromptEditor({
         <button
           onClick={() => update({ disabled: !p.disabled })}
           className={`relative shrink-0 transition-colors duration-200 ${p.disabled ? "bg-surface-2" : "bg-accent-green/60"}`}
-          style={{ width: 36, height: 20, borderRadius: 10 }}
+          style={{ width: 44, height: 24, borderRadius: 12 }}
         >
-          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 16, height: 16, top: 2, left: p.disabled ? 2 : 18, transition: "left 200ms ease" }} />
+          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 20, height: 20, top: 2, left: p.disabled ? 2 : 22, transition: "left 200ms ease" }} />
         </button>
       </div>
 

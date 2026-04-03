@@ -114,11 +114,11 @@ function ToggleRow({
         className={`relative shrink-0 transition-colors duration-200 ${
           checked ? "bg-accent-blue" : "bg-surface-2"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-        style={{ width: 36, height: 20, borderRadius: 10 }}
+        style={{ width: 44, height: 24, borderRadius: 12 }}
       >
         <span
           className="absolute bg-white rounded-full shadow-sm"
-          style={{ width: 16, height: 16, top: 2, left: checked ? 18 : 2, transition: "left 200ms ease" }}
+          style={{ width: 20, height: 20, top: 2, left: checked ? 22 : 2, transition: "left 200ms ease" }}
         />
       </button>
     </div>
@@ -304,7 +304,7 @@ function LocalSection({
 
   return (
     <section>
-      <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+      <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
         GhostSpell Local
       </h2>
       <div className="bg-surface-0/30 rounded-xl p-5 space-y-4">
@@ -1010,7 +1010,7 @@ export function ProvidersTab() {
 
       {/* Other Local Providers */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Other Local Providers
         </h2>
         <p className="text-xs text-overlay-0 mb-4">Free, private -- your text never leaves your machine.</p>
@@ -1028,7 +1028,7 @@ export function ProvidersTab() {
 
       {/* Cloud Providers */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Cloud Providers
         </h2>
         <p className="text-xs text-overlay-0 mb-4">

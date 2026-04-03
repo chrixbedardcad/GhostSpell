@@ -49,10 +49,10 @@ export function DebugTab() {
     <div className="space-y-10">
       {/* Debug session */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Debug Session
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Debug Logging</p>
@@ -63,11 +63,11 @@ export function DebugTab() {
               className={`relative shrink-0 transition-colors duration-200 ${
                 debugEnabled ? "bg-accent-blue" : "bg-surface-2"
               }`}
-              style={{ width: 36, height: 20, borderRadius: 10 }}
+              style={{ width: 44, height: 24, borderRadius: 12 }}
             >
               <span
                 className="absolute bg-white rounded-full shadow-sm"
-                style={{ width: 16, height: 16, top: 2, left: debugEnabled ? 18 : 2, transition: "left 200ms ease" }}
+                style={{ width: 20, height: 20, top: 2, left: debugEnabled ? 22 : 2, transition: "left 200ms ease" }}
               />
             </button>
           </div>
@@ -129,10 +129,10 @@ export function DebugTab() {
 
       {/* Bug report */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Report a Bug
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
           <p className="text-xs text-overlay-0">
             Describe the issue below. System info and logs are included automatically.
           </p>

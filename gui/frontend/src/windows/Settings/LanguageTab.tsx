@@ -73,10 +73,10 @@ export function LanguageTab() {
     <div className="space-y-10">
       {/* Writing Language */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Writing Language
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Text language</p>
@@ -100,10 +100,10 @@ export function LanguageTab() {
 
       {/* Voice Language */}
       <section>
-        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+        <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
           Voice Language
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-6 space-y-5">
+        <div className="bg-surface-0/30 rounded-xl p-7 space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Speaking language</p>

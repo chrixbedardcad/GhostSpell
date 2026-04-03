@@ -62,7 +62,7 @@ export function StatsTab() {
       {/* Prompt usage */}
       {prompts.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+          <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
             Prompt Usage
           </h2>
           <div className="space-y-2">
@@ -86,7 +86,7 @@ export function StatsTab() {
       {/* Model performance */}
       {models.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+          <h2 className="text-[13px] font-semibold text-subtext-0 mb-5 uppercase tracking-wider">
             Model Performance
           </h2>
           <div className="space-y-2">

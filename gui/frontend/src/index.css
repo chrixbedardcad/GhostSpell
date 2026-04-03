@@ -2,10 +2,10 @@
 
 /*
  * GhostSpell — Dark Zen Theme
- * Minimalistic. Calm. Modern. Clean.
+ * Inspired by Ollama, Claude Desktop — spacious, calm, modern.
  */
 
-/* ── Custom Catppuccin Mocha tokens for Tailwind v4 ── */
+/* -- Custom Catppuccin Mocha tokens for Tailwind v4 -- */
 
 @theme {
   --color-crust: #11111b;
@@ -38,7 +38,7 @@
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
 }
 
-/* ── Base Reset ── */
+/* -- Base Reset -- */
 
 * {
   margin: 0;
@@ -60,7 +60,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   letter-spacing: 0.01em;
   -webkit-user-select: none;
   user-select: none;
@@ -74,7 +74,7 @@ textarea,
   user-select: text;
 }
 
-/* ── Scrollbar — thin, minimal ── */
+/* -- Scrollbar — thin, minimal -- */
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -90,7 +90,7 @@ textarea,
   background: var(--color-surface-2);
 }
 
-/* ── Focus Ring — soft blue glow ── */
+/* -- Focus Ring — soft blue glow -- */
 
 :focus-visible {
   outline: 2px solid color-mix(in srgb, var(--color-accent-blue) 50%, transparent);
@@ -98,7 +98,7 @@ textarea,
   border-radius: 4px;
 }
 
-/* ── Transitions — everything animates softly ── */
+/* -- Transitions — everything animates softly -- */
 
 button,
 a,

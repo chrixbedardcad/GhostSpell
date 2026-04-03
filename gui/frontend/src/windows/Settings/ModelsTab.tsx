@@ -216,10 +216,10 @@ function ModelCard({
           className={`relative shrink-0 transition-colors duration-200 ${
             m.enabled ? "bg-accent-blue" : "bg-surface-2"
           }`}
-          style={{ width: 32, height: 18, borderRadius: 9 }}
+          style={{ width: 40, height: 22, borderRadius: 11 }}
           title={m.is_default ? "Cannot disable the default model" : m.enabled ? "Disable" : "Enable"}
         >
-          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 14, height: 14, top: 2, left: m.enabled ? 16 : 2, transition: "left 200ms ease" }} />
+          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 18, height: 18, top: 2, left: m.enabled ? 20 : 2, transition: "left 200ms ease" }} />
         </button>
       </div>
     </div>
