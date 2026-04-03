@@ -2,4 +2,4 @@
 // Both the main app and the POC binary import this package.
 package version
 
-const Version = "0.95.1.315"
+const Version = "0.95.2.316"

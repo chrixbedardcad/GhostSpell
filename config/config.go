@@ -136,13 +136,22 @@ type Config struct {
 	// Set to false to force CPU-only inference.
 	GPUEnabled *bool `json:"gpu_enabled,omitempty"`
 
+	// WizardCompleted is set to true once the wizard finishes (or is skipped).
+	// When true, the wizard won't re-appear on next launch even if no provider is configured.
+	WizardCompleted bool `json:"wizard_completed,omitempty"`
+
 	LogLevel          string `json:"log_level"`
 	LogFile           string `json:"log_file"`
 	LastSeenVersion   string `json:"last_seen_version,omitempty"`
 }
 
-// NeedsSetup returns true if no usable provider is configured.
+// NeedsSetup returns true if the wizard should be shown.
+// The wizard shows on first launch (no providers AND wizard not yet completed).
+// Once the user completes or skips the wizard, it never re-appears.
 func NeedsSetup(cfg *Config) bool {
+	if cfg.WizardCompleted {
+		return false
+	}
 	return len(cfg.Providers) == 0
 }
 

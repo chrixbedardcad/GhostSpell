@@ -90,6 +90,22 @@ copy /y ghost.exe "release\ghost-windows-amd64.exe" >nul
 echo   Done.
 echo.
 
+:: --- Build NSIS installer (if makensis is available) ---
+where makensis >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   Building NSIS installer...
+    makensis /DVERSION=!VER! scripts\installer.nsi
+    if !errorlevel! equ 0 (
+        echo   GhostSpell-Setup.exe created.
+    ) else (
+        echo   WARNING: NSIS build failed. Continuing without installer.
+    )
+) else (
+    echo   NOTE: makensis not found — skipping NSIS installer.
+    echo   Install NSIS from https://nsis.sourceforge.io/ to build GhostSpell-Setup.exe
+)
+echo.
+
 :: --- Create tag + upload ---
 echo [3/3] Uploading to GitHub Release !TAG!...
 echo.

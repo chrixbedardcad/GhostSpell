@@ -4,13 +4,16 @@ import { ProviderLogo } from "@/components/logos/ProviderLogo";
 
 /**
  * Model selection step — choose AI provider.
- * Zen: clean cards, focused choices, no overwhelm.
+ * onNext(isLocal) — true if user downloaded a local model, false for cloud/skip.
+ * onSkip — skip without configuring any provider.
  */
 export function ModelStep({
   onNext,
+  onSkip,
   returnToSettings,
 }: {
-  onNext: () => void;
+  onNext: (isLocal: boolean) => void;
+  onSkip: () => void;
   returnToSettings: boolean;
 }) {
   const [downloading, setDownloading] = useState(false);
@@ -47,7 +50,7 @@ export function ModelStep({
       await goCall("saveModel", "GhostSpell Local", "local", "qwen3.5-2b", "");
       await goCall("setDefaultModel", "GhostSpell Local");
 
-      setTimeout(() => onNext(), 800);
+      setTimeout(() => onNext(true), 800);
     } else {
       setError(result || "Download failed");
       setStatus("");
@@ -68,7 +71,7 @@ export function ModelStep({
             await goCall("setRefreshToken", "chatgpt", data.refresh_token);
             await goCall("saveModel", "chatgpt", "chatgpt", "gpt-5-mini", "");
             await goCall("setDefaultModel", "chatgpt");
-            onNext();
+            onNext(false);
           }
         } catch { /* ignore */ }
       }
@@ -79,7 +82,7 @@ export function ModelStep({
     <div className="max-w-lg mx-auto py-4 space-y-4">
       <div className="text-center mb-4">
         <h2 className="text-lg font-semibold text-text">Choose Your AI</h2>
-        <p className="text-xs text-overlay-0 mt-1">Pick a model to get started. You can add more later.</p>
+        <p className="text-xs text-overlay-0 mt-1">Pick a model to get started, or skip and configure later.</p>
       </div>
 
       {/* Ghost-AI one-click */}
@@ -141,8 +144,20 @@ export function ModelStep({
       </div>
 
       <p className="text-[11px] text-overlay-0 text-center">
-        Cloud providers require an API key. You can configure them in Settings after setup.
+        Cloud providers require an API key. Configure in Settings after setup.
       </p>
+
+      {/* Skip */}
+      {!returnToSettings && (
+        <div className="text-center pt-2">
+          <button
+            onClick={onSkip}
+            className="text-xs text-overlay-0 hover:text-subtext-0 transition-colors"
+          >
+            Skip — I'll choose later in Settings
+          </button>
+        </div>
+      )}
     </div>
   );
 }

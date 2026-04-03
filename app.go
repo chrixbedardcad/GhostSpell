@@ -40,6 +40,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	// user changes hotkey bindings in Settings.
 	var hkMu sync.Mutex
 	var registeredHotkeys config.Hotkeys
+	var registeredPromptHotkeys []string // tracks per-skill hotkeys for change detection
 	var hotkeyReady bool
 	var refreshHotkeys func()
 	var reRegisterHotkeys func() // force re-register (after tray menu disrupts Carbon events)
@@ -567,6 +568,13 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					return // restart is handling the exit
 				}
 				slog.Warn("Wizard closed without completing setup — app running without model")
+
+				// Mark wizard as completed so it does not re-show on next launch.
+				mu.Lock()
+				cfg.WizardCompleted = true
+				mu.Unlock()
+				config.WriteDefault(configPath, cfg)
+
 				close(wizardDone) // unblock hotkey registration
 			},
 		)
@@ -729,6 +737,7 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 
 	// refreshHotkeys re-registers hotkeys when the user changes them in Settings.
 	// It stops the current hotkey manager, creates a new one, and starts listening.
+	// Compares both global hotkeys (action/cycle) and per-skill hotkeys.
 	refreshHotkeys = func() {
 		hkMu.Lock()
 		if !hotkeyReady {
@@ -737,8 +746,19 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		}
 		mu.Lock()
 		newHotkeys := cfg.Hotkeys
+		// Build a signature of per-skill hotkeys to detect changes.
+		var skillSig string
+		for _, p := range cfg.Prompts {
+			skillSig += p.Hotkey + ";"
+		}
 		mu.Unlock()
-		if newHotkeys == registeredHotkeys {
+
+		// Compare both global hotkeys and per-skill hotkeys.
+		var oldSkillSig string
+		for _, p := range registeredPromptHotkeys {
+			oldSkillSig += p + ";"
+		}
+		if newHotkeys == registeredHotkeys && skillSig == oldSkillSig {
 			hkMu.Unlock()
 			return
 		}
@@ -751,6 +771,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		hk = newHotkeyManager()
 		newMgr := hk
 		registeredHotkeys = newHotkeys
+		registeredPromptHotkeys = nil
+		mu.Lock()
+		for _, p := range cfg.Prompts {
+			registeredPromptHotkeys = append(registeredPromptHotkeys, p.Hotkey)
+		}
+		mu.Unlock()
 		hkMu.Unlock()
 
 		old.Stop()

@@ -1,8 +1,8 @@
 /**
  * Welcome step — introduces GhostSpell.
- * Zen: centered, calm, inviting.
+ * Zen: centered, calm, inviting. Clear skip option.
  */
-export function WelcomeStep({ onNext }: { onNext: () => void }) {
+export function WelcomeStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto py-8">
       <img src="/ghost-icon.png" alt="" className="w-20 h-20 mb-6 opacity-80" />
@@ -20,14 +20,23 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
         <Step num={3} text="GhostSpell replaces it with the improved version" />
       </div>
 
-      <button
-        onClick={onNext}
-        className="px-8 py-2.5 rounded-xl text-sm font-medium
-                   bg-accent-blue text-crust hover:bg-accent-blue/90
-                   transition-colors"
-      >
-        Get Started
-      </button>
+      <div className="space-y-3 w-full max-w-xs">
+        <button
+          onClick={onNext}
+          className="w-full px-8 py-2.5 rounded-xl text-sm font-medium
+                     bg-accent-blue text-crust hover:bg-accent-blue/90
+                     transition-colors"
+        >
+          Quick Setup
+        </button>
+        <button
+          onClick={onSkip}
+          className="w-full px-8 py-2 rounded-xl text-xs text-overlay-0
+                     hover:text-subtext-0 transition-colors"
+        >
+          Skip — I'll configure later in Settings
+        </button>
+      </div>
     </div>
   );
 }

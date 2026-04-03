@@ -9,6 +9,11 @@ export function ReadyStep() {
   const platform = usePlatform();
   const hotkey = platform === "darwin" ? "⌘G" : "Ctrl+G";
 
+  async function finish() {
+    await goCall("wizardComplete");
+    goCall("closeWindow");
+  }
+
   return (
     <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto py-8">
       <div className="text-5xl mb-6 opacity-80">👻</div>
@@ -26,12 +31,13 @@ export function ReadyStep() {
 
       <div className="w-full space-y-3 text-left mb-8">
         <Tip icon="💡" text="Press the hotkey twice to cancel an active request" />
-        <Tip icon="👻" text="Click the ghost indicator to switch prompts" />
+        <Tip icon="👻" text="Click the ghost indicator to switch skills" />
         <Tip icon="⚙️" text="Right-click the tray icon to access settings anytime" />
+        <Tip icon="🎤" text="Voice, GPU, and extra models can be added in Settings" />
       </div>
 
       <button
-        onClick={() => goCall("closeWindow")}
+        onClick={finish}
         className="px-8 py-2.5 rounded-xl text-sm font-medium
                    bg-accent-blue text-crust hover:bg-accent-blue/90
                    transition-colors"
