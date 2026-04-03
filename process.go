@@ -17,12 +17,16 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/keyboard"
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/screenshot"
+	"github.com/chrixbedardcad/GhostSpell/history"
 	"github.com/chrixbedardcad/GhostSpell/sound"
 	"github.com/chrixbedardcad/GhostSpell/stats"
 )
 
 // appStats is the global stats tracker, set from app.go.
 var appStats *stats.Stats
+
+// appHistory is the global action history (with full input/output text).
+var appHistory *history.History
 
 // appSTT is the global speech-to-text transcriber, set from app.go.
 var appSTT stt.Transcriber
@@ -363,26 +367,43 @@ func processMode(
 
 	// Helper to record stats non-intrusively.
 	recordStat := func(status, errMsg, output string) {
-		if appStats == nil {
-			return
+		if appStats != nil {
+			outWords := len(strings.Fields(output))
+			appStats.Record(stats.Entry{
+				Timestamp:  time.Now(),
+				Prompt:     promptName,
+				PromptIcon: promptIcon,
+				Provider:   respProvider,
+				Model:      respModel,
+				ModelLabel:  llmLabel,
+				InputChars:  len(cap.Text),
+				InputWords:  len(strings.Fields(cap.Text)),
+				OutputChars: len(output),
+				OutputWords: outWords,
+				DurationMs:  llmElapsed.Milliseconds(),
+				Status:      status,
+				Error:       errMsg,
+				Changed:     output != "" && strings.TrimSpace(output) != strings.TrimSpace(cap.Text),
+			})
 		}
-		outWords := len(strings.Fields(output))
-		appStats.Record(stats.Entry{
-			Timestamp:  time.Now(),
-			Prompt:     promptName,
-			PromptIcon: promptIcon,
-			Provider:   respProvider,
-			Model:      respModel,
-			ModelLabel:  llmLabel,
-			InputChars:  len(cap.Text),
-			InputWords:  len(strings.Fields(cap.Text)),
-			OutputChars: len(output),
-			OutputWords: outWords,
-			DurationMs:  llmElapsed.Milliseconds(),
-			Status:      status,
-			Error:       errMsg,
-			Changed:     output != "" && strings.TrimSpace(output) != strings.TrimSpace(cap.Text),
-		})
+		// Also record to history (with full text).
+		if appHistory != nil {
+			appHistory.Record(history.Entry{
+				Timestamp:  time.Now(),
+				Prompt:     promptName,
+				PromptIcon: promptIcon,
+				Provider:   respProvider,
+				Model:      respModel,
+				ModelLabel:  llmLabel,
+				Input:      cap.Text,
+				Output:     output,
+				InputLen:   len(cap.Text),
+				OutputLen:  len(output),
+				DurationMs: llmElapsed.Milliseconds(),
+				Status:     status,
+				Error:      errMsg,
+			})
+		}
 	}
 
 	if err != nil {

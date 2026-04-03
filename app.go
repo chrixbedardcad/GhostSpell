@@ -75,7 +75,12 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 	if debugState != nil {
 		settingsSvc.GetStatsFn = func() string { return appStats.GetSummary() }
 		settingsSvc.ClearStatsFn = func() { appStats.Clear() }
-		settingsSvc.GetHistoryFn = func(n int) string { return appStats.GetHistory(n) }
+		settingsSvc.GetHistoryFn = func(n int) string {
+			if appHistory != nil {
+				return appHistory.GetRecent(n)
+			}
+			return "[]"
+		}
 		settingsSvc.RecordStatFn = func(prompt, promptIcon, provider, model, label, status, errMsg, output string, inputChars, durationMs int) {
 			appStats.Record(stats.Entry{
 				Timestamp:  time.Now(),

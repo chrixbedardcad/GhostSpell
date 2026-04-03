@@ -20,6 +20,7 @@ import (
 	"github.com/chrixbedardcad/GhostSpell/mode"
 	"github.com/chrixbedardcad/GhostSpell/stt"
 	"github.com/chrixbedardcad/GhostSpell/sound"
+	"github.com/chrixbedardcad/GhostSpell/history"
 	"github.com/chrixbedardcad/GhostSpell/stats"
 )
 
@@ -208,8 +209,9 @@ func main() {
 	// Initialise the debug log system. Honours config's log_level on startup.
 	debugState = debuglog.New(configDir)
 
-	// Initialize usage stats tracker.
+	// Initialize usage stats tracker + action history.
 	appStats = stats.New(configDir)
+	appHistory = history.New(configDir)
 	debugState.InitFromConfig(cfg.LogLevel)
 
 	// GPU acceleration: default true, user can disable in Settings > General.
