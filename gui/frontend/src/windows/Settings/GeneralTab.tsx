@@ -169,13 +169,13 @@ export function GeneralTab() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Hotkey display */}
       <section>
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Activation
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 flex items-center gap-4">
+        <div className="bg-surface-0/30 rounded-xl p-6 flex items-center gap-4">
           <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
             {hotkey}
           </div>
@@ -188,14 +188,14 @@ export function GeneralTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Behavior
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 space-y-1">
+        <div className="bg-surface-0/30 rounded-xl p-6">
           <ToggleRow
             label="Sound Effects"
             description="Play sounds during processing"
             checked={sound}
             onChange={(v) => { setSound(v); saveField("setSoundEnabled", v); }}
           />
-          <div className="h-px bg-surface-0/50 my-2" />
+          <div className="h-px bg-surface-0/50 my-4" />
           <ToggleRow
             label="Preserve Clipboard"
             description="Restore clipboard contents after paste"
@@ -210,7 +210,7 @@ export function GeneralTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Input
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5">
+        <div className="bg-surface-0/30 rounded-xl p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Max Input Characters</p>
@@ -239,7 +239,7 @@ export function GeneralTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Ghost Indicator
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">Position</p>
@@ -291,7 +291,7 @@ export function GeneralTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           API Server
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl p-6 space-y-3">
           <ToggleRow
             label="Enable API Server"
             description="Expose GhostSpell over HTTP for CLI, Telegram, and integrations"

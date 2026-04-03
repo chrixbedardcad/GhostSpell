@@ -29,7 +29,7 @@ export function AboutTab() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* App identity */}
       <div className="text-center py-4">
         <img src="/ghost-icon.png" alt="" className="w-16 h-16 mx-auto mb-4 opacity-80" />

@@ -56,7 +56,7 @@ export function HelpTab() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* How It Works */}
       <section>
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">

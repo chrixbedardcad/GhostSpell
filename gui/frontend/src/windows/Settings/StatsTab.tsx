@@ -50,7 +50,7 @@ export function StatsTab() {
   const maxPromptCount = Math.max(1, ...prompts.map((p) => p.count));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Summary grid */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard label="Total Requests" value={String(total)} />

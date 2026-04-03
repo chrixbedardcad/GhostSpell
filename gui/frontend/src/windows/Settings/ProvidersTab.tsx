@@ -997,7 +997,7 @@ export function ProvidersTab() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Intro */}
       <div className="text-xs text-overlay-0 leading-relaxed">
         A <strong className="text-text">provider</strong> is the AI service that processes your text.
