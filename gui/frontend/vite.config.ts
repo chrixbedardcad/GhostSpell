@@ -33,8 +33,13 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    cssCodeSplit: false,
     rollupOptions: {
       input: "react.html",
+      output: {
+        // Don't add crossorigin attribute — breaks Wails embedded FS on some platforms.
+        manualChunks: undefined,
+      },
     },
   },
 });
