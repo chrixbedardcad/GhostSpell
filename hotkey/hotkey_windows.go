@@ -61,6 +61,7 @@ type WindowsManager struct {
 	hotkeys  map[string]registration
 	nextID   int
 	stopChan chan struct{}
+	doneChan chan struct{} // closed when Listen() fully exits
 	stopOnce sync.Once
 	threadID uint32
 }
@@ -71,7 +72,13 @@ func NewWindowsManager() *WindowsManager {
 		hotkeys:  make(map[string]registration),
 		nextID:   1,
 		stopChan: make(chan struct{}),
+		doneChan: make(chan struct{}),
 	}
+}
+
+// WaitDone blocks until Listen() has fully exited and unregistered all hotkeys.
+func (m *WindowsManager) WaitDone() {
+	<-m.doneChan
 }
 
 // parseKey converts a key string like "F7" or "Ctrl+F8" into modifier and vk code.
@@ -171,6 +178,8 @@ func (m *WindowsManager) Listen() error {
 			slog.Debug("Hotkey unregistered on listen exit", "name", name, "id", reg.id)
 		}
 		m.mu.Unlock()
+		// Signal that cleanup is complete — safe for a new manager to register.
+		close(m.doneChan)
 	}()
 
 	// Heartbeat goroutine — logs listener state every 5 minutes to confirm the

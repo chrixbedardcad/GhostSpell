@@ -780,8 +780,13 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 		hkMu.Unlock()
 
 		old.Stop()
-		// Brief pause for Windows to fully release the old RegisterHotKey IDs.
-		time.Sleep(100 * time.Millisecond)
+		// Wait for the old listener to fully exit and unregister all hotkeys.
+		// On Windows, RegisterHotKey fails if the old thread hasn't released IDs yet.
+		if wm, ok := old.(interface{ WaitDone() }); ok {
+			wm.WaitDone()
+		} else {
+			time.Sleep(200 * time.Millisecond)
+		}
 
 		restartHotkeyListener(newMgr, func() error {
 			return doRegister(newMgr)
