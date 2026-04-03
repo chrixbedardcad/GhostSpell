@@ -45,11 +45,9 @@ export function SettingsWindow() {
   const [defaultModel, setDefaultModel] = useState("");
   const [voiceModel, setVoiceModel] = useState("");
   const [gpuOn, setGpuOn] = useState(false);
-  const [platform, setPlatform] = useState("");
 
   useEffect(() => {
     goCall("getVersion").then((v) => { if (v) setVersion(v); });
-    goCall("getPlatform").then((p) => { if (p) setPlatform(p); });
     goCall("getConfig").then((raw) => {
       if (!raw) return;
       try {
@@ -68,34 +66,30 @@ export function SettingsWindow() {
     return acc;
   }, {});
 
-  const isWindows = platform === "windows";
-
   return (
     <div className="h-full flex flex-col bg-base">
-      {/* Custom title bar — Windows only (frameless window) */}
-      {isWindows && (
-        <div
-          className="flex items-center justify-between px-3 h-[32px] shrink-0 bg-crust border-b border-surface-0/30 select-none"
-          style={{ ["--wails-draggable" as string]: "drag" }}
-        >
-          <div className="flex items-center gap-2 text-[11px] text-overlay-0">
-            <img src="/dist/ghost-icon.png" alt="" className="w-4 h-4 opacity-70" />
-            <span>GhostSpell</span>
-            {version && <span className="text-overlay-0/50">v{version}</span>}
-          </div>
-          <div
-            className="flex items-center gap-1"
-            style={{ ["--wails-draggable" as string]: "no-drag" }}
-          >
-            <button
-              onClick={() => goCall("closeWindow")}
-              className="w-[28px] h-[22px] flex items-center justify-center rounded
-                         text-overlay-0 hover:text-white hover:bg-red-500/80 transition-colors text-[13px]"
-              title="Close"
-            >{"\u2715"}</button>
-          </div>
+      {/* Title bar — frameless window, draggable */}
+      <div
+        className="flex items-center justify-between px-4 h-[36px] shrink-0 bg-crust border-b border-surface-0/30 select-none"
+        style={{ ["--wails-draggable" as string]: "drag" }}
+      >
+        <div className="flex items-center gap-2 text-[11px] text-overlay-0">
+          <img src="/dist/ghost-icon.png" alt="" className="w-4 h-4 opacity-70" />
+          <span className="font-medium text-subtext-1">GhostSpell</span>
+          {version && <span className="text-overlay-0/50">v{version}</span>}
         </div>
-      )}
+        <div
+          className="flex items-center gap-1"
+          style={{ ["--wails-draggable" as string]: "no-drag" }}
+        >
+          <button
+            onClick={() => goCall("closeWindow")}
+            className="w-[28px] h-[24px] flex items-center justify-center rounded
+                       text-overlay-0 hover:text-white hover:bg-red-500/80 transition-colors text-[14px]"
+            title="Close"
+          >{"\u2715"}</button>
+        </div>
+      </div>
 
       {/* Main layout: sidebar + content */}
       <div className="flex-1 flex min-h-0">
@@ -148,9 +142,6 @@ export function SettingsWindow() {
             )}
             {!defaultModel && !voiceModel && (
               <div className="text-[10px] text-overlay-0/40 italic">No model configured</div>
-            )}
-            {!isWindows && version && (
-              <div className="text-[10px] text-overlay-0/40">v{version}</div>
             )}
           </div>
         </div>

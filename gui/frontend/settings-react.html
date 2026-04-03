@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+  body { background: #1e1e2e; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<!-- Wails runtime — MUST load before React so goCall works immediately. -->
+<script type="module" src="/wails/runtime.js"></script>
+<script>
+// Dynamically load the Vite-built React bundle (same pattern as indicator-react.html).
+// Fetch the built react.html to extract current JS/CSS filenames (content hashes change on each build).
+fetch("/dist/react.html")
+  .then(function(r) { return r.text(); })
+  .then(function(html) {
+    // Extract and inject inline <style> block (CSS is inlined into react.html by our Vite plugin).
+    var styleMatch = html.match(/<style>([\s\S]*?)<\/style>/);
+    if (styleMatch) {
+      var style = document.createElement("style");
+      style.textContent = styleMatch[1];
+      document.head.appendChild(style);
+    }
+    // Extract and load JS module.
+    var jsMatch = html.match(/src="(\/dist\/assets\/[^"]+\.js)"/);
+    if (jsMatch) {
+      var script = document.createElement("script");
+      script.type = "module";
+      script.src = jsMatch[1];
+      document.head.appendChild(script);
+    }
+  })
+  .catch(function(err) {
+    document.getElementById("root").innerHTML =
+      '<div style="padding:40px;color:#f38ba8;font-family:sans-serif">' +
+      '<h2>Failed to load React UI</h2><pre>' + err + '</pre></div>';
+  });
+</script>
+</body>
+</html>
