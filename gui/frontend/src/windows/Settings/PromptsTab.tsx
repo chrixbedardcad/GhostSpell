@@ -176,9 +176,10 @@ function PromptEditor({
         <label className="text-xs text-overlay-0">Enabled</label>
         <button
           onClick={() => update({ disabled: !p.disabled })}
-          className={`relative w-9 h-5 rounded-full transition-colors ${p.disabled ? "bg-surface-1" : "bg-accent-green/60"}`}
+          className={`relative shrink-0 transition-colors duration-200 ${p.disabled ? "bg-surface-2" : "bg-accent-green/60"}`}
+          style={{ width: 36, height: 20, borderRadius: 10 }}
         >
-          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${p.disabled ? "" : "translate-x-4"}`} />
+          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 16, height: 16, top: 2, left: p.disabled ? 2 : 18, transition: "left 200ms ease" }} />
         </button>
       </div>
 

@@ -213,14 +213,13 @@ function ModelCard({
         )}
         <button
           onClick={() => onToggle(!m.enabled)}
-          className={`relative w-8 h-[18px] rounded-full transition-colors ${
-            m.enabled ? "bg-accent-blue" : "bg-surface-1"
+          className={`relative shrink-0 transition-colors duration-200 ${
+            m.enabled ? "bg-accent-blue" : "bg-surface-2"
           }`}
+          style={{ width: 32, height: 18, borderRadius: 9 }}
           title={m.is_default ? "Cannot disable the default model" : m.enabled ? "Disable" : "Enable"}
         >
-          <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-text transition-transform ${
-            m.enabled ? "translate-x-[14px]" : "translate-x-[2px]"
-          }`} />
+          <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 14, height: 14, top: 2, left: m.enabled ? 16 : 2, transition: "left 200ms ease" }} />
         </button>
       </div>
     </div>

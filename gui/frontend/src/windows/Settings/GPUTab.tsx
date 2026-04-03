@@ -87,13 +87,12 @@ export function GPUTab() {
               </div>
               <button
                 onClick={() => toggleGPU(!gpuEnabled)}
-                className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-                  gpuEnabled ? "bg-accent-blue" : "bg-surface-1"
+                className={`relative shrink-0 transition-colors duration-200 ${
+                  gpuEnabled ? "bg-accent-blue" : "bg-surface-2"
                 }`}
+                style={{ width: 36, height: 20, borderRadius: 10 }}
               >
-                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-text transition-transform ${
-                  gpuEnabled ? "translate-x-4" : "translate-x-0.5"
-                }`} />
+                <span className="absolute bg-white rounded-full shadow-sm" style={{ width: 16, height: 16, top: 2, left: gpuEnabled ? 18 : 2, transition: "left 200ms ease" }} />
               </button>
             </div>
           </div>

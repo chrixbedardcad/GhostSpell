@@ -86,19 +86,25 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between py-2">
       <div>
-        <p className="text-sm text-text">{label}</p>
-        {description && <p className="text-xs text-overlay-0 mt-0.5">{description}</p>}
+        <p className="text-[13px] text-text">{label}</p>
+        {description && <p className="text-[11px] text-overlay-0 mt-0.5">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-          checked ? "bg-accent-blue" : "bg-surface-1"
+        className={`relative shrink-0 transition-colors duration-200 ${
+          checked ? "bg-accent-blue" : "bg-surface-2"
         }`}
+        style={{ width: 36, height: 20, borderRadius: 10 }}
       >
         <span
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-text transition-transform ${
-            checked ? "translate-x-4" : "translate-x-0.5"
-          }`}
+          className="absolute bg-white rounded-full shadow-sm"
+          style={{
+            width: 16,
+            height: 16,
+            top: 2,
+            left: checked ? 18 : 2,
+            transition: "left 200ms ease",
+          }}
         />
       </button>
     </div>
