@@ -297,6 +297,36 @@ export function VoiceTab() {
             )}
           </div>
 
+          {/* Recording level gauge */}
+          {testing && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                </span>
+                <span className="text-xs font-medium text-red-400">Recording...</span>
+              </div>
+              <div className="h-2 bg-crust rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-accent-blue via-accent-green to-accent-blue"
+                  style={{
+                    animation: "mic-pulse 1.2s ease-in-out infinite",
+                    width: "100%",
+                  }}
+                />
+              </div>
+              <style>{`
+                @keyframes mic-pulse {
+                  0%, 100% { transform: scaleX(0.2); transform-origin: left; opacity: 0.6; }
+                  25% { transform: scaleX(0.8); transform-origin: left; opacity: 1; }
+                  50% { transform: scaleX(0.4); transform-origin: left; opacity: 0.8; }
+                  75% { transform: scaleX(0.95); transform-origin: left; opacity: 1; }
+                }
+              `}</style>
+            </div>
+          )}
+
           {testResult && (
             <div className={`px-3 py-2 rounded-lg text-sm font-mono break-all ${
               testResult.startsWith("error")

@@ -152,6 +152,11 @@ export function PromptsTab() {
   );
 }
 
+const EMOJI_PICKER = [
+  "\u2728", "\u270F\uFE0F", "\uD83D\uDD04", "\uD83D\uDCDD", "\uD83D\uDE02", "\u2753", "\uD83D\uDCD6", "\uD83D\uDCCB", "\uD83C\uDFAF", "\uD83D\uDCA1",
+  "\uD83D\uDD0D", "\uD83C\uDF10", "\uD83C\uDFA4", "\uD83D\uDCF8", "\uD83E\uDDE0", "\u26A1", "\uD83D\uDD27", "\uD83D\uDCCA", "\uD83D\uDCAC", "\uD83D\uDDC2\uFE0F",
+];
+
 function PromptEditor({
   prompt: initial,
   modelLabels,
@@ -164,6 +169,7 @@ function PromptEditor({
   onDelete: () => void;
 }) {
   const [p, setP] = useState({ ...initial });
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   function update(field: Partial<Prompt>) {
     setP((prev) => ({ ...prev, ...field }));
@@ -172,8 +178,12 @@ function PromptEditor({
   return (
     <div className="px-4 pb-4 space-y-3 border-t border-surface-0/30">
       {/* Enable/Disable toggle */}
-      <div className="flex items-center justify-between pt-3">
-        <label className="text-xs text-overlay-0">Enabled</label>
+      <div className="flex items-center justify-between pt-3 pb-2 border-b border-surface-0/30">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-medium ${p.disabled ? "text-overlay-0" : "text-accent-green"}`}>
+            {p.disabled ? "Disabled" : "Enabled"}
+          </span>
+        </div>
         <button
           onClick={() => update({ disabled: !p.disabled })}
           className={`relative shrink-0 transition-colors duration-200 ${p.disabled ? "bg-surface-2" : "bg-accent-green/60"}`}
@@ -185,13 +195,31 @@ function PromptEditor({
 
       {/* Name + Icon */}
       <div className="flex gap-3">
-        <input
-          value={p.icon}
-          onChange={(e) => update({ icon: e.target.value })}
-          className="w-12 bg-crust border border-surface-0 rounded-lg px-2 py-1.5
-                     text-center text-lg focus:outline-none focus:border-accent-blue/50"
-          title="Emoji icon"
-        />
+        <div className="relative">
+          <button
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="w-12 h-[38px] bg-crust border border-surface-0 rounded-lg
+                       text-center text-lg hover:border-accent-blue/50 transition-colors
+                       focus:outline-none focus:border-accent-blue/50 cursor-pointer"
+            title="Pick an emoji"
+          >
+            {p.icon || "\uD83D\uDCDD"}
+          </button>
+          {showEmojiPicker && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-mantle border border-surface-0 rounded-lg p-2 shadow-lg
+                            grid grid-cols-5 gap-1 w-[180px]">
+              {EMOJI_PICKER.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => { update({ icon: emoji }); setShowEmojiPicker(false); }}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-0/60 transition-colors text-base"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input
           value={p.name}
           onChange={(e) => update({ name: e.target.value })}

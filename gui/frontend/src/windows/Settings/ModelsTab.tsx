@@ -78,11 +78,11 @@ export function ModelsTab() {
       {active && (
         <div className="bg-accent-green/5 border border-accent-green/20 rounded-xl p-4 flex items-center gap-4">
           <div className="flex items-center gap-1 shrink-0">
-            <ProviderLogo provider={active.provider} size={28} />
+            <ProviderLogo provider={active.provider} size={40} />
             {active.creator && active.creator !== active.provider && (
               <>
                 <span className="text-accent-blue text-xs mx-1">→</span>
-                <CreatorLogo creator={active.creator} size={28} />
+                <CreatorLogo creator={active.creator} size={40} />
               </>
             )}
           </div>
@@ -162,11 +162,11 @@ function ModelCard({
     >
       {/* Logos */}
       <div className="flex items-center gap-1 shrink-0">
-        <ProviderLogo provider={m.provider} size={24} />
+        <ProviderLogo provider={m.provider} size={36} />
         {creator && creator !== m.provider && (
           <>
             <span className="text-accent-blue/50 text-[10px] mx-0.5">→</span>
-            <CreatorLogo creator={creator} size={32} />
+            <CreatorLogo creator={creator} size={36} />
           </>
         )}
       </div>

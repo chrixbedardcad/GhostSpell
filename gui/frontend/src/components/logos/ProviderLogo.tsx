@@ -67,7 +67,7 @@ interface Props {
   className?: string;
 }
 
-export function ProviderLogo({ provider, size = 28, className }: Props) {
+export function ProviderLogo({ provider, size = 36, className }: Props) {
   const render = LOGOS[provider];
   if (!render) return null;
   return <span className={`inline-flex items-center justify-center shrink-0 ${className ?? ""}`}>{render(size)}</span>;

@@ -310,7 +310,7 @@ function LocalSection({
       <div className="bg-surface-0/30 rounded-xl p-5 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <ProviderLogo provider="local" size={28} />
+          <ProviderLogo provider="local" size={36} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-text">GhostSpell Local</span>
@@ -559,7 +559,7 @@ function CloudProviderCard({
     }`}>
       {/* Header */}
       <div className="flex items-center gap-3">
-        <ProviderLogo provider={type} size={24} />
+        <ProviderLogo provider={type} size={36} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-text">{name}</span>
@@ -827,7 +827,7 @@ function LocalProviderCard({
     }`}>
       {/* Header */}
       <div className="flex items-center gap-3">
-        <ProviderLogo provider={type} size={24} />
+        <ProviderLogo provider={type} size={36} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-text">{name}</span>

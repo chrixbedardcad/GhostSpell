@@ -34,25 +34,25 @@ export function HelpTab() {
   ];
 
   const defaultSkills = [
-    { name: "Correct",    desc: "Fix spelling and grammar" },
-    { name: "Polish",     desc: "Improve clarity and flow" },
-    { name: "Translate",  desc: "Translate to target language" },
-    { name: "Funny",      desc: "Rewrite with humor" },
-    { name: "Ask",        desc: "Answer a question about the text" },
-    { name: "Define",     desc: "Define a word or phrase" },
-    { name: "Summarize",  desc: "Condense text into key points" },
+    { icon: "\u270F\uFE0F", name: "Correct",    desc: "Fix spelling and grammar" },
+    { icon: "\u2728",       name: "Polish",     desc: "Improve clarity and flow" },
+    { icon: "\uD83C\uDF10", name: "Translate",  desc: "Translate to target language" },
+    { icon: "\uD83D\uDE02", name: "Funny",      desc: "Rewrite with humor" },
+    { icon: "\u2753",       name: "Ask",        desc: "Answer a question about the text" },
+    { icon: "\uD83D\uDCD6", name: "Define",     desc: "Define a word or phrase" },
+    { icon: "\uD83D\uDCCB", name: "Summarize",  desc: "Condense text into key points" },
   ];
 
   const tips = [
-    `Press ${hotkey} twice to cancel an active request.`,
-    "Click the ghost indicator to cycle between prompts.",
-    "Right-click the ghost indicator for a prompt menu.",
-    "Double-click the ghost indicator to open settings.",
-    "Vision prompts capture a screenshot instead of text.",
-    "Each prompt can use a different AI model -- set it in the Skills tab.",
-    "Voice mode records from your microphone and transcribes with Whisper.",
-    "Local models run entirely on your machine -- no data leaves your PC.",
-    "You can create custom skills with your own system prompts.",
+    { icon: "\u26A1", text: `Press ${hotkey} twice to cancel an active request.` },
+    { icon: "\uD83D\uDC7B", text: "Click the ghost indicator to cycle between prompts." },
+    { icon: "\uD83D\uDDB1\uFE0F", text: "Right-click the ghost indicator for a prompt menu." },
+    { icon: "\u2699\uFE0F", text: "Double-click the ghost indicator to open settings." },
+    { icon: "\uD83D\uDCF8", text: "Vision prompts capture a screenshot instead of text." },
+    { icon: "\uD83E\uDDE0", text: "Each prompt can use a different AI model -- set it in the Skills tab." },
+    { icon: "\uD83C\uDFA4", text: "Voice mode records from your microphone and transcribes with Whisper." },
+    { icon: "\uD83D\uDD12", text: "Local models run entirely on your machine -- no data leaves your PC." },
+    { icon: "\uD83D\uDD27", text: "You can create custom skills with your own system prompts." },
   ];
 
   return (
@@ -143,6 +143,7 @@ export function HelpTab() {
         <div className="bg-surface-0/30 rounded-xl p-5 space-y-2">
           {defaultSkills.map((skill) => (
             <div key={skill.name} className="flex items-baseline gap-3">
+              <span className="shrink-0 text-base">{skill.icon}</span>
               <span className="text-sm font-medium text-accent-blue shrink-0 w-20">{skill.name}</span>
               <span className="text-[13px] text-overlay-1">{skill.desc}</span>
             </div>
@@ -158,8 +159,8 @@ export function HelpTab() {
         <ul className="space-y-2">
           {tips.map((tip, i) => (
             <li key={i} className="flex gap-3 items-start">
-              <span className="shrink-0 text-overlay-0 text-[11px] mt-1">•</span>
-              <p className="text-[13px] text-overlay-1 leading-relaxed">{tip}</p>
+              <span className="shrink-0 text-base mt-0.5">{tip.icon}</span>
+              <p className="text-[13px] text-overlay-1 leading-relaxed">{tip.text}</p>
             </li>
           ))}
         </ul>
