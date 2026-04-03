@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { goCall } from "@/bridge";
+import { useState, useEffect, useCallback } from "react";
+import { goCall, onEvent } from "@/bridge";
 import { AboutTab } from "./AboutTab";
 import { GeneralTab } from "./GeneralTab";
 import { ModelsTab } from "./ModelsTab";
@@ -47,15 +47,13 @@ export function SettingsWindow() {
   const [voiceModel, setVoiceModel] = useState("");
   const [gpuOn, setGpuOn] = useState(false);
 
-  useEffect(() => {
-    goCall("getVersion").then((v) => { if (v) setVersion(v); });
+  const refreshStatus = useCallback(() => {
     goCall("getConfig").then((raw) => {
       if (!raw) return;
       try {
         const cfg = JSON.parse(raw);
         const label = cfg.default_model || "";
         setLlmLabel(label);
-        // Resolve the actual model name from the models map.
         if (label && cfg.models && cfg.models[label]) {
           setLlmModel(cfg.models[label].model || "");
         }
@@ -64,6 +62,14 @@ export function SettingsWindow() {
       } catch { /* ignore */ }
     });
   }, []);
+
+  useEffect(() => {
+    goCall("getVersion").then((v) => { if (v) setVersion(v); });
+    refreshStatus();
+    // Listen for config changes (GPU toggle, model change, etc.)
+    const unsub = onEvent("configChanged", refreshStatus);
+    return unsub;
+  }, [refreshStatus]);
 
   const groups = NAV.reduce<Record<string, NavItem[]>>((acc, item) => {
     const g = item.group || "";

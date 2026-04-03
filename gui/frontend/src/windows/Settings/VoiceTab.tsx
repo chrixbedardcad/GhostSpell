@@ -234,7 +234,7 @@ export function VoiceTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Voice Model
         </h2>
-        <div className="bg-surface-0/30 rounded-xl p-5 space-y-2">
+        <div className="bg-surface-0/30 rounded-xl p-5 space-y-3">
           {WHISPER_MODELS.map((wm) => {
             const downloaded = isDownloaded(wm.name);
             const isActive = activeModel === wm.name;

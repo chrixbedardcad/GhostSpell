@@ -125,7 +125,7 @@ export function ModelsTab() {
       </div>
 
       {/* Model list */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {filtered.map((m) => (
           <ModelCard
             key={`${m.provider}-${m.model}`}

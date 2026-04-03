@@ -1013,8 +1013,8 @@ export function ProvidersTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Other Local Providers
         </h2>
-        <p className="text-xs text-overlay-0 mb-3">Free, private -- your text never leaves your machine.</p>
-        <div className="space-y-4">
+        <p className="text-xs text-overlay-0 mb-4">Free, private -- your text never leaves your machine.</p>
+        <div className="space-y-5">
           {LOCAL_PROVIDERS.map((type) => (
             <LocalProviderCard
               key={type}
@@ -1031,10 +1031,10 @@ export function ProvidersTab() {
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
           Cloud Providers
         </h2>
-        <p className="text-xs text-overlay-0 mb-3">
+        <p className="text-xs text-overlay-0 mb-4">
           Faster, smarter models -- requires an account or API key. Text is sent to the provider's servers.
         </p>
-        <div className="space-y-4">
+        <div className="space-y-5">
           {CLOUD_PROVIDERS.map((type) => (
             <CloudProviderCard
               key={type}
