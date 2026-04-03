@@ -123,7 +123,7 @@ func ShowSettings(svc *SettingsService, cfg *config.Config, configPath string, o
 
 	guiLog("[GUI] Creating settings window on running tray app...")
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:     "GhostSpell Settings",
+		Title:     " ",
 		Width:     760,
 		Height:    780,
 		URL:       "/dist/react.html?window=settings",

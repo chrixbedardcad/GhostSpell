@@ -80,13 +80,10 @@ export function SettingsWindow() {
     <div className="h-full flex bg-base">
       {/* Sidebar */}
       <div className="w-[180px] shrink-0 bg-crust border-r border-surface-0/40 flex flex-col">
-        {/* Logo */}
+        {/* Logo + version */}
         <div className="px-4 pt-4 pb-3 flex items-center gap-2">
           <img src="/dist/ghost-icon.png" alt="" className="w-6 h-6 opacity-80" />
-          <div>
-            <div className="text-[12px] font-semibold text-subtext-1">GhostSpell</div>
-            {version && <div className="text-[10px] text-overlay-0">v{version}</div>}
-          </div>
+          {version && <span className="text-[10px] text-overlay-0">v{version}</span>}
         </div>
 
         {/* Navigation */}
