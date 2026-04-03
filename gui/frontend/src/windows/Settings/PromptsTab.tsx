@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { goCall } from "@/bridge";
 import { Badge } from "@/components/ui/Badge";
+import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 
 interface Prompt {
   name: string;
@@ -152,10 +153,7 @@ export function PromptsTab() {
   );
 }
 
-const EMOJI_PICKER = [
-  "\u2728", "\u270F\uFE0F", "\uD83D\uDD04", "\uD83D\uDCDD", "\uD83D\uDE02", "\u2753", "\uD83D\uDCD6", "\uD83D\uDCCB", "\uD83C\uDFAF", "\uD83D\uDCA1",
-  "\uD83D\uDD0D", "\uD83C\uDF10", "\uD83C\uDFA4", "\uD83D\uDCF8", "\uD83E\uDDE0", "\u26A1", "\uD83D\uDD27", "\uD83D\uDCCA", "\uD83D\uDCAC", "\uD83D\uDDC2\uFE0F",
-];
+// emoji-picker-react is dynamically imported only when user clicks the icon button.
 
 function PromptEditor({
   prompt: initial,
@@ -170,9 +168,27 @@ function PromptEditor({
 }) {
   const [p, setP] = useState({ ...initial });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiRef = useRef<HTMLDivElement>(null);
 
   function update(field: Partial<Prompt>) {
     setP((prev) => ({ ...prev, ...field }));
+  }
+
+  // Close emoji picker on outside click.
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    function onClickOutside(e: MouseEvent) {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [showEmojiPicker]);
+
+  function onEmojiClick(data: EmojiClickData) {
+    update({ icon: data.emoji });
+    setShowEmojiPicker(false);
   }
 
   return (
@@ -180,7 +196,7 @@ function PromptEditor({
       {/* Enable/Disable toggle */}
       <div className="flex items-center justify-between pt-3 pb-2 border-b border-surface-0/30">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${p.disabled ? "text-overlay-0" : "text-accent-green"}`}>
+          <span className={`text-[13px] font-medium ${p.disabled ? "text-overlay-0" : "text-accent-green"}`}>
             {p.disabled ? "Disabled" : "Enabled"}
           </span>
         </div>
@@ -195,28 +211,28 @@ function PromptEditor({
 
       {/* Name + Icon */}
       <div className="flex gap-3">
-        <div className="relative">
+        <div className="relative" ref={emojiRef}>
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             className="w-12 h-[38px] bg-crust border border-surface-0 rounded-lg
-                       text-center text-lg hover:border-accent-blue/50 transition-colors
+                       text-center text-xl hover:border-accent-blue/50 transition-colors
                        focus:outline-none focus:border-accent-blue/50 cursor-pointer"
             title="Pick an emoji"
           >
             {p.icon || "\uD83D\uDCDD"}
           </button>
           {showEmojiPicker && (
-            <div className="absolute top-full left-0 mt-1 z-50 bg-mantle border border-surface-0 rounded-lg p-2 shadow-lg
-                            grid grid-cols-5 gap-1 w-[180px]">
-              {EMOJI_PICKER.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => { update({ icon: emoji }); setShowEmojiPicker(false); }}
-                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-0/60 transition-colors text-base"
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className="absolute top-full left-0 mt-1 z-50" style={{ width: 350, height: 400 }}>
+              <EmojiPicker
+                onEmojiClick={onEmojiClick}
+                theme={Theme.DARK}
+                width={350}
+                height={400}
+                searchPlaceHolder="Search emoji..."
+                previewConfig={{ showPreview: false }}
+                skinTonesDisabled
+                lazyLoadEmojis
+              />
             </div>
           )}
         </div>
