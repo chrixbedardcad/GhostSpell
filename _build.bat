@@ -691,6 +691,16 @@ if !GHOSTAI!==1 (
 )
 set CGO_ENABLED=1
 
+:: Embed Windows version info + icon into the exe.
+where goversioninfo >nul 2>&1
+if !errorlevel! neq 0 (
+    go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest 2>nul
+)
+where goversioninfo >nul 2>&1
+if !errorlevel! equ 0 (
+    goversioninfo -64
+)
+
 go build -tags "!MAIN_TAGS!" -ldflags "-H=windowsgui" -o ghostspell.exe .
 if !errorlevel! neq 0 (
     if !GHOSTAI!==1 (
