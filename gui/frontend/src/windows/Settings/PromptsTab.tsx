@@ -222,7 +222,7 @@ function PromptEditor({
             {p.icon || "\uD83D\uDCDD"}
           </button>
           {showEmojiPicker && (
-            <div className="absolute top-full left-0 mt-1 z-50" style={{ width: 350, height: 400 }}>
+            <div className="absolute bottom-full left-0 mb-1 z-50" style={{ width: 350, height: 400 }}>
               <EmojiPicker
                 onEmojiClick={onEmojiClick}
                 theme={Theme.DARK}
