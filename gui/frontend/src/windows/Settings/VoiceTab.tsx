@@ -37,6 +37,13 @@ export function VoiceTab() {
   const [testingSample, setTestingSample] = useState(false);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Live mic test state (Web Audio API — browser-side, no Go backend)
+  const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const [micError, setMicError] = useState("");
+  const micBarRef = useRef<HTMLDivElement>(null);
+  const micCtxRef = useRef<AudioContext | null>(null);
+  const micAnimRef = useRef<number | null>(null);
+
   // Load voice status and config on mount
   useEffect(() => {
     loadStatus();
@@ -161,9 +168,63 @@ export function VoiceTab() {
     setTestingSample(false);
   }
 
-  // Build display list from WHISPER_MODELS + downloaded state
+  // Live mic test — real-time audio level using Web Audio API.
+  async function startLiveMic() {
+    setMicError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicStream(stream);
+      const ctx = new AudioContext();
+      micCtxRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      function update() {
+        if (!micBarRef.current) return;
+        analyser.getByteFrequencyData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length;
+        const pct = Math.min(100, Math.round((avg / 128) * 100));
+        micBarRef.current.style.width = pct + "%";
+        micBarRef.current.style.background = pct > 60
+          ? "linear-gradient(90deg, #a6e3a1, #f9e2af, #f38ba8)"
+          : "linear-gradient(90deg, #a6e3a1, #89b4fa)";
+        micAnimRef.current = requestAnimationFrame(update);
+      }
+      update();
+    } catch {
+      setMicError("No mic access");
+    }
+  }
+
+  function stopLiveMic() {
+    if (micStream) {
+      micStream.getTracks().forEach((t) => t.stop());
+      setMicStream(null);
+    }
+    if (micCtxRef.current) { micCtxRef.current.close(); micCtxRef.current = null; }
+    if (micAnimRef.current) { cancelAnimationFrame(micAnimRef.current); micAnimRef.current = null; }
+    if (micBarRef.current) micBarRef.current.style.width = "0%";
+  }
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => { stopLiveMic(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Build display list from WHISPER_MODELS + downloaded state.
+  // A model is "downloaded" if it appears in the voiceStatus models list.
   function isDownloaded(name: string): boolean {
-    return models.some((m) => m.name === name && m.downloaded);
+    // Check the models array from voiceStatus
+    if (models.some((m) => m.name === name && m.downloaded)) return true;
+    // Also treat the active model as downloaded (it must be to be active).
+    if (name === activeModel) return true;
+    return false;
   }
 
   return (
@@ -267,10 +328,47 @@ export function VoiceTab() {
         </div>
       </section>
 
-      {/* Test Microphone */}
+      {/* Live Mic Test */}
       <section>
         <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
-          Test Microphone
+          Live Microphone
+        </h2>
+        <div className="bg-surface-0/30 rounded-xl p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (micStream) { stopLiveMic(); } else { startLiveMic(); }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                micStream
+                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  : "bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25"
+              }`}
+            >
+              {micStream ? "\u23F9 Stop" : "\uD83C\uDFA4 Test Mic"}
+            </button>
+            <div className="flex-1 h-4 bg-crust rounded-full overflow-hidden">
+              <div
+                ref={micBarRef}
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: "0%",
+                  background: "linear-gradient(90deg, #a6e3a1, #89b4fa)",
+                  transition: "width 50ms",
+                }}
+              />
+            </div>
+            <span className="text-[11px] text-overlay-0 min-w-[60px] text-right">
+              {micStream ? "Listening..." : micError || "Ready"}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Voice Test */}
+      <section>
+        <h2 className="text-sm font-medium text-subtext-1 mb-4 tracking-wide uppercase">
+          Voice Transcription Test
         </h2>
         <div className="bg-surface-0/30 rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-3">
@@ -281,7 +379,7 @@ export function VoiceTab() {
                          bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25
                          disabled:opacity-40 transition-colors"
             >
-              {testing ? "Recording..." : "Test Mic"}
+              {testing ? "Recording 3s..." : "Test Voice"}
             </button>
             <button
               onClick={testSample}
@@ -293,44 +391,27 @@ export function VoiceTab() {
               {testingSample ? "Testing..." : "Test Sample"}
             </button>
             {!activeModel && (
-              <span className="text-xs text-overlay-0">Select a voice model first</span>
+              <span className="text-xs text-overlay-0 italic">Select a voice model first</span>
             )}
           </div>
 
-          {/* Recording level gauge */}
+          {/* Recording indicator */}
           {testing && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-3 w-3 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-                </span>
-                <span className="text-xs font-medium text-red-400">Recording...</span>
-              </div>
-              <div className="h-2 bg-crust rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-accent-blue via-accent-green to-accent-blue"
-                  style={{
-                    animation: "mic-pulse 1.2s ease-in-out infinite",
-                    width: "100%",
-                  }}
-                />
-              </div>
-              <style>{`
-                @keyframes mic-pulse {
-                  0%, 100% { transform: scaleX(0.2); transform-origin: left; opacity: 0.6; }
-                  25% { transform: scaleX(0.8); transform-origin: left; opacity: 1; }
-                  50% { transform: scaleX(0.4); transform-origin: left; opacity: 0.8; }
-                  75% { transform: scaleX(0.95); transform-origin: left; opacity: 1; }
-                }
-              `}</style>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              <span className="text-xs text-red-400">Recording from microphone...</span>
             </div>
           )}
 
           {testResult && (
-            <div className={`px-3 py-2 rounded-lg text-sm font-mono break-all ${
+            <div className={`px-3 py-2 rounded-lg text-[12px] break-all ${
               testResult.startsWith("error")
                 ? "bg-red-500/10 text-red-400"
+                : testResult === "" || testResult === "No response"
+                ? "bg-yellow-500/10 text-yellow-400"
                 : "bg-green-500/10 text-green-400"
             }`}>
               {testResult}
