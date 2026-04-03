@@ -124,12 +124,12 @@ export function HotkeysTab() {
         <p className="text-xs text-overlay-0 mb-3">
           Assign a direct hotkey to any skill. Pressing it selects and triggers the skill instantly.
         </p>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {prompts.map((p, i) => {
             if (p.disabled) return null;
             const id = `skill_${i}`;
             return (
-              <div key={i} className="bg-surface-0/30 rounded-xl px-4 py-3 flex items-center justify-between">
+              <div key={i} className="bg-surface-0/30 rounded-xl px-4 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{p.icon || "⚡"}</span>
                   <span className="text-sm text-text">{p.name}</span>
