@@ -22,8 +22,9 @@ function copyStaticAssets() {
   };
 }
 
-// Inline CSS into HTML — Wails' embedded FS doesn't reliably serve .css files.
-// This makes the HTML self-contained: no external CSS request needed.
+// Inline CSS into HTML and unwrap @layer blocks for WebView2 compatibility.
+// Tailwind v4 generates CSS cascade layers (@layer) which some WebView2 versions
+// don't fully support. Unwrapping extracts the rules into plain CSS.
 function inlineCSSPlugin() {
   return {
     name: "inline-css-into-html",
@@ -42,11 +43,15 @@ function inlineCSSPlugin() {
       const cssFiles = readdirSync(assetsDir).filter((f) => f.endsWith(".css"));
       for (const cssFile of cssFiles) {
         const cssPath = path.resolve(assetsDir, cssFile);
-        const css = readFileSync(cssPath, "utf-8");
+        let css = readFileSync(cssPath, "utf-8");
+
+        // Unwrap @layer blocks — extract content, discard the @layer wrapper.
+        // This fixes WebView2 compatibility where @layer rules are ignored.
+        css = unwrapLayers(css);
 
         // Remove the <link> tag referencing this CSS
         const linkPattern = new RegExp(
-          `<link[^>]*href="/dist/assets/${cssFile.replace(".", "\\.")}"[^>]*>`,
+          `<link[^>]*href="/dist/assets/${cssFile.replace(/\./g, "\\.")}"[^>]*>`,
           "g"
         );
         html = html.replace(linkPattern, "");
@@ -56,9 +61,39 @@ function inlineCSSPlugin() {
       }
 
       writeFileSync(htmlPath, html);
-      console.log(`  Inlined ${cssFiles.length} CSS file(s) into react.html`);
+      console.log(`  Inlined ${cssFiles.length} CSS file(s) into react.html (layers unwrapped)`);
     },
   };
+}
+
+// Unwrap @layer declarations — replace "@layer name { ... }" with just "..."
+// Handles nested braces correctly.
+function unwrapLayers(css: string): string {
+  let result = "";
+  let i = 0;
+  while (i < css.length) {
+    // Check for @layer
+    if (css.startsWith("@layer", i)) {
+      // Find the opening brace
+      const braceStart = css.indexOf("{", i);
+      if (braceStart === -1) { result += css.slice(i); break; }
+      // Extract content between balanced braces
+      let depth = 1;
+      let j = braceStart + 1;
+      while (j < css.length && depth > 0) {
+        if (css[j] === "{") depth++;
+        else if (css[j] === "}") depth--;
+        j++;
+      }
+      // Inner content (without the outer braces)
+      result += css.slice(braceStart + 1, j - 1);
+      i = j;
+    } else {
+      result += css[i];
+      i++;
+    }
+  }
+  return result;
 }
 
 export default defineConfig({
