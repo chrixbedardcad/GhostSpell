@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { goCall } from "@/bridge";
 import { Badge } from "@/components/ui/Badge";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
@@ -211,7 +212,7 @@ function PromptEditor({
 
       {/* Name + Icon */}
       <div className="flex gap-3">
-        <div className="relative" ref={emojiRef}>
+        <div ref={emojiRef}>
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             className="w-12 h-[38px] bg-crust border border-surface-0 rounded-lg
@@ -221,19 +222,26 @@ function PromptEditor({
           >
             {p.icon || "\uD83D\uDCDD"}
           </button>
-          {showEmojiPicker && (
-            <div className="absolute bottom-full left-0 mb-1 z-50" style={{ width: 350, height: 400 }}>
-              <EmojiPicker
-                onEmojiClick={onEmojiClick}
-                theme={Theme.DARK}
-                width={350}
-                height={400}
-                searchPlaceHolder="Search emoji..."
-                previewConfig={{ showPreview: false }}
-                skinTonesDisabled
-                lazyLoadEmojis
-              />
-            </div>
+          {showEmojiPicker && createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex items-center justify-center"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShowEmojiPicker(false); }}
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <EmojiPicker
+                  onEmojiClick={onEmojiClick}
+                  theme={Theme.DARK}
+                  width={350}
+                  height={420}
+                  searchPlaceHolder="Search emoji..."
+                  previewConfig={{ showPreview: false }}
+                  skinTonesDisabled
+                  lazyLoadEmojis
+                />
+              </div>
+            </div>,
+            document.body
           )}
         </div>
         <input
