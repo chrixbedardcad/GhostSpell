@@ -49,7 +49,7 @@ export function GPUTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           GPU Detection
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text">{gpu.name || "No GPU detected"}</p>
@@ -76,7 +76,7 @@ export function GPUTab() {
           <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
             Acceleration
           </h2>
-          <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+          <div className="bg-surface-0/30 rounded-xl px-6 py-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text">Enable GPU Acceleration</p>
@@ -104,7 +104,7 @@ export function GPUTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           How It Works
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3 text-xs text-overlay-1">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-3 text-xs text-overlay-1">
           <p>
             GPU acceleration offloads AI model layers to your graphics card,
             making local inference 5-10x faster than CPU-only mode.

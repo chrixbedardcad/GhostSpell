@@ -234,7 +234,7 @@ export function VoiceTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Voice Model
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-3">
           {WHISPER_MODELS.map((wm) => {
             const downloaded = isDownloaded(wm.name);
             const isActive = activeModel === wm.name;
@@ -333,7 +333,7 @@ export function VoiceTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Live Microphone
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -370,7 +370,7 @@ export function VoiceTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Voice Transcription Test
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-4">
           <div className="flex items-center gap-3">
             <button
               onClick={testMic}
@@ -425,7 +425,7 @@ export function VoiceTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Settings
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5">
           <div className="flex items-center justify-between py-2">
             <div>
               <p className="text-sm text-text">Keep Model Loaded</p>

@@ -84,10 +84,10 @@ function ToggleRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-1">
       <div>
-        <p className="text-[13px] font-medium text-text">{label}</p>
-        {description && <p className="text-[11px] text-overlay-0 mt-0.5">{description}</p>}
+        <p className="text-[13px] font-semibold text-text">{label}</p>
+        {description && <p className="text-[11px] text-overlay-0/80 mt-1 leading-relaxed">{description}</p>}
       </div>
       <button
         onClick={() => onChange(!checked)}
@@ -175,7 +175,7 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Activation
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 flex items-center gap-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 flex items-center gap-4">
           <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
             {hotkey}
           </div>
@@ -188,8 +188,8 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Behavior
         </h2>
-        <div className="space-y-3">
-          <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+        <div className="space-y-4">
+          <div className="bg-surface-0/25 rounded-xl px-6 py-5">
             <ToggleRow
               label="Sound Effects"
               description="Play sounds during processing"
@@ -197,7 +197,7 @@ export function GeneralTab() {
               onChange={(v) => { setSound(v); saveField("setSoundEnabled", v); }}
             />
           </div>
-          <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+          <div className="bg-surface-0/25 rounded-xl px-6 py-5">
             <ToggleRow
               label="Preserve Clipboard"
               description="Restore clipboard contents after paste"
@@ -213,10 +213,10 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Input
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-text">Max Input Characters</p>
+              <p className="text-[13px] font-semibold text-text">Max Input Characters</p>
               <p className="text-xs text-overlay-0 mt-0.5">Limit text length sent to AI</p>
             </div>
             <div className="w-36">
@@ -242,10 +242,10 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Ghost Indicator
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-text">Position</p>
+              <p className="text-[13px] font-semibold text-text">Position</p>
               <p className="text-xs text-overlay-0 mt-0.5">Where the ghost appears on screen</p>
             </div>
             <div className="w-40">
@@ -271,7 +271,7 @@ export function GeneralTab() {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-text">Visibility</p>
+              <p className="text-[13px] font-semibold text-text">Visibility</p>
               <p className="text-xs text-overlay-0 mt-0.5">When to show the ghost</p>
             </div>
             <div className="w-40">
@@ -294,7 +294,7 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           API Server
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4 space-y-3">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5 space-y-3">
           <ToggleRow
             label="Enable API Server"
             description="Expose GhostSpell over HTTP for CLI, Telegram, and integrations"
@@ -317,7 +317,7 @@ export function GeneralTab() {
               {/* Status indicator */}
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <p className="text-sm text-text">Status</p>
+                  <p className="text-[13px] font-semibold text-text">Status</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${apiRunning ? "bg-green-400" : "bg-overlay-0"}`} />
@@ -332,7 +332,7 @@ export function GeneralTab() {
               {/* Address field */}
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <p className="text-sm text-text">Listen Address</p>
+                  <p className="text-[13px] font-semibold text-text">Listen Address</p>
                   <p className="text-xs text-overlay-0 mt-0.5">Restart toggle to apply changes</p>
                 </div>
                 <input
@@ -351,7 +351,7 @@ export function GeneralTab() {
               {/* Test button */}
               <div className="flex items-center justify-between py-1">
                 <div>
-                  <p className="text-sm text-text">Quick Test</p>
+                  <p className="text-[13px] font-semibold text-text">Quick Test</p>
                   <p className="text-xs text-overlay-0 mt-0.5">Send "helo wrld" through Correct skill</p>
                 </div>
                 <button

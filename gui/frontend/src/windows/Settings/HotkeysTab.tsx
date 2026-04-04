@@ -203,7 +203,7 @@ export function HotkeysTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Quick Reference
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-6 py-4">
+        <div className="bg-surface-0/30 rounded-xl px-6 py-5">
           <div className="space-y-0">
             <RefRow left="Cancel active request" right={"Press " + formatKey(actionKey) + " again"} />
             <RefRow left="Undo result" right={formatKey("Ctrl+Z")} />
@@ -225,7 +225,7 @@ function HotkeyRow({ label, description, keys, capturing, onCapture }: {
   onCapture: () => void;
 }) {
   return (
-    <div className="bg-surface-0/30 rounded-xl px-6 py-4 flex items-center justify-between">
+    <div className="bg-surface-0/30 rounded-xl px-6 py-5 flex items-center justify-between">
       <div>
         <p className="text-[14px] font-medium text-text">{label}</p>
         <p className="text-[12px] text-overlay-0 mt-1">{description}</p>
