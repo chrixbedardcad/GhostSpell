@@ -140,7 +140,7 @@ export function HelpTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Default Skills
         </h2>
-        <div className="bg-surface-0/30 rounded-xl px-5 py-4 space-y-2">
+        <div className="bg-surface-0/20 border border-surface-0/40 rounded-xl px-5 py-3.5 space-y-2">
           {defaultSkills.map((skill) => (
             <div key={skill.name} className="flex items-baseline gap-3">
               <span className="shrink-0 text-base">{skill.icon}</span>

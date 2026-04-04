@@ -50,7 +50,7 @@ export function AboutTab() {
       </div>
 
       {/* Update check */}
-      <section className="bg-surface-0/30 rounded-xl px-5 py-4">
+      <section className="bg-surface-0/20 border border-surface-0/40 rounded-xl px-5 py-3.5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-text">Updates</h3>
