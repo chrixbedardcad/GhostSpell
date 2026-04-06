@@ -8,6 +8,7 @@ import { goCall, openURL } from "@/bridge";
 export function AboutTab() {
   const [version, setVersion] = useState("");
   const [updateStatus, setUpdateStatus] = useState("");
+  const [updateURL, setUpdateURL] = useState("");
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -17,13 +18,24 @@ export function AboutTab() {
   async function checkUpdate() {
     setChecking(true);
     setUpdateStatus("");
-    const result = await goCall("checkForUpdate");
-    if (result === "up-to-date") {
-      setUpdateStatus("You're up to date.");
-    } else if (result && result.startsWith("update:")) {
-      setUpdateStatus(`Update available: ${result.replace("update:", "")}`);
-    } else {
-      setUpdateStatus(result ?? "Check failed.");
+    const raw = await goCall("checkForUpdate");
+    if (!raw) {
+      setUpdateStatus("Check failed.");
+      setChecking(false);
+      return;
+    }
+    try {
+      const data = JSON.parse(raw);
+      if (data.error) {
+        setUpdateStatus(`Check failed: ${data.error}`);
+      } else if (data.has_update) {
+        setUpdateStatus(`Update available: v${data.latest}`);
+        setUpdateURL(data.url || "");
+      } else {
+        setUpdateStatus("You're up to date.");
+      }
+    } catch {
+      setUpdateStatus("Check failed.");
     }
     setChecking(false);
   }
@@ -55,7 +67,20 @@ export function AboutTab() {
           <div>
             <h3 className="text-sm font-medium text-text">Updates</h3>
             {updateStatus && (
-              <p className="text-xs text-overlay-0 mt-1">{updateStatus}</p>
+              <p className={`text-xs mt-1 ${updateURL ? "text-accent-green" : "text-overlay-0"}`}>
+                {updateStatus}
+                {updateURL && (
+                  <>
+                    {" — "}
+                    <button
+                      onClick={() => openURL(updateURL)}
+                      className="text-accent-blue hover:text-accent-blue/80 underline transition-colors"
+                    >
+                      Download
+                    </button>
+                  </>
+                )}
+              </p>
             )}
           </div>
           <button
