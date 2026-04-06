@@ -148,11 +148,7 @@ Section "Install" SecInstall
   WriteRegDWORD ${UNINST_ROOT_KEY} "${UNINST_KEY}" "EstimatedSize" $0
 
   ; Add to user PATH.
-  nsExec::ExecToLog 'powershell -NoProfile -Command "\
-    $$p = [Environment]::GetEnvironmentVariable(\"PATH\",\"User\"); \
-    if ($$p -notlike \"*$INSTDIR*\") { \
-      [Environment]::SetEnvironmentVariable(\"PATH\",\"$$p;$INSTDIR\",\"User\") \
-    }"'
+  nsExec::ExecToLog 'powershell -NoProfile -Command "$$p = [Environment]::GetEnvironmentVariable(\"PATH\",\"User\"); if ($$p -notlike \"*$INSTDIR*\") { [Environment]::SetEnvironmentVariable(\"PATH\",\"$$p;$INSTDIR\",\"User\") }"'
 
 SectionEnd
 
@@ -196,12 +192,7 @@ Section "Uninstall"
   DeleteRegKey ${UNINST_ROOT_KEY} "${UNINST_KEY}"
 
   ; Remove from user PATH.
-  nsExec::ExecToLog 'powershell -NoProfile -Command "\
-    $$p = [Environment]::GetEnvironmentVariable(\"PATH\",\"User\"); \
-    if ($$p -like \"*$INSTDIR*\") { \
-      $$new = ($$p -split \";\" | Where-Object { $$_ -ne \"$INSTDIR\" }) -join \";\"; \
-      [Environment]::SetEnvironmentVariable(\"PATH\",$$new,\"User\") \
-    }"'
+  nsExec::ExecToLog 'powershell -NoProfile -Command "$$p = [Environment]::GetEnvironmentVariable(\"PATH\",\"User\"); if ($$p -like \"*$INSTDIR*\") { $$new = ($$p -split \";\" | Where-Object { $$_ -ne \"$INSTDIR\" }) -join \";\"; [Environment]::SetEnvironmentVariable(\"PATH\",$$new,\"User\") }"'
 
   ; Note: config + models in %APPDATA%\GhostSpell are intentionally preserved.
   ; The user can delete them manually if they want a full wipe.

@@ -439,10 +439,16 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 			// for the 3-second process stop timeout).
 			oldRouter := router
 			router = nil
+			if appEngine != nil {
+				appEngine.SetRouter(nil)
+			}
 			if cfg.DefaultModel != "" {
 				client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
 				if clientErr == nil {
 					router = mode.NewRouter(cfg, client)
+					if appEngine != nil {
+						appEngine.SetRouter(router)
+					}
 					initErr = nil
 					slog.Info("Router created after settings save", "model", cfg.DefaultModel)
 				} else {
@@ -558,6 +564,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				}
 
 				router = mode.NewRouter(cfg, client)
+				if appEngine != nil {
+					appEngine.SetRouter(router)
+				}
 				sound.Init(*cfg.SoundEnabled)
 				sound.PlayStart()
 
@@ -621,6 +630,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 				client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
 				if clientErr == nil {
 					router = mode.NewRouter(cfg, client)
+					if appEngine != nil {
+						appEngine.SetRouter(router)
+					}
 					localRouter = router
 					slog.Info("Router recovered on hotkey press", "model", cfg.DefaultModel)
 				} else {
@@ -717,6 +729,9 @@ func runApp(cfg *config.Config, router *mode.Router, configPath string, needsSet
 					client, clientErr := newClientFromConfig(cfg, cfg.DefaultModel)
 					if clientErr == nil {
 						router = mode.NewRouter(cfg, client)
+						if appEngine != nil {
+							appEngine.SetRouter(router)
+						}
 						localRouter = router
 					}
 				}
