@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { goCall, openURL } from "@/bridge";
 
 /**
@@ -10,14 +10,22 @@ export function AboutTab() {
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateURL, setUpdateURL] = useState("");
   const [checking, setChecking] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updatePhase, setUpdatePhase] = useState("");
+  const [updatePercent, setUpdatePercent] = useState(0);
+  const [updateError, setUpdateError] = useState("");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     goCall("getVersion").then((v) => v && setVersion(v));
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
   async function checkUpdate() {
     setChecking(true);
     setUpdateStatus("");
+    setUpdateURL("");
+    setUpdateError("");
     const raw = await goCall("checkForUpdate");
     if (!raw) {
       setUpdateStatus("Check failed.");
@@ -38,6 +46,39 @@ export function AboutTab() {
       setUpdateStatus("Check failed.");
     }
     setChecking(false);
+  }
+
+  async function doUpdate() {
+    setUpdating(true);
+    setUpdateError("");
+    setUpdatePhase("starting");
+    setUpdatePercent(0);
+
+    const result = await goCall("updateNow");
+    if (result && result.startsWith("error")) {
+      setUpdateError(result);
+      setUpdating(false);
+      return;
+    }
+
+    // Poll progress.
+    pollRef.current = setInterval(async () => {
+      const raw = await goCall("getUpdateProgress");
+      if (!raw) return;
+      try {
+        const p = JSON.parse(raw);
+        setUpdatePhase(p.phase || "");
+        setUpdatePercent(p.percent || 0);
+        if (p.error) {
+          setUpdateError(p.error);
+          setUpdating(false);
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+        if (p.phase === "restarting") {
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      } catch { /* ignore */ }
+    }, 500);
   }
 
   return (
@@ -69,37 +110,59 @@ export function AboutTab() {
             {updateStatus && (
               <p className={`text-xs mt-1 ${updateURL ? "text-accent-green" : "text-overlay-0"}`}>
                 {updateStatus}
-                {updateURL && (
-                  <>
-                    {" — "}
-                    <button
-                      onClick={() => openURL(updateURL)}
-                      className="text-accent-blue hover:text-accent-blue/80 underline transition-colors"
-                    >
-                      Download
-                    </button>
-                  </>
-                )}
               </p>
             )}
+            {updateError && (
+              <p className="text-xs mt-1 text-red-400">{updateError}</p>
+            )}
           </div>
-          <button
-            onClick={checkUpdate}
-            disabled={checking}
-            className="px-4 py-1.5 rounded-lg text-xs font-medium
-                       bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25
-                       disabled:opacity-50 transition-colors"
-          >
-            {checking ? "Checking..." : "Check for Updates"}
-          </button>
+          <div className="flex items-center gap-2">
+            {updateURL && !updating && (
+              <button
+                onClick={doUpdate}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium
+                           bg-accent-green/15 text-accent-green hover:bg-accent-green/25
+                           transition-colors"
+              >
+                Update Now
+              </button>
+            )}
+            <button
+              onClick={checkUpdate}
+              disabled={checking || updating}
+              className="px-4 py-1.5 rounded-lg text-xs font-medium
+                         bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25
+                         disabled:opacity-50 transition-colors"
+            >
+              {checking ? "Checking..." : "Check for Updates"}
+            </button>
+          </div>
         </div>
+
+        {/* Update progress */}
+        {updating && (
+          <div className="mt-3">
+            <div className="w-full bg-surface-1 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-400 to-green-400 rounded-full transition-all duration-300"
+                style={{ width: `${Math.max(2, updatePercent)}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-overlay-0 mt-1 capitalize">
+              {updatePhase === "downloading" ? `Downloading... ${updatePercent.toFixed(0)}%` :
+               updatePhase === "installing" ? "Installing..." :
+               updatePhase === "restarting" ? "Restarting..." :
+               updatePhase || "Starting..."}
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Open source licenses */}
       <details className="group">
         <summary className="text-xs font-medium text-overlay-0 cursor-pointer
                           flex items-center gap-2 hover:text-subtext-0 transition-colors">
-          <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
+          <span className="text-[10px] transition-transform group-open:rotate-90">&#9654;</span>
           Open Source Licenses
         </summary>
         <div className="mt-3 space-y-3 text-xs text-overlay-1 leading-relaxed">

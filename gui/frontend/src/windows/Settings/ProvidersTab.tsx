@@ -168,6 +168,7 @@ function LocalSection({
   const [testResult, setTestResult] = useState("");
   const [testing, setTesting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [modelsExpanded, setModelsExpanded] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Currently selected local model from config
@@ -364,8 +365,14 @@ function LocalSection({
 
         {/* Model list */}
         <div>
-          <p className="text-xs text-overlay-0 mb-2">Models</p>
-          {loading ? (
+          <button
+            onClick={() => setModelsExpanded(!modelsExpanded)}
+            className="flex items-center gap-2 text-xs text-overlay-0 hover:text-subtext-0 transition-colors w-full text-left mb-2"
+          >
+            <span className={`text-[10px] transition-transform ${modelsExpanded ? "rotate-90" : ""}`}>&#9654;</span>
+            Models {!loading && localModels.length > 0 && <span className="text-[10px]">({localModels.length})</span>}
+          </button>
+          {modelsExpanded && (loading ? (
             <p className="text-xs text-overlay-0 py-4 text-center">Loading...</p>
           ) : localModels.length === 0 ? (
             <p className="text-xs text-overlay-0 py-4 text-center">No models available.</p>
@@ -476,7 +483,7 @@ function LocalSection({
                 );
               })}
             </div>
-          )}
+          ))}
         </div>
       </div>
     </section>
@@ -732,6 +739,7 @@ function LocalProviderCard({
   const [testResult, setTestResult] = useState("");
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(config ? !config.disabled : false);
+  const [modelsExpanded, setModelsExpanded] = useState(false);
 
   const isConfigured = !!config;
   const name = PROVIDER_NAMES[type] || type;
@@ -888,27 +896,35 @@ function LocalProviderCard({
       {/* Ollama installed models */}
       {type === "ollama" && provStatus === "running" && ollamaModels.length > 0 && (
         <div>
-          <p className="text-xs text-overlay-0 mb-2">Installed Models</p>
-          <div className="space-y-1">
-            {ollamaModels.map((m) => {
-              const meta = [m.parameter_size, m.quantization_level, m.size_human].filter(Boolean).join(" - ");
-              return (
-                <div key={m.name} className="flex items-center justify-between bg-crust border border-surface-0 rounded-lg px-3 py-2">
-                  <div>
-                    <span className="text-xs text-text">{m.name}</span>
-                    {meta && <span className="text-[10px] text-overlay-0 ml-2">{meta}</span>}
+          <button
+            onClick={() => setModelsExpanded(!modelsExpanded)}
+            className="flex items-center gap-2 text-xs text-overlay-0 hover:text-subtext-0 transition-colors w-full text-left mb-2"
+          >
+            <span className={`text-[10px] transition-transform ${modelsExpanded ? "rotate-90" : ""}`}>&#9654;</span>
+            Installed Models <span className="text-[10px]">({ollamaModels.length})</span>
+          </button>
+          {modelsExpanded && (
+            <div className="space-y-1">
+              {ollamaModels.map((m) => {
+                const meta = [m.parameter_size, m.quantization_level, m.size_human].filter(Boolean).join(" - ");
+                return (
+                  <div key={m.name} className="flex items-center justify-between bg-crust border border-surface-0 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="text-xs text-text">{m.name}</span>
+                      {meta && <span className="text-[10px] text-overlay-0 ml-2">{meta}</span>}
+                    </div>
+                    <button
+                      onClick={() => selectOllamaModel(m.name)}
+                      className="px-2 py-1 rounded text-[10px] font-medium
+                                 bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 transition-colors"
+                    >
+                      Select
+                    </button>
                   </div>
-                  <button
-                    onClick={() => selectOllamaModel(m.name)}
-                    className="px-2 py-1 rounded text-[10px] font-medium
-                               bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/20 transition-colors"
-                  >
-                    Select
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
