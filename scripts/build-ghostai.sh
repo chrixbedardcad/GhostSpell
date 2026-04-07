@@ -88,10 +88,10 @@ case "$(uname -s)" in
         ;;
     MINGW*|MSYS*)
         WIN_FLAGS="-D_WIN32_WINNT=0x0A00"
-        # CUDA + MSVC: build shared DLLs (CGo links via MinGW import libs).
+        # CUDA + MSVC: build static libraries (CUDA embedded in ghostai.exe).
         # Non-CUDA: static .a with MinGW GCC.
         if command -v nvcc &>/dev/null && command -v cl &>/dev/null; then
-            echo "  CUDA + MSVC detected — building shared DLLs"
+            echo "  CUDA + MSVC detected — building static libraries"
             HAS_CUDA=1
             # Remove MinGW from PATH so cmake finds MSVC, not GCC.
             SAVED_PATH="$PATH"
@@ -105,10 +105,11 @@ case "$(uname -s)" in
                 -DGGML_VULKAN=OFF
                 -DGGML_METAL=OFF
                 -DGGML_OPENMP=ON
+                -DGGML_STATIC=ON
                 -DLLAMA_BUILD_TESTS=OFF
                 -DLLAMA_BUILD_EXAMPLES=OFF
                 -DLLAMA_BUILD_SERVER=OFF
-                -DBUILD_SHARED_LIBS=ON
+                -DBUILD_SHARED_LIBS=OFF
                 -DGGML_NATIVE=OFF
                 -DGGML_AVX=ON
                 -DGGML_AVX2=ON

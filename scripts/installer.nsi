@@ -120,18 +120,6 @@ Section "Install" SecInstall
     File "..\release\ghost-windows-amd64.exe"
     Rename "$INSTDIR\ghost-windows-amd64.exe" "$INSTDIR\ghost.exe"
 
-  ; CUDA/llama.cpp DLLs (optional, for GPU acceleration).
-  IfFileExists "..\release\ggml-cuda.dll" 0 +2
-    File "..\release\ggml-cuda.dll"
-  IfFileExists "..\release\ggml.dll" 0 +2
-    File "..\release\ggml.dll"
-  IfFileExists "..\release\ggml-cpu.dll" 0 +2
-    File "..\release\ggml-cpu.dll"
-  IfFileExists "..\release\ggml-base.dll" 0 +2
-    File "..\release\ggml-base.dll"
-  IfFileExists "..\release\llama.dll" 0 +2
-    File "..\release\llama.dll"
-
   ; Create uninstaller.
   WriteUninstaller "$INSTDIR\${UNINSTALLER}"
 
@@ -189,11 +177,6 @@ Section "Uninstall"
   Delete "$INSTDIR\ghostai.exe"
   Delete "$INSTDIR\ghostvoice.exe"
   Delete "$INSTDIR\ghost.exe"
-  Delete "$INSTDIR\ggml-cuda.dll"
-  Delete "$INSTDIR\ggml.dll"
-  Delete "$INSTDIR\ggml-cpu.dll"
-  Delete "$INSTDIR\ggml-base.dll"
-  Delete "$INSTDIR\llama.dll"
   Delete "$INSTDIR\${UNINSTALLER}"
   RMDir "$INSTDIR"
 

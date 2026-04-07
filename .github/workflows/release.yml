@@ -160,7 +160,7 @@ jobs:
                 -lstdc++ -lm -lpthread
               ;;
             windows)
-              # MSVC + CUDA build: link ghostai against CUDA-enabled llama.cpp DLLs.
+              # MSVC + CUDA: statically link everything into ghostai.exe (no DLLs).
               cl //O2 //EHsc //std:c++17 //MD //openmp \
                 //I"$LLAMA_OUT/include" \
                 ghostai/main.cpp \
@@ -172,8 +172,6 @@ jobs:
                 llama.lib ggml.lib ggml-cpu.lib ggml-base.lib ggml-cuda.lib \
                 cudart_static.lib cublas.lib cublasLt.lib cuda.lib \
                 advapi32.lib
-              # Copy llama.cpp DLLs for distribution alongside ghostai.exe.
-              cp "$LLAMA_OUT/bin/"*.dll . 2>/dev/null || true
               ;;
           esac
       - name: Build ghost CLI
@@ -263,8 +261,6 @@ jobs:
             ghostai-*
             ghostvoice*
             ghost-*
-            ggml*.dll
-            llama*.dll
       - uses: actions/upload-artifact@v4
         if: matrix.goos == 'darwin'
         with:
