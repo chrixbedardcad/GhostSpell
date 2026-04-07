@@ -91,9 +91,9 @@ export function HistoryTab() {
         </button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {entries.map((e, i) => (
-          <div key={i} className="bg-surface-0/30 rounded-xl overflow-hidden">
+          <div key={i} className="bg-surface-0/30 rounded-xl overflow-hidden border border-surface-0/20">
             {/* Summary row — click to expand */}
             <button
               onClick={() => toggle(i)}
