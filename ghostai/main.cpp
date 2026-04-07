@@ -335,8 +335,26 @@ static completion_result complete(
 
 static int run_daemon(const char *model_path, int n_threads, int gpu_layers,
                       int context_size, int batch_size) {
-    // Suppress llama.cpp log spam in daemon mode.
-    llama_log_set([](enum ggml_log_level, const char *, void *) {}, nullptr);
+    // Log GPU/backend info to stderr, suppress verbose spam.
+    llama_log_set([](enum ggml_log_level level, const char *text, void *) {
+        if (!text) return;
+        // Only pass through CUDA/GPU/backend/error messages.
+        if (level == GGML_LOG_LEVEL_ERROR) {
+            fprintf(stderr, "%s", text);
+        } else {
+            std::string s(text);
+            if (s.find("CUDA") != std::string::npos ||
+                s.find("Vulkan") != std::string::npos ||
+                s.find("Metal") != std::string::npos ||
+                s.find("GPU") != std::string::npos ||
+                s.find("gpu") != std::string::npos ||
+                s.find("offload") != std::string::npos ||
+                s.find("VRAM") != std::string::npos ||
+                s.find("backend") != std::string::npos) {
+                fprintf(stderr, "%s", text);
+            }
+        }
+    }, nullptr);
 
     struct llama_model_params mparams = llama_model_default_params();
     mparams.n_gpu_layers = gpu_layers;

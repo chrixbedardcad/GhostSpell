@@ -482,6 +482,20 @@ func systemRAMGB() int {
 		}
 		bytes, _ := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
 		return int(bytes / (1024 * 1024 * 1024))
+	case "windows":
+		out, err := exec.Command("wmic", "ComputerSystem", "get", "TotalPhysicalMemory", "/value").Output()
+		if err != nil {
+			return 0
+		}
+		for _, line := range strings.Split(string(out), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "TotalPhysicalMemory=") {
+				val := strings.TrimPrefix(line, "TotalPhysicalMemory=")
+				bytes, _ := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+				return int(bytes / (1024 * 1024 * 1024))
+			}
+		}
+		return 0
 	default:
 		return 0
 	}
