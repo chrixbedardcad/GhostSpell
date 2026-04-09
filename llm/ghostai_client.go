@@ -259,9 +259,13 @@ func (c *GhostAIClient) startDaemon(gpuEnabled bool) error {
 	scanner.Buffer(make([]byte, 256*1024), 256*1024)
 
 	if !scanner.Scan() {
+		// Daemon's stdout closed before sending a ready line. The process
+		// either failed to start, crashed immediately, or exited cleanly
+		// without writing. Capture exit code + stderr tail so this is
+		// diagnosable in user bug reports instead of a bare error string.
 		cmd.Process.Kill()
-		cmd.Wait()
-		return fmt.Errorf("ghost-ai: daemon did not send ready message")
+		waitErr := cmd.Wait()
+		return fmt.Errorf("ghost-ai: daemon did not send ready message%s", daemonFailureContext(waitErr))
 	}
 
 	readyLine := scanner.Text()
@@ -271,12 +275,12 @@ func (c *GhostAIClient) startDaemon(gpuEnabled bool) error {
 	}
 	if err := json.Unmarshal([]byte(readyLine), &ready); err != nil || !ready.Ready {
 		cmd.Process.Kill()
-		cmd.Wait()
+		waitErr := cmd.Wait()
 		errMsg := ready.Error
 		if errMsg == "" {
 			errMsg = "daemon failed to load model"
 		}
-		return fmt.Errorf("ghost-ai: %s", errMsg)
+		return fmt.Errorf("ghost-ai: %s%s", errMsg, daemonFailureContext(waitErr))
 	}
 
 	c.proc = cmd
@@ -362,6 +366,67 @@ func openGhostAILog() (*os.File, error) {
 	}
 	fmt.Fprintf(f, "\n=== ghostai %s started at %s ===\n", "daemon", time.Now().Format(time.RFC3339))
 	return f, nil
+}
+
+// ghostAILogPath returns the on-disk path for the ghostai stderr log.
+func ghostAILogPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "GhostSpell", "ghostai.log")
+}
+
+// tailGhostAILog returns the last n bytes of ghostai.log, or "" if unreadable.
+// Used to surface stderr context when the daemon fails to start.
+func tailGhostAILog(n int64) string {
+	path := ghostAILogPath()
+	if path == "" {
+		return ""
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return ""
+	}
+	offset := int64(0)
+	if info.Size() > n {
+		offset = info.Size() - n
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return ""
+	}
+	buf := make([]byte, info.Size()-offset)
+	rd, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return ""
+	}
+	return strings.TrimSpace(string(buf[:rd]))
+}
+
+// daemonFailureContext builds a human-readable suffix describing why the
+// daemon process exited (exit code + tail of stderr log). Empty if there's
+// nothing useful to add.
+func daemonFailureContext(waitErr error) string {
+	var parts []string
+	if waitErr != nil {
+		if exitErr, ok := waitErr.(*exec.ExitError); ok {
+			parts = append(parts, fmt.Sprintf("exit %d", exitErr.ExitCode()))
+		} else {
+			parts = append(parts, waitErr.Error())
+		}
+	}
+	if tail := tailGhostAILog(2048); tail != "" {
+		parts = append(parts, fmt.Sprintf("ghostai.log tail:\n%s", tail))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(parts, "; ") + ")"
 }
 
 // findGhostAI locates the ghostai binary.
