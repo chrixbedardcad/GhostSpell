@@ -43,13 +43,23 @@ func (s *SettingsService) SubmitBugReport(description string) string {
 	sys := sysinfo.Collect()
 
 	// Build provider list (names only, no keys).
+	// Use cfgCopy if Settings is open; otherwise fall back to the live config
+	// (the tray menu's "Report a Bug..." calls this without opening Settings).
 	var providers []string
 	var defaultModel string
-	if s.cfgCopy != nil {
-		for name := range s.cfgCopy.Providers {
+	cfg := s.cfgCopy
+	if cfg == nil && s.liveCfg != nil {
+		if s.liveMu != nil {
+			s.liveMu.Lock()
+			defer s.liveMu.Unlock()
+		}
+		cfg = s.liveCfg
+	}
+	if cfg != nil {
+		for name := range cfg.Providers {
 			providers = append(providers, name)
 		}
-		defaultModel = s.cfgCopy.DefaultModel
+		defaultModel = cfg.DefaultModel
 	}
 
 	// Collect log tail.
