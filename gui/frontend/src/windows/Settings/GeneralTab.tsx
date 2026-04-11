@@ -124,6 +124,10 @@ export function GeneralTab() {
   const [indicatorMode, setIndicatorMode] = useState("processing");
   const [hotkey, setHotkey] = useState("Ctrl+G");
 
+  // Active skill state
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [prompts, setPrompts] = useState<{ name: string; icon: string; disabled: boolean }[]>([]);
+
   // API server state
   const [apiEnabled, setApiEnabled] = useState(false);
   const [apiAddr, setApiAddr] = useState("127.0.0.1:7878");
@@ -159,6 +163,11 @@ export function GeneralTab() {
         setHotkey(platform === "darwin" ? hk.replace("Ctrl", "⌘") : hk);
         setApiEnabled(cfg.api_enabled ?? false);
         setApiAddr(cfg.api_addr || "127.0.0.1:7878");
+        // Active skill
+        setActiveIdx(cfg.active_prompt ?? 0);
+        setPrompts((cfg.prompts || []).map((p: { name: string; icon: string; disabled: boolean }) => ({
+          name: p.name, icon: p.icon, disabled: p.disabled,
+        })));
       } catch { /* ignore */ }
     });
     refreshAPIStatus();
@@ -175,11 +184,39 @@ export function GeneralTab() {
         <h2 className="text-[11px] font-semibold text-overlay-0 mb-4 uppercase tracking-widest">
           Activation
         </h2>
-        <div className="bg-surface-0/20 border border-surface-0/40 rounded-xl px-5 py-3.5 flex items-center gap-4">
-          <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
-            {hotkey}
+        <div className="bg-surface-0/20 border border-surface-0/40 rounded-xl px-5 py-3.5 space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1.5 rounded-lg bg-crust border border-surface-0 text-sm font-mono text-accent-blue">
+              {hotkey}
+            </div>
+            <p className="text-xs text-overlay-0">Select text and press to activate</p>
           </div>
-          <p className="text-xs text-overlay-0">Select text and press to activate</p>
+
+          {prompts.length > 0 && (
+            <>
+              <div className="h-px bg-surface-0/50" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-semibold text-text">Active Skill</p>
+                  <p className="text-xs text-overlay-0 mt-0.5">The skill that runs when you press the hotkey</p>
+                </div>
+                <div className="w-52">
+                  <Dropdown
+                    value={String(activeIdx)}
+                    onChange={async (v) => {
+                      const idx = parseInt(v);
+                      setActiveIdx(idx);
+                      await goCall("setActivePromptFromIndicator", idx);
+                    }}
+                    options={prompts.map((p, i) => ({
+                      value: String(i),
+                      label: `${p.icon || "\uD83D\uDCDD"} ${p.name}${p.disabled ? " (disabled)" : ""}`,
+                    }))}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

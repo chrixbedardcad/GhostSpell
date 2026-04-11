@@ -479,8 +479,19 @@ func (s *SettingsService) TestProviderConnection(providerType string) string {
 		return "error: provider not found"
 	}
 
-	// Pick a default model for this provider type.
-	model := defaultTestModel(providerType)
+	// Prefer the user's actual saved model for this provider type.
+	// Fall back to a hardcoded default only if no model has been saved yet
+	// (e.g. during the wizard's setup page, before SaveModel has been called).
+	var model string
+	for _, me := range s.cfgCopy.Models {
+		if me.Provider == providerType && me.Model != "" {
+			model = me.Model
+			break
+		}
+	}
+	if model == "" {
+		model = defaultTestModel(providerType)
+	}
 	if model == "" {
 		return "error: no known test model for provider"
 	}
