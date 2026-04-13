@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { goCall } from "@/bridge";
 
-interface VoiceModel {
+// Matches the JSON shape returned by Go's SettingsService.VoiceStatus().
+interface VoiceModelStatus {
   name: string;
-  downloaded: boolean;
-  active: boolean;
-  size_mb: number;
+  file_name: string;
+  size: number;
+  tag: string;
+  desc: string;
+  installed: boolean;
 }
 
 interface DownloadProgress {
@@ -27,7 +30,7 @@ const WHISPER_MODELS: { name: string; label: string; desc: string }[] = [
  * Voice tab -- voice/STT model management, mic test, keep-alive toggle.
  */
 export function VoiceTab() {
-  const [models, setModels] = useState<VoiceModel[]>([]);
+  const [models, setModels] = useState<VoiceModelStatus[]>([]);
   const [activeModel, setActiveModel] = useState("");
   const [keepAlive, setKeepAlive] = useState(false);
   const [downloading, setDownloading] = useState("");
@@ -55,23 +58,14 @@ export function VoiceTab() {
 
   async function loadStatus() {
     const raw = await goCall("voiceStatus");
-    if (raw) {
-      try {
-        const st = JSON.parse(raw);
-        if (st.models) setModels(st.models);
-        if (st.active_model) setActiveModel(st.active_model);
-      } catch { /* ignore */ }
-    }
-    // Also try available models list
-    const avail = await goCall("voiceAvailableModels");
-    if (avail) {
-      try {
-        const list = JSON.parse(avail);
-        if (Array.isArray(list)) {
-          setModels(list);
-        }
-      } catch { /* ignore */ }
-    }
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      // VoiceStatus returns a bare JSON array on success, or {error: "..."} on failure.
+      if (Array.isArray(parsed)) {
+        setModels(parsed);
+      }
+    } catch { /* ignore */ }
   }
 
   async function loadConfig() {
@@ -116,18 +110,22 @@ export function VoiceTab() {
     setProgress(0);
     startProgressPolling();
     const result = await goCall("voiceDownloadModel", name);
-    // Download might complete synchronously for small models
-    if (result && !result.startsWith("error")) {
-      stopProgressPolling();
-      setDownloading("");
-      setProgress(0);
-      loadStatus();
-    } else if (result?.startsWith("error")) {
+    if (result?.startsWith("error")) {
       stopProgressPolling();
       setDownloading("");
       setProgress(0);
       setTestResult(result);
+      return;
     }
+    stopProgressPolling();
+    setDownloading("");
+    setProgress(0);
+    await loadStatus();
+    // Auto-activate the freshly downloaded model. Downloading is an explicit
+    // user action and the natural intent is "use this one" — matches the
+    // wizard flow and avoids a dead state where a model is on disk but the
+    // active config still points at a missing file.
+    await selectModel(name);
   }
 
   async function cancelDownload() {
@@ -217,14 +215,12 @@ export function VoiceTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Build display list from WHISPER_MODELS + downloaded state.
-  // A model is "downloaded" if it appears in the voiceStatus models list.
+  // A model is "downloaded" only if its file actually exists on disk.
+  // The active model field in config is not a reliable signal — it can point
+  // at a model that was never downloaded (e.g. a fresh install with the
+  // default whisper-base set but no model file present).
   function isDownloaded(name: string): boolean {
-    // Check the models array from voiceStatus
-    if (models.some((m) => m.name === name && m.downloaded)) return true;
-    // Also treat the active model as downloaded (it must be to be active).
-    if (name === activeModel) return true;
-    return false;
+    return models.some((m) => m.name === name && m.installed);
   }
 
   return (
