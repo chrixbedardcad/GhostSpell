@@ -76,6 +76,28 @@ Scripts only download from official GitHub releases — inspect them at [`script
 </details>
 
 <details>
+<summary>Windows: install fails with "access denied"</summary>
+
+The installer only writes inside your own user profile (`%LOCALAPPDATA%\GhostSpell\`)
+and never needs administrator rights, so an "access denied" is Windows blocking
+the write locally, not a permission problem with GitHub or the install location.
+Running the installer as administrator does **not** help.
+
+The installer prints the exact step and path that was refused. Common causes:
+
+| Cause | Fix |
+|-------|-----|
+| Antivirus / Microsoft Defender flagged the unsigned `.exe` | In an **admin** PowerShell: `Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\GhostSpell"`, then re-run the installer |
+| Controlled Folder Access (ransomware protection) | Windows Security > Virus & threat protection > Ransomware protection > Manage > allow PowerShell, or turn it off briefly |
+| GhostSpell already running and holding `ghostspell.exe` open | Quit it from the system tray, then re-run |
+| Managed / work computer blocks scripted installs | Use the [manual download](https://github.com/chrixbedardcad/GhostSpell/releases/latest) instead |
+
+If only a shortcut or PATH step failed, the installer warns and continues —
+GhostSpell is installed and you can launch it from `%LOCALAPPDATA%\GhostSpell\ghostspell.exe`.
+
+</details>
+
+<details>
 <summary>Check latest version</summary>
 
 macOS / Linux:
