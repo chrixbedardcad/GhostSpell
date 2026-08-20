@@ -74,7 +74,10 @@ function Fail {
         foreach ($h in $Hints) { Write-Host "  $h" }
     }
     Write-Host ""
-    exit 1
+    # Deliberately not 'exit': when this script is pasted into an interactive
+    # PowerShell via 'irm | iex', exit closes the window and takes the guidance
+    # above with it. Throwing stops the install and leaves the text on screen.
+    throw "GhostSpell install aborted - see the steps above."
 }
 
 # --- Resolve latest release -------------------------------------------------
